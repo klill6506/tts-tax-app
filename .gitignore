@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Django
+*.log
+db.sqlite3
+media/
+
+# Node/Electron (later)
+node_modules/
+dist/
+out/
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
