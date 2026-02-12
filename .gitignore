@@ -1,21 +1,33 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
+*.egg-info/
+
+# Environment / Secrets
 .env
 
 # Django
 *.log
 db.sqlite3
+staticfiles/
 media/
 
-# Node/Electron (later)
+# Poetry
+# (poetry.lock IS committed — it ensures reproducible installs)
+
+# Node / Electron (later)
 node_modules/
 dist/
 out/
 
-# OS/IDE
+# Docker
+# (docker-compose.yml IS committed)
+
+# OS / IDE
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp

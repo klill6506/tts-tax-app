@@ -1,0 +1,122 @@
+import uuid
+
+from django.conf import settings
+from django.db import models
+
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
+class ClientStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    INACTIVE = "inactive", "Inactive"
+
+
+class EntityType(models.TextChoices):
+    SCORP = "scorp", "S-Corp (1120S)"
+    # Future entity types — uncomment as supported:
+    # PARTNERSHIP = "partnership", "Partnership (1065)"
+    # CCORP = "ccorp", "C-Corp (1120)"
+    # TRUST = "trust", "Trust (1041)"
+    # INDIVIDUAL = "individual", "Individual (1040)"
+
+
+class ReturnStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    IN_PROGRESS = "in_progress", "In Progress"
+    IN_REVIEW = "in_review", "In Review"
+    APPROVED = "approved", "Approved"
+    FILED = "filed", "Filed"
+
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
+
+class Client(models.Model):
+    """A client of the firm (e.g. a business or individual)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        "firms.Firm",
+        on_delete=models.CASCADE,
+        related_name="clients",
+    )
+    name = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20,
+        choices=ClientStatus.choices,
+        default=ClientStatus.ACTIVE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Entity(models.Model):
+    """A tax entity belonging to a client (e.g. an S-Corp)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="entities",
+    )
+    name = models.CharField(max_length=255)
+    entity_type = models.CharField(
+        max_length=20,
+        choices=EntityType.choices,
+        default=EntityType.SCORP,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "entities"
+
+    def __str__(self):
+        return f"{self.name} ({self.get_entity_type_display()})"
+
+
+class TaxYear(models.Model):
+    """A single tax-year return container for an entity."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entity = models.ForeignKey(
+        Entity,
+        on_delete=models.CASCADE,
+        related_name="tax_years",
+    )
+    year = models.IntegerField()
+    status = models.CharField(
+        max_length=20,
+        choices=ReturnStatus.choices,
+        default=ReturnStatus.DRAFT,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_tax_years",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-year"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["entity", "year"],
+                name="unique_entity_year",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.entity.name} — {self.year} ({self.get_status_display()})"

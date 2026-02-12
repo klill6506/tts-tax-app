@@ -1,0 +1,89 @@
+from rest_framework import serializers
+
+from .models import Client, Entity, TaxYear
+
+
+class ClientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = ("id", "name", "status", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class EntitySerializer(serializers.ModelSerializer):
+    client_id = serializers.UUIDField(source="client.id", read_only=True)
+    client_name = serializers.CharField(source="client.name", read_only=True)
+
+    class Meta:
+        model = Entity
+        fields = (
+            "id",
+            "client_id",
+            "client_name",
+            "name",
+            "entity_type",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class EntityCreateSerializer(serializers.ModelSerializer):
+    """Used for create/update — accepts client as a UUID."""
+
+    client = serializers.PrimaryKeyRelatedField(queryset=Client.objects.none())
+
+    class Meta:
+        model = Entity
+        fields = ("id", "client", "name", "entity_type")
+        read_only_fields = ("id",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope the client choices to the current firm
+        request = self.context.get("request")
+        if request and hasattr(request, "firm") and request.firm:
+            self.fields["client"].queryset = Client.objects.filter(
+                firm=request.firm
+            )
+
+
+class TaxYearSerializer(serializers.ModelSerializer):
+    entity_id = serializers.UUIDField(source="entity.id", read_only=True)
+    entity_name = serializers.CharField(source="entity.name", read_only=True)
+    created_by_username = serializers.CharField(
+        source="created_by.username", read_only=True, default=None
+    )
+
+    class Meta:
+        model = TaxYear
+        fields = (
+            "id",
+            "entity_id",
+            "entity_name",
+            "year",
+            "status",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class TaxYearCreateSerializer(serializers.ModelSerializer):
+    """Used for create/update — accepts entity as a UUID."""
+
+    entity = serializers.PrimaryKeyRelatedField(queryset=Entity.objects.none())
+
+    class Meta:
+        model = TaxYear
+        fields = ("id", "entity", "year", "status")
+        read_only_fields = ("id",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and hasattr(request, "firm") and request.firm:
+            self.fields["entity"].queryset = Entity.objects.filter(
+                client__firm=request.firm
+            )
