@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.returns.models import TaxReturn
+
 from .models import Client, Entity, TaxYear
 
 
@@ -54,6 +56,7 @@ class TaxYearSerializer(serializers.ModelSerializer):
     created_by_username = serializers.CharField(
         source="created_by.username", read_only=True, default=None
     )
+    tax_return_id = serializers.SerializerMethodField()
 
     class Meta:
         model = TaxYear
@@ -64,10 +67,18 @@ class TaxYearSerializer(serializers.ModelSerializer):
             "year",
             "status",
             "created_by_username",
+            "tax_return_id",
             "created_at",
             "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")
+
+    def get_tax_return_id(self, obj):
+        """Return the UUID of the linked TaxReturn, or None."""
+        try:
+            return str(obj.tax_return.id)
+        except TaxReturn.DoesNotExist:
+            return None
 
 
 class TaxYearCreateSerializer(serializers.ModelSerializer):

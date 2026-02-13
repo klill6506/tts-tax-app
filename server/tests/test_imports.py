@@ -50,6 +50,17 @@ SAMPLE_CSV_ALT_HEADERS = (
     "2000,AP,0,15000\n"
 )
 
+# QuickBooks-style: date row first, headers on row 2, no account numbers,
+# unlabeled first column = account name, TOTAL row at end.
+SAMPLE_CSV_QB = (
+    ",31-Dec-25,\n"
+    ",Debit,Credit\n"
+    "Cash,50000,\n"
+    "Accounts Payable,,15000\n"
+    "Retained Earnings,,35000\n"
+    "TOTAL,50000,50000\n"
+)
+
 
 def _make_csv_file(content: str, name: str = "tb.csv") -> SimpleUploadedFile:
     return SimpleUploadedFile(
@@ -116,6 +127,20 @@ class TestCSVParser:
         file = _make_csv_file(csv)
         rows = parse_csv(file)
         assert rows[0]["debit"] == Decimal("50000.00")
+
+    def test_parse_qb_format(self):
+        """QuickBooks TB: date header row, no acct numbers, TOTAL row."""
+        file = _make_csv_file(SAMPLE_CSV_QB)
+        rows = parse_csv(file)
+        assert len(rows) == 3  # TOTAL row excluded
+        assert rows[0]["account_name"] == "Cash"
+        assert rows[0]["debit"] == Decimal("50000.00")
+        assert rows[0]["credit"] == Decimal("0.00")
+        assert rows[1]["account_name"] == "Accounts Payable"
+        assert rows[1]["debit"] == Decimal("0.00")
+        assert rows[1]["credit"] == Decimal("15000.00")
+        # account_number should be empty since QB doesn't provide it
+        assert rows[0]["account_number"] == ""
 
 
 class TestXLSXParser:

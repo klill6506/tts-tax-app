@@ -23,3 +23,11 @@ class TrialBalanceUploadAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("original_filename",)
     inlines = [TrialBalanceRowInline]
+
+
+@admin.register(TrialBalanceRow)
+class TrialBalanceRowAdmin(admin.ModelAdmin):
+    list_display = ("row_number", "account_name", "account_number", "debit", "credit", "upload")
+    list_filter = ("upload",)
+    search_fields = ("account_name", "account_number")
+    ordering = ("upload", "row_number")

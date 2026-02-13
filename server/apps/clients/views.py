@@ -59,7 +59,7 @@ class TaxYearViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = TaxYear.objects.filter(
             entity__client__firm=self.request.firm
-        ).select_related("entity", "created_by")
+        ).select_related("entity", "created_by", "tax_return")
         # Optional filters
         entity_id = self.request.query_params.get("entity")
         if entity_id:

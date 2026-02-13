@@ -72,7 +72,42 @@ def _detect_columns(headers: list[str]) -> dict:
             mapping["credit"] = normalized.index(pattern)
             break
 
+    # QB-style: if we found debit/credit but no account_name, check if column 0
+    # is unlabeled (empty header) — it's likely the account name column.
+    if "debit" in mapping and "credit" in mapping and "account_name" not in mapping:
+        for i, h in enumerate(normalized):
+            if h == "" and i not in mapping.values():
+                mapping["account_name"] = i
+                break
+
     return mapping
+
+
+# Rows whose first-column value (lowercased) matches these are skipped as
+# summary / total rows that shouldn't be imported as real TB data.
+_SKIP_ROW_LABELS = frozenset(("total", "totals", "grand total", "net income"))
+
+
+def _find_header_row(rows: list[list[str]]) -> int:
+    """
+    Scan the first several rows to find the one that looks like a header.
+
+    A header row is one that contains at least one of 'debit', 'credit',
+    'dr', 'cr'.  This handles QB exports that put a date row before the
+    real header.
+    """
+    debit_credit_words = {"debit", "debits", "dr", "credit", "credits", "cr"}
+    for idx, row in enumerate(rows[:10]):  # Only check the first 10 rows
+        normalized = {_normalize_header(c) for c in row}
+        if normalized & debit_credit_words:
+            return idx
+    return 0  # Fallback: assume first row is the header
+
+
+def _is_summary_row(row_values: list) -> bool:
+    """Return True if the row looks like a TOTAL / summary line."""
+    first = str(row_values[0]).strip().lower() if row_values else ""
+    return first in _SKIP_ROW_LABELS
 
 
 def _extract_row(row_values: list, col_map: dict, row_idx: int) -> dict:
@@ -110,13 +145,17 @@ def parse_csv(file: UploadedFile) -> list[dict]:
     if len(rows_raw) < 2:
         raise ParseError("CSV file must have a header row and at least one data row.")
 
-    headers = rows_raw[0]
+    header_idx = _find_header_row(rows_raw)
+    headers = rows_raw[header_idx]
     col_map = _detect_columns(headers)
+    data_rows = rows_raw[header_idx + 1 :]
 
     parsed = []
-    for idx, row in enumerate(rows_raw[1:], start=1):
+    for idx, row in enumerate(data_rows, start=1):
         if not any(cell.strip() for cell in row):
             continue  # Skip blank rows
+        if _is_summary_row(row):
+            continue  # Skip TOTAL rows
         parsed.append(_extract_row(row, col_map, idx))
 
     return parsed
@@ -138,19 +177,19 @@ def parse_xlsx(file: UploadedFile) -> list[dict]:
     if len(rows_raw) < 2:
         raise ParseError("Excel file must have a header row and at least one data row.")
 
-    headers = [str(h) if h else "" for h in rows_raw[0]]
+    str_rows = [[str(c) if c else "" for c in row] for row in rows_raw]
+    header_idx = _find_header_row(str_rows)
+    headers = str_rows[header_idx]
     col_map = _detect_columns(headers)
+    data_rows = str_rows[header_idx + 1 :]
 
     parsed = []
-    for idx, row in enumerate(rows_raw[1:], start=1):
-        values = list(row)
-        if not any(v is not None and str(v).strip() for v in values):
+    for idx, row in enumerate(data_rows, start=1):
+        if not any(v.strip() for v in row):
             continue
-        parsed.append(_extract_row(
-            [str(v) if v is not None else "" for v in values],
-            col_map,
-            idx,
-        ))
+        if _is_summary_row(row):
+            continue
+        parsed.append(_extract_row(row, col_map, idx))
 
     return parsed
 
