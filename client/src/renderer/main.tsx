@@ -7,8 +7,8 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import EntityDetail from "./pages/EntityDetail";
 import TrialBalance from "./pages/TrialBalance";
 import FormEditor from "./pages/FormEditor";
 
@@ -28,9 +28,16 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
+        {/* Client Manager (home) */}
         <Route path="/" element={<Dashboard />} />
-        <Route path="/clients" element={<Clients />} />
+
+        {/* Entity Manager for a client */}
         <Route path="/clients/:clientId" element={<ClientDetail />} />
+
+        {/* Entity Detail — tax years, TB, returns */}
+        <Route path="/clients/:clientId/entities/:entityId" element={<EntityDetail />} />
+
+        {/* Trial Balance & Form Editor */}
         <Route path="/tax-years/:taxYearId/trial-balance" element={<TrialBalance />} />
         <Route path="/tax-returns/:taxReturnId/editor" element={<FormEditor />} />
       </Route>

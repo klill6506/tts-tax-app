@@ -283,6 +283,14 @@ export default function FormEditor() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [taxReturnId]);
 
+  // Auto-save every 10 seconds as a safety net
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      flushDirty();
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [taxReturnId]);
+
   // ---- Render ----
 
   if (loading) return <p className="text-sm text-slate-500">Loading...</p>;
@@ -295,13 +303,17 @@ export default function FormEditor() {
     <div>
       {/* Breadcrumb */}
       <div className="mb-4 text-sm text-slate-500">
-        <Link to="/clients" className="text-blue-600 hover:underline">
-          Clients
+        <Link to="/" className="text-blue-600 hover:underline">
+          Client Manager
         </Link>
         <span className="mx-2">/</span>
         <span className="text-slate-800">{returnData.client_name}</span>
         <span className="mx-2">/</span>
         <span className="text-slate-800">{returnData.entity_name}</span>
+        <span className="mx-2">/</span>
+        <span className="font-medium text-slate-800">
+          {returnData.form_code} &mdash; {returnData.year}
+        </span>
       </div>
 
       {/* Header */}
@@ -328,12 +340,6 @@ export default function FormEditor() {
             className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
           >
             {importing ? "Importing..." : "Import Trial Balance"}
-          </button>
-          <button
-            onClick={flushDirty}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            Save All
           </button>
         </div>
       </div>
@@ -807,12 +813,31 @@ function SaveStatusIndicator({
 }: {
   status: "idle" | "saving" | "saved" | "error";
 }) {
-  if (status === "idle") return null;
   const config = {
-    saving: { text: "Saving...", color: "text-slate-500" },
-    saved: { text: "Saved", color: "text-green-600" },
-    error: { text: "Save failed", color: "text-red-600" },
+    idle: { text: "Auto-save on", icon: "check", color: "text-slate-400" },
+    saving: { text: "Saving...", icon: "sync", color: "text-blue-500" },
+    saved: { text: "All changes saved", icon: "check", color: "text-green-600" },
+    error: { text: "Save failed — retrying", icon: "warn", color: "text-red-600" },
   };
-  const { text, color } = config[status];
-  return <span className={`text-sm font-medium ${color}`}>{text}</span>;
+  const { text, icon, color } = config[status];
+  return (
+    <span className={`flex items-center gap-1.5 text-xs font-medium ${color}`}>
+      {icon === "check" && (
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      )}
+      {icon === "sync" && (
+        <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+        </svg>
+      )}
+      {icon === "warn" && (
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+      )}
+      {text}
+    </span>
+  );
 }

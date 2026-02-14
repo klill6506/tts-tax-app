@@ -15,11 +15,10 @@ class ClientStatus(models.TextChoices):
 
 class EntityType(models.TextChoices):
     SCORP = "scorp", "S-Corp (1120S)"
-    # Future entity types — uncomment as supported:
-    # PARTNERSHIP = "partnership", "Partnership (1065)"
-    # CCORP = "ccorp", "C-Corp (1120)"
-    # TRUST = "trust", "Trust (1041)"
-    # INDIVIDUAL = "individual", "Individual (1040)"
+    PARTNERSHIP = "partnership", "Partnership (1065)"
+    CCORP = "ccorp", "C-Corp (1120)"
+    TRUST = "trust", "Trust (1041)"
+    INDIVIDUAL = "individual", "Individual (1040)"
 
 
 class ReturnStatus(models.TextChoices):
