@@ -53,15 +53,34 @@ cd D:\dev\tts-tax-app\server
 poetry run pytest
 ```
 
+## IRS Form Rendering (enforced)
+- **Never draw IRS forms from scratch** — always use official IRS PDF templates as backgrounds
+- **All PDF output via `apps.tts_forms.renderer`** — `render()` or `render_tax_return()`
+- **Templates in `resources/irs_forms/<year>/`** — tracked in `forms_manifest.json` with URL + SHA256
+- **Supporting detail → Statement pages** — never fake IRS layouts for breakdowns
+- **Update templates via `scripts/update_irs_forms.py`** — downloads from irs.gov and verifies hashes
+- See `.claude/rules/irs_form_rendering.md` for full details
+
 ## Directory Layout
 ```
 tts-tax-app/
 ├── docker-compose.yml          # Postgres for dev
 ├── CLAUDE.md                   # This file (project-wide)
+├── .claude/rules/              # Claude Code rules (auto-loaded)
+│   └── irs_form_rendering.md   # IRS form rendering skill
 ├── docs/                       # PROJECT_CHARTER, ADRs, DEVLOG
+├── resources/irs_forms/        # Official IRS PDF templates
+│   ├── forms_manifest.json     # Template registry (URL + SHA256)
+│   └── 2025/                   # Templates by tax year
+├── scripts/                    # Project-wide scripts
+│   └── update_irs_forms.py     # Download + verify IRS PDFs
 ├── server/                     # Django backend
 │   ├── config/settings/        # base.py + dev.py (+ prod.py later)
 │   ├── apps/                   # Django apps (core, firms, accounts, etc.)
+│   │   └── tts_forms/          # IRS form PDF rendering subsystem
+│   │       ├── renderer.py     # Core PDF renderer
+│   │       ├── statements.py   # Supporting statement pages
+│   │       └── coordinates/    # Field position mappings per form
 │   ├── tests/                  # pytest test files
 │   └── scripts/                # Dev scripts (run_dev.ps1)
 └── client/                     # Electron app (future)

@@ -11,6 +11,7 @@ from apps.clients.models import TaxYear
 from apps.firms.permissions import IsFirmMember
 from apps.imports.models import TrialBalanceUpload
 from apps.mappings.engine import apply_template, resolve_template
+from apps.tts_forms.views import PDFRenderMixin
 
 from .compute import compute_return
 from .models import FormDefinition, FormFieldValue, FormLine, TaxReturn
@@ -41,6 +42,7 @@ class FormDefinitionViewSet(
 
 
 class TaxReturnViewSet(
+    PDFRenderMixin,
     AuditViewSetMixin,
     ListModelMixin,
     RetrieveModelMixin,

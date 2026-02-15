@@ -1,0 +1,30 @@
+{
+  "description": "IRS PDF template manifest. Source of truth for official form templates used in PDF rendering.",
+  "last_updated": "2025-02-15",
+  "forms": [
+    {
+      "form_id": "f1120s",
+      "form_code": "1120-S",
+      "title": "U.S. Income Tax Return for an S Corporation",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120s.pdf",
+      "revision_date": "2024-12",
+      "sha256": null,
+      "local_path": "2025/f1120s.pdf",
+      "pages": 6,
+      "notes": "SHA256 will be populated after first download via update_irs_forms.py"
+    },
+    {
+      "form_id": "f1120sk1",
+      "form_code": "1120-S-K1",
+      "title": "Schedule K-1 (Form 1120-S) - Shareholder's Share of Income",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120sk1.pdf",
+      "revision_date": "2024-12",
+      "sha256": null,
+      "local_path": "2025/f1120sk1.pdf",
+      "pages": 2,
+      "notes": "Schedule K-1 for individual shareholders"
+    }
+  ]
+}

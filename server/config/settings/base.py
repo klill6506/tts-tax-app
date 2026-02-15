@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.mappings",
     "apps.diagnostics",
     "apps.returns",
+    "apps.tts_forms",
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,9 @@ STATIC_URL = "static/"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# IRS PDF templates directory (repo root / resources / irs_forms)
+IRS_FORMS_DIR = BASE_DIR.parent / "resources" / "irs_forms"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
