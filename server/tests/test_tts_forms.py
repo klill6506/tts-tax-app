@@ -26,6 +26,10 @@ from apps.clients.models import Client, Entity, TaxYear
 from apps.firms.models import Firm, FirmMembership, Role
 from apps.returns.management.commands.seed_1120s import Command as SeedCommand
 from apps.returns.models import FormDefinition, FormFieldValue, TaxReturn
+from apps.tts_forms.coordinates.f1065 import FIELD_MAP as F1065_FIELD_MAP
+from apps.tts_forms.coordinates.f1065 import HEADER_FIELDS as F1065_HEADER_FIELDS
+from apps.tts_forms.coordinates.f1120 import FIELD_MAP as F1120_FIELD_MAP
+from apps.tts_forms.coordinates.f1120 import HEADER_FIELDS as F1120_HEADER_FIELDS
 from apps.tts_forms.coordinates.f1120s import (
     FIELD_MAP,
     HEADER_FIELDS,
@@ -33,6 +37,7 @@ from apps.tts_forms.coordinates.f1120s import (
 )
 from apps.tts_forms.renderer import (
     COORDINATE_REGISTRY,
+    HEADER_REGISTRY,
     _create_overlay,
     _format_currency,
     _format_value,
@@ -331,6 +336,242 @@ class TestCoordinates:
 
 
 # ---------------------------------------------------------------------------
+# Form 1065 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates1065:
+    def test_f1065_field_map_has_entries(self):
+        assert len(F1065_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f1065(self):
+        assert "f1065" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f1065(self):
+        assert "f1065" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F1065_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"1065: {key} is not a FieldCoord"
+
+    def test_all_pages_are_valid(self):
+        for key, coord in F1065_FIELD_MAP.items():
+            assert 0 <= coord.page <= 6, f"1065: {key} has invalid page {coord.page}"
+
+    def test_all_positions_are_positive(self):
+        for key, coord in F1065_FIELD_MAP.items():
+            assert coord.x >= 0, f"1065: {key} has negative x"
+            assert coord.y >= 0, f"1065: {key} has negative y"
+            assert coord.width > 0, f"1065: {key} has non-positive width"
+
+    def test_all_alignments_are_valid(self):
+        valid = {"left", "right", "center"}
+        for key, coord in F1065_FIELD_MAP.items():
+            assert coord.alignment in valid, f"1065: {key} has invalid alignment"
+
+    def test_header_fields_exist(self):
+        assert "entity_name" in F1065_HEADER_FIELDS
+        assert "ein" in F1065_HEADER_FIELDS
+
+    def test_income_lines_mapped(self):
+        for ln in ["1a", "1b", "1c", "2", "3", "8"]:
+            assert ln in F1065_FIELD_MAP, f"1065 income line {ln} missing"
+
+    def test_deduction_lines_mapped(self):
+        for ln in ["9", "10", "20", "21", "22"]:
+            assert ln in F1065_FIELD_MAP, f"1065 deduction line {ln} missing"
+
+    def test_schedule_k_lines_mapped(self):
+        for ln in ["K1", "K2", "K4", "K5", "K12"]:
+            assert ln in F1065_FIELD_MAP, f"1065 Schedule K line {ln} missing"
+
+    def test_schedule_l_lines_mapped(self):
+        for ln in ["L1b", "L1d", "L14b", "L14d"]:
+            assert ln in F1065_FIELD_MAP, f"1065 Schedule L line {ln} missing"
+
+    def test_schedule_m1_lines_mapped(self):
+        for ln in ["M1_1", "M1_9"]:
+            assert ln in F1065_FIELD_MAP, f"1065 Schedule M-1 line {ln} missing"
+
+    def test_schedule_m2_lines_mapped(self):
+        for ln in ["M2_1", "M2_9"]:
+            assert ln in F1065_FIELD_MAP, f"1065 Schedule M-2 line {ln} missing"
+
+
+# ---------------------------------------------------------------------------
+# Form 1120 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates1120:
+    def test_f1120_field_map_has_entries(self):
+        assert len(F1120_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f1120(self):
+        assert "f1120" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f1120(self):
+        assert "f1120" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F1120_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"1120: {key} is not a FieldCoord"
+
+    def test_all_pages_are_valid(self):
+        for key, coord in F1120_FIELD_MAP.items():
+            assert 0 <= coord.page <= 5, f"1120: {key} has invalid page {coord.page}"
+
+    def test_all_positions_are_positive(self):
+        for key, coord in F1120_FIELD_MAP.items():
+            assert coord.x >= 0, f"1120: {key} has negative x"
+            assert coord.y >= 0, f"1120: {key} has negative y"
+            assert coord.width > 0, f"1120: {key} has non-positive width"
+
+    def test_all_alignments_are_valid(self):
+        valid = {"left", "right", "center"}
+        for key, coord in F1120_FIELD_MAP.items():
+            assert coord.alignment in valid, f"1120: {key} has invalid alignment"
+
+    def test_header_fields_exist(self):
+        assert "entity_name" in F1120_HEADER_FIELDS
+        assert "ein" in F1120_HEADER_FIELDS
+
+    def test_income_lines_mapped(self):
+        for ln in ["1a", "1b", "1c", "2", "3", "11"]:
+            assert ln in F1120_FIELD_MAP, f"1120 income line {ln} missing"
+
+    def test_deduction_lines_mapped(self):
+        for ln in ["12", "13", "26", "27", "28", "30"]:
+            assert ln in F1120_FIELD_MAP, f"1120 deduction line {ln} missing"
+
+    def test_tax_lines_mapped(self):
+        for ln in ["31", "32", "34", "36"]:
+            assert ln in F1120_FIELD_MAP, f"1120 tax line {ln} missing"
+
+    def test_schedule_c_lines_mapped(self):
+        for ln in ["C1a", "C1c", "C19", "C20"]:
+            assert ln in F1120_FIELD_MAP, f"1120 Schedule C line {ln} missing"
+
+    def test_schedule_j_lines_mapped(self):
+        for ln in ["J1", "J2", "J10"]:
+            assert ln in F1120_FIELD_MAP, f"1120 Schedule J line {ln} missing"
+
+    def test_schedule_l_lines_mapped(self):
+        for ln in ["L1b", "L1d", "L15b", "L15d", "L28b", "L28d"]:
+            assert ln in F1120_FIELD_MAP, f"1120 Schedule L line {ln} missing"
+
+    def test_schedule_m1_lines_mapped(self):
+        for ln in ["M1_1", "M1_10"]:
+            assert ln in F1120_FIELD_MAP, f"1120 Schedule M-1 line {ln} missing"
+
+    def test_schedule_m2_lines_mapped(self):
+        for ln in ["M2_1", "M2_8"]:
+            assert ln in F1120_FIELD_MAP, f"1120 Schedule M-2 line {ln} missing"
+
+
+# ---------------------------------------------------------------------------
+# Cross-form renderer tests (1065 and 1120 rendering)
+# ---------------------------------------------------------------------------
+
+
+class TestRender1065:
+    def test_render_1065_produces_valid_pdf(self, test_template_pdf):
+        field_values = {
+            "1a": ("750000", "currency"),
+            "9": ("50000", "currency"),
+            "22": ("200000", "currency"),
+        }
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f1065",
+                tax_year=2025,
+                field_values=field_values,
+                header_data={"entity_name": "Test Partnership LLC", "ein": "98-7654321"},
+            )
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) == 6
+
+    def test_render_1065_with_statements(self, test_template_pdf):
+        field_values = {"20": ("15000", "currency")}
+        statements = [
+            {
+                "title": "Form 1065 (2025) — Statement for Line 20",
+                "subtitle": "Other deductions",
+                "form_code": "1065",
+                "items": [
+                    {"description": "Office rent", "amount": "8000"},
+                    {"description": "Utilities", "amount": "7000"},
+                ],
+            }
+        ]
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f1065",
+                tax_year=2025,
+                field_values=field_values,
+                statement_pages=statements,
+            )
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) == 7
+
+
+class TestRender1120:
+    def test_render_1120_produces_valid_pdf(self, test_template_pdf):
+        field_values = {
+            "1a": ("1000000", "currency"),
+            "12": ("200000", "currency"),
+            "30": ("300000", "currency"),
+            "31": ("100000", "currency"),
+        }
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f1120",
+                tax_year=2025,
+                field_values=field_values,
+                header_data={"entity_name": "Test Corp Inc", "ein": "55-1234567"},
+            )
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) == 6
+
+    def test_render_1120_with_statements(self, test_template_pdf):
+        field_values = {"26": ("45000", "currency")}
+        statements = [
+            {
+                "title": "Form 1120 (2025) — Statement for Line 26",
+                "subtitle": "Other deductions",
+                "form_code": "1120",
+                "items": [
+                    {"description": "Professional services", "amount": "25000"},
+                    {"description": "Office expenses", "amount": "20000"},
+                ],
+            }
+        ]
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f1120",
+                tax_year=2025,
+                field_values=field_values,
+                statement_pages=statements,
+            )
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) == 7
+
+
+# ---------------------------------------------------------------------------
 # Full renderer tests (using a mock template PDF)
 # ---------------------------------------------------------------------------
 
@@ -546,7 +787,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) > 0
+        assert len(data["forms"]) == 5  # f1120s, f1120sk1, f1065, f1065sk1, f1120
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (

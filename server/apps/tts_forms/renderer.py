@@ -24,6 +24,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch  # noqa: F401 — useful for callers
 from reportlab.pdfgen import canvas
 
+from .coordinates.f1065 import FIELD_MAP as F1065_FIELD_MAP
+from .coordinates.f1065 import HEADER_FIELDS as F1065_HEADER_FIELDS
+from .coordinates.f1120 import FIELD_MAP as F1120_FIELD_MAP
+from .coordinates.f1120 import HEADER_FIELDS as F1120_HEADER_FIELDS
 from .coordinates.f1120s import FIELD_MAP as F1120S_FIELD_MAP
 from .coordinates.f1120s import HEADER_FIELDS as F1120S_HEADER_FIELDS
 from .coordinates.f1120s import FieldCoord
@@ -42,10 +46,14 @@ MANIFEST_PATH = RESOURCES_DIR / "forms_manifest.json"
 # Coordinate maps keyed by form_id
 COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120s": F1120S_FIELD_MAP,
+    "f1065": F1065_FIELD_MAP,
+    "f1120": F1120_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120s": F1120S_HEADER_FIELDS,
+    "f1065": F1065_HEADER_FIELDS,
+    "f1120": F1120_HEADER_FIELDS,
 }
 
 # Font settings
@@ -269,6 +277,8 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
     # Map form_code to form_id
     form_code_to_id = {
         "1120-S": "f1120s",
+        "1065": "f1065",
+        "1120": "f1120",
     }
     form_id = form_code_to_id.get(form_code)
     if not form_id:
