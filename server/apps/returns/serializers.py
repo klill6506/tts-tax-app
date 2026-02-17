@@ -5,6 +5,10 @@ from .models import (
     FormFieldValue,
     FormLine,
     FormSection,
+    Officer,
+    OtherDeduction,
+    RentalProperty,
+    Shareholder,
     TaxReturn,
 )
 
@@ -53,6 +57,112 @@ class FormDefinitionListSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Other Deductions & Officers
+# ---------------------------------------------------------------------------
+
+
+class OtherDeductionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OtherDeduction
+        fields = (
+            "id",
+            "description",
+            "amount",
+            "category",
+            "sort_order",
+            "source",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class OfficerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Officer
+        fields = (
+            "id",
+            "name",
+            "title",
+            "ssn",
+            "percent_ownership",
+            "compensation",
+            "sort_order",
+        )
+        read_only_fields = ("id",)
+
+
+class RentalPropertySerializer(serializers.ModelSerializer):
+    total_expenses = serializers.DecimalField(
+        max_digits=15, decimal_places=2, read_only=True
+    )
+    net_rent = serializers.DecimalField(
+        max_digits=15, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = RentalProperty
+        fields = (
+            "id",
+            "description",
+            "property_type",
+            "fair_rental_days",
+            "personal_use_days",
+            "rents_received",
+            "advertising",
+            "auto_and_travel",
+            "cleaning_and_maintenance",
+            "commissions",
+            "insurance",
+            "legal_and_professional",
+            "interest_mortgage",
+            "interest_other",
+            "repairs",
+            "taxes",
+            "utilities",
+            "depreciation",
+            "other_expenses",
+            "total_expenses",
+            "net_rent",
+            "sort_order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class ShareholderSerializer(serializers.ModelSerializer):
+    linked_client_name = serializers.CharField(
+        source="linked_client.name", read_only=True, default=None
+    )
+
+    class Meta:
+        model = Shareholder
+        fields = (
+            "id",
+            "name",
+            "ssn",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "zip_code",
+            "ownership_percentage",
+            "beginning_shares",
+            "ending_shares",
+            "distributions",
+            "health_insurance_premium",
+            "linked_client",
+            "linked_client_name",
+            "is_active",
+            "sort_order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+# ---------------------------------------------------------------------------
 # Tax Return
 # ---------------------------------------------------------------------------
 
@@ -81,11 +191,18 @@ class FieldValueSerializer(serializers.ModelSerializer):
 
 class TaxReturnSerializer(serializers.ModelSerializer):
     field_values = FieldValueSerializer(many=True, read_only=True)
+    other_deductions = OtherDeductionSerializer(many=True, read_only=True)
+    officers = OfficerSerializer(many=True, read_only=True)
+    shareholders = ShareholderSerializer(many=True, read_only=True)
+    rental_properties = RentalPropertySerializer(many=True, read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
     tax_year_id = serializers.UUIDField(source="tax_year.id", read_only=True)
     year = serializers.IntegerField(source="tax_year.year", read_only=True)
     entity_name = serializers.CharField(
         source="tax_year.entity.name", read_only=True
+    )
+    entity_id = serializers.UUIDField(
+        source="tax_year.entity.id", read_only=True
     )
     client_name = serializers.CharField(
         source="tax_year.entity.client.name", read_only=True
@@ -97,11 +214,19 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "id",
             "tax_year_id",
             "year",
+            "entity_id",
             "entity_name",
             "client_name",
             "form_code",
             "status",
+            "accounting_method",
+            "tax_year_start",
+            "tax_year_end",
             "field_values",
+            "other_deductions",
+            "officers",
+            "shareholders",
+            "rental_properties",
             "created_at",
             "updated_at",
         )

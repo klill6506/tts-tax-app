@@ -93,3 +93,33 @@ tts-tax-app/
 - [ ] No secrets or PII in committed code
 - [ ] Code reviewed by Architect/QA supervisor prompt
 - [ ] Code reviewed by Security supervisor prompt
+
+## UI/Design Standards
+
+### General Principles
+- **Professional, not sterile.** We're a CPA firm, not a hospital. Warm neutrals > cold grays.
+- **Generous whitespace.** Don't cram. Let elements breathe.
+- **Subtle depth.** Use soft shadows (shadow-sm, shadow-md) to create layers.
+- **Consistent spacing.** Pick a scale (4, 8, 16, 24, 32px) and stick to it.
+
+### Colors
+- Primary: Blue (trust, professionalism) — not too bright
+- Accent: Warm gold or amber for CTAs and highlights
+- Backgrounds: Off-white or very light warm gray (not pure white, not cold gray)
+- Text: Near-black (gray-900), not pure black
+
+### Typography
+- Headings: Semi-bold, slightly larger than you think
+- Body: Regular weight, good line-height (1.5-1.6)
+- Don't be afraid of font-medium for emphasis
+
+### Components
+- Buttons: Rounded corners (rounded-lg), padding (px-4 py-2 minimum), hover states
+- Cards: Subtle border OR shadow, not both. Rounded corners.
+- Forms: Labels above inputs, clear focus states, adequate spacing between fields
+- Tables: Alternating row colors optional, but always clear headers
+
+### Dark Mode (if applicable)
+- Not pitch black — use gray-900 or slate-900
+- Reduce contrast slightly (gray-100 text, not white)
+- Accent colors may need to be lighter/more saturated

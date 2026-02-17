@@ -24,6 +24,17 @@ class EntitySerializer(serializers.ModelSerializer):
             "client_name",
             "name",
             "entity_type",
+            "legal_name",
+            "ein",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "zip_code",
+            "date_incorporated",
+            "state_incorporated",
+            "business_activity",
+            "naics_code",
             "created_at",
             "updated_at",
         )
@@ -37,7 +48,13 @@ class EntityCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entity
-        fields = ("id", "client", "name", "entity_type")
+        fields = (
+            "id", "client", "name", "entity_type",
+            "legal_name", "ein",
+            "address_line1", "address_line2", "city", "state", "zip_code",
+            "date_incorporated", "state_incorporated",
+            "business_activity", "naics_code",
+        )
         read_only_fields = ("id",)
 
     def __init__(self, *args, **kwargs):

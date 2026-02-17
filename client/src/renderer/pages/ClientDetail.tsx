@@ -16,6 +16,7 @@ interface Entity {
   id: string;
   name: string;
   entity_type: string;
+  client_id: string;
 }
 
 interface TaxYearSummary {
@@ -141,29 +142,29 @@ export default function ClientDetail() {
 
   // ---- Render ----
 
-  if (loading) return <p className="text-sm text-slate-500">Loading...</p>;
-  if (!client) return <p className="text-sm text-red-600">Client not found.</p>;
+  if (loading) return <p className="text-sm text-tx-secondary">Loading...</p>;
+  if (!client) return <p className="text-sm text-danger">Client not found.</p>;
 
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-4 text-sm text-slate-500">
-        <Link to="/" className="text-blue-600 hover:underline">Client Manager</Link>
+      <div className="mb-4 text-sm text-tx-secondary">
+        <Link to="/" className="text-primary-text hover:underline">Client Manager</Link>
         <span className="mx-2">/</span>
-        <span className="font-medium text-slate-800">{client.name}</span>
+        <span className="font-medium text-tx">{client.name}</span>
       </div>
 
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Entity Manager</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-tx">Entity Manager</h1>
+          <p className="text-sm text-tx-secondary">
             {client.name} &mdash; {loading ? "Loading..." : `${filtered.length} entities`}
           </p>
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+          className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover"
         >
           + New Entity
         </button>
@@ -173,11 +174,11 @@ export default function ClientDetail() {
       {showNew && (
         <form
           onSubmit={handleCreate}
-          className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4"
+          className="mb-4 rounded-lg border border-border-subtle bg-card p-4"
         >
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[200px]">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Entity Name
               </label>
               <input
@@ -186,17 +187,17 @@ export default function ClientDetail() {
                 placeholder="e.g. Acme Corp, Gates Personal..."
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Entity Type
               </label>
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="rounded-md border border-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
                 {ENTITY_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -206,14 +207,14 @@ export default function ClientDetail() {
             <button
               type="submit"
               disabled={creating || !newName.trim()}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+              className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover disabled:opacity-50"
             >
               {creating ? "Creating..." : "Create Entity"}
             </button>
             <button
               type="button"
               onClick={() => { setShowNew(false); setNewName(""); }}
-              className="rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-tx-secondary transition hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -223,81 +224,86 @@ export default function ClientDetail() {
 
       {/* Search */}
       {entities.length > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">
           <input
             type="text"
             placeholder="Search entities..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-64 rounded-md border border-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
           />
           {search && (
-            <button onClick={() => setSearch("")} className="text-xs text-blue-600 hover:underline">Clear</button>
+            <button onClick={() => setSearch("")} className="text-xs text-primary-text hover:underline">Clear</button>
           )}
         </div>
       )}
 
       {/* Table */}
       {filtered.length === 0 && !showNew ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm text-tx-secondary">
             {search
               ? "No entities match your search."
               : "No entities yet. Click '+ New Entity' to create the first filing entity for this client."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-100">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-alt">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Entity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tax Years</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Latest Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Entity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Tax Years</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Latest Status</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {filtered.map((entity, idx) => {
                 const tys = taxYearCounts[entity.id] || [];
                 const latestTy = tys.length > 0 ? tys[0] : null; // already sorted -year from server
                 return (
-                  <tr key={entity.id} className={`transition hover:bg-blue-50 ${idx % 2 === 1 ? "bg-slate-50/70" : ""}`}>
+                  <tr key={entity.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface/70" : ""}`}>
                     <td className="px-4 py-3">
                       <Link
                         to={`/clients/${clientId}/entities/${entity.id}`}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        className="text-sm font-semibold text-primary-text hover:text-primary-text hover:underline"
                       >
                         {entity.name}
                       </Link>
+                      {entity.client_id !== clientId && (
+                        <span className="ml-2 rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary-text">
+                          Shareholder
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      <span className="rounded bg-surface-alt px-2 py-0.5 text-xs font-medium text-tx-secondary">
                         {entityTypeLabel(entity.entity_type)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm tabular-nums text-slate-700">
+                    <td className="px-4 py-3 text-sm tabular-nums text-tx-secondary">
                       {tys.length}
                     </td>
                     <td className="px-4 py-3">
                       {latestTy ? (
                         <ReturnStatusPill status={latestTy.status} />
                       ) : (
-                        <span className="text-xs text-slate-400">&mdash;</span>
+                        <span className="text-xs text-tx-muted">&mdash;</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           to={`/clients/${clientId}/entities/${entity.id}`}
-                          className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                          className="rounded-lg bg-primary-subtle px-2.5 py-1 text-xs font-medium text-primary-text transition hover:bg-primary"
                         >
                           Open
                         </Link>
                         <button
                           onClick={() => handleDelete(entity.id, entity.name)}
-                          className="rounded-md px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                          className="rounded-lg px-2.5 py-1 text-xs font-medium text-danger transition hover:bg-danger-subtle hover:text-danger"
                         >
                           Delete
                         </button>
@@ -308,8 +314,8 @@ export default function ClientDetail() {
               })}
             </tbody>
           </table>
-          <div className="border-t border-slate-200 bg-slate-50 px-4 py-2">
-            <span className="text-xs text-slate-400">
+          <div className="border-t border-border bg-surface px-4 py-2">
+            <span className="text-xs text-tx-muted">
               Showing {filtered.length} of {entities.length} entities
             </span>
           </div>
@@ -325,11 +331,11 @@ export default function ClientDetail() {
 
 function ReturnStatusPill({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-600",
+    draft: "bg-surface-alt text-tx-secondary",
     in_progress: "bg-amber-50 text-amber-700",
     in_review: "bg-amber-50 text-amber-700",
-    approved: "bg-blue-50 text-blue-700",
-    filed: "bg-green-50 text-green-700",
+    approved: "bg-primary-subtle text-primary-text",
+    filed: "bg-card text-success",
   };
   return (
     <span

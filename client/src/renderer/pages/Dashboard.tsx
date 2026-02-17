@@ -118,14 +118,14 @@ export default function Dashboard() {
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Client Manager</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-tx">Client Manager</h1>
+          <p className="text-sm text-tx-secondary">
             {firmName} &mdash; {loading ? "Loading..." : `${filtered.length} clients`}
           </p>
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+          className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover"
         >
           + New Client
         </button>
@@ -133,92 +133,92 @@ export default function Dashboard() {
 
       {/* New client form */}
       {showNew && (
-        <form onSubmit={handleCreate} className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+        <form onSubmit={handleCreate} className="mb-4 flex items-center gap-2 rounded-lg border border-border-subtle bg-card p-3">
           <input
             autoFocus
             type="text"
             placeholder="Client name (individual)..."
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full max-w-sm rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
           />
-          <button type="submit" disabled={creating || !newName.trim()} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50">
+          <button type="submit" disabled={creating || !newName.trim()} className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover disabled:opacity-50">
             {creating ? "Creating..." : "Create"}
           </button>
-          <button type="button" onClick={() => { setShowNew(false); setNewName(""); }} className="rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100">
+          <button type="button" onClick={() => { setShowNew(false); setNewName(""); }} className="rounded-lg px-3 py-2 text-sm font-medium text-tx-secondary transition hover:bg-surface-alt">
             Cancel
           </button>
         </form>
       )}
 
       {/* Search */}
-      <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">
         <input
           type="text"
           placeholder="Search clients..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-64 rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="text-xs text-blue-600 hover:underline">Clear</button>
+          <button onClick={() => setSearch("")} className="text-xs text-primary-text hover:underline">Clear</button>
         )}
       </div>
 
       {/* Table */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading clients...</p>
+        <p className="text-sm text-tx-secondary">Loading clients...</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm text-tx-secondary">
             {search ? "No clients match your search." : "No clients yet. Click '+ New Client' to get started."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-100">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-alt">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Client</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Entities</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Entity Types</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Client</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Entities</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Entity Types</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Status</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {filtered.map((r, idx) => (
-                <tr key={r.id} className={`transition hover:bg-blue-50 ${idx % 2 === 1 ? "bg-slate-50/70" : ""}`}>
+                <tr key={r.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface-alt/50" : ""}`}>
                   <td className="px-4 py-3">
-                    <Link to={`/clients/${r.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline">
+                    <Link to={`/clients/${r.id}`} className="text-sm font-semibold text-primary-text hover:underline">
                       {r.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm tabular-nums text-slate-700">{r.entityCount}</td>
+                  <td className="px-4 py-3 text-sm tabular-nums text-tx">{r.entityCount}</td>
                   <td className="px-4 py-3">
                     {r.entityTypes !== "\u2014" ? (
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{r.entityTypes}</span>
+                      <span className="rounded bg-surface-alt px-2 py-0.5 text-xs font-medium text-tx-secondary">{r.entityTypes}</span>
                     ) : (
-                      <span className="text-xs text-slate-400">\u2014</span>
+                      <span className="text-xs text-tx-muted">\u2014</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${r.status === "active" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${r.status === "active" ? "bg-primary-subtle text-primary-text" : "bg-surface-alt text-tx-secondary"}`}>
                       {r.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Link to={`/clients/${r.id}`} className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100">Open</Link>
-                      <button onClick={() => handleDelete(r.id, r.name)} className="rounded-md px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700">Delete</button>
+                      <Link to={`/clients/${r.id}`} className="rounded-md bg-primary-subtle px-2.5 py-1 text-xs font-medium text-primary-text transition hover:bg-primary hover:text-white">Open</Link>
+                      <button onClick={() => handleDelete(r.id, r.name)} className="rounded-md px-2.5 py-1 text-xs font-medium text-danger transition hover:bg-danger-subtle">Delete</button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="border-t border-slate-200 bg-slate-50 px-4 py-2">
-            <span className="text-xs text-slate-400">Showing {filtered.length} of {rows.length} clients</span>
+          <div className="border-t border-border bg-surface-alt px-4 py-2">
+            <span className="text-xs text-tx-muted">Showing {filtered.length} of {rows.length} clients</span>
           </div>
         </div>
       )}

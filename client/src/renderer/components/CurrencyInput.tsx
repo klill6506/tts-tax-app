@@ -83,10 +83,10 @@ export default function CurrencyInput({
       onChange={(e) => setDisplayValue(e.target.value)}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      className={`w-full rounded-md border border-slate-300 px-3 py-2 text-right text-sm tabular-nums shadow-sm
-        placeholder:text-slate-400
-        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20
-        ${readOnly ? "bg-slate-50 text-slate-500 cursor-default" : "bg-white"}
+      className={`w-full rounded-md border border-input-border px-3 py-2 text-right text-sm tabular-nums shadow-sm
+        placeholder:text-tx-muted
+        focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring
+        ${readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input text-tx"}
         ${className || ""}`}
     />
   );

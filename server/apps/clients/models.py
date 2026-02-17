@@ -73,6 +73,24 @@ class Entity(models.Model):
         choices=EntityType.choices,
         default=EntityType.SCORP,
     )
+    # Identity
+    legal_name = models.CharField(max_length=255, blank=True, default="")
+    ein = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="EIN in XX-XXXXXXX format",
+    )
+    # Address
+    address_line1 = models.CharField(max_length=255, blank=True, default="")
+    address_line2 = models.CharField(max_length=255, blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    state = models.CharField(max_length=2, blank=True, default="")
+    zip_code = models.CharField(max_length=10, blank=True, default="")
+    # Business info
+    date_incorporated = models.DateField(null=True, blank=True)
+    state_incorporated = models.CharField(max_length=2, blank=True, default="")
+    business_activity = models.CharField(max_length=255, blank=True, default="")
+    naics_code = models.CharField(max_length=10, blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

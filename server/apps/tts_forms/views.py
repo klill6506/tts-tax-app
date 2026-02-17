@@ -5,8 +5,14 @@ Endpoints:
     POST /api/v1/tax-returns/{id}/render-pdf/
         Generate a PDF for a tax return using the official IRS template.
 
-    POST /api/v1/tax-returns/{id}/render-pdf/
-        Body (optional): {"statements": {"19": [{"description": "...", "amount": "..."}]}}
+    POST /api/v1/tax-returns/{id}/render-k1s/
+        Generate all Schedule K-1 PDFs concatenated into one document.
+
+    POST /api/v1/tax-returns/{id}/render-k1/{sh_id}/
+        Generate a single K-1 for one shareholder.
+
+    POST /api/v1/tax-returns/{id}/render-7206/{sh_id}/
+        Generate Form 7206 for one shareholder.
 """
 
 import io
@@ -17,14 +23,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.firms.permissions import IsFirmMember
-from apps.returns.models import TaxReturn
+from apps.returns.models import Shareholder, TaxReturn
 
-from .renderer import render_tax_return
+from .renderer import render_all_k1s, render_k1, render_tax_return
 
 
 class PDFRenderMixin:
     """
-    Mixin that adds a `render_pdf` action to TaxReturnViewSet.
+    Mixin that adds PDF rendering actions to TaxReturnViewSet.
 
     Add this mixin to the TaxReturnViewSet class to enable PDF generation:
 
@@ -72,6 +78,108 @@ class PDFRenderMixin:
         year = tax_return.tax_year.year
         form_code = tax_return.form_definition.code
         filename = f"{form_code}_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Schedule K-1 rendering
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-k1s")
+    def render_k1s(self, request, pk=None):
+        """Generate all Schedule K-1 PDFs for this tax return."""
+        tax_return = self.get_object()
+
+        form_code = tax_return.form_definition.code
+        if form_code not in ("1120-S",):
+            return Response(
+                {"error": f"K-1 generation not yet supported for {form_code}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            pdf_bytes = render_all_k1s(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"K-1s_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="render-k1/(?P<sh_id>[^/.]+)",
+    )
+    def render_k1_single(self, request, pk=None, sh_id=None):
+        """Generate a single K-1 PDF for one shareholder."""
+        tax_return = self.get_object()
+        try:
+            sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
+        except Shareholder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            pdf_bytes = render_k1(tax_return, sh)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        sh_name = sh.name.replace(" ", "_").replace("/", "-")
+        year = tax_return.tax_year.year
+        filename = f"K-1_{sh_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 7206 rendering
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="render-7206/(?P<sh_id>[^/.]+)",
+    )
+    def render_7206(self, request, pk=None, sh_id=None):
+        """Generate Form 7206 (Self-Employed Health Insurance) for one shareholder."""
+        tax_return = self.get_object()
+        try:
+            sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
+        except Shareholder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if not sh.health_insurance_premium or sh.health_insurance_premium <= 0:
+            return Response(
+                {"error": "No health insurance premium recorded for this shareholder."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .renderer import render_7206 as do_render_7206
+            pdf_bytes = do_render_7206(tax_return, sh)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except (ValueError, ImportError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        sh_name = sh.name.replace(" ", "_").replace("/", "-")
+        year = tax_return.tax_year.year
+        filename = f"7206_{sh_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

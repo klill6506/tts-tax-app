@@ -230,15 +230,15 @@ export default function Clients() {
       {/* Page header with actions */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Client Manager</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-tx">Client Manager</h1>
+          <p className="text-sm text-tx-secondary">
             {loading ? "Loading..." : `${filtered.length} of ${rows.length} clients`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowNew(true)}
-            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+            className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover"
           >
             + New Client
           </button>
@@ -249,7 +249,7 @@ export default function Clients() {
       {showNew && (
         <form
           onSubmit={handleCreateClient}
-          className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3"
+          className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-3"
         >
           <input
             autoFocus
@@ -257,19 +257,19 @@ export default function Clients() {
             placeholder="Client name..."
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full max-w-sm rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
           />
           <button
             type="submit"
             disabled={creating || !newName.trim()}
-            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+            className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover disabled:opacity-50"
           >
             {creating ? "Creating..." : "Create"}
           </button>
           <button
             type="button"
             onClick={() => { setShowNew(false); setNewName(""); }}
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-tx-secondary transition hover:bg-surface-alt"
           >
             Cancel
           </button>
@@ -277,23 +277,23 @@ export default function Clients() {
       )}
 
       {/* Filters toolbar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">
         <input
           type="text"
           placeholder="Search clients or entities..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-64 rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
         />
 
-        <div className="h-5 w-px bg-slate-200" />
+        <div className="h-5 w-px bg-border" />
 
-        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+        <label className="flex items-center gap-1.5 text-xs text-tx-secondary">
           Status
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-input-border bg-input px-2 py-1 text-sm text-tx"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -303,12 +303,12 @@ export default function Clients() {
           </select>
         </label>
 
-        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+        <label className="flex items-center gap-1.5 text-xs text-tx-secondary">
           Return
           <select
             value={returnStatusFilter}
             onChange={(e) => setReturnStatusFilter(e.target.value)}
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-input-border bg-input px-2 py-1 text-sm text-tx"
           >
             {RETURN_STATUS_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -329,7 +329,7 @@ export default function Clients() {
               setStatusFilter("all");
               setReturnStatusFilter("all");
             }}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-xs text-primary-text hover:underline"
           >
             Clear filters
           </button>
@@ -338,51 +338,51 @@ export default function Clients() {
 
       {/* Table */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading clients...</p>
+        <p className="text-sm text-tx-secondary">Loading clients...</p>
       ) : sorted.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm text-tx-secondary">
             {search || statusFilter !== "all" || returnStatusFilter !== "all"
               ? "No clients match your filters."
               : "No clients yet. Click '+ New Client' to get started."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-alt">
               <tr>
                 <SortableHeader field="name" label="Client" current={sortField} dir={sortDir} onSort={toggleSort} />
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Entity
                 </th>
                 <SortableHeader field="entityType" label="Type" current={sortField} dir={sortDir} onSort={toggleSort} />
                 <SortableHeader field="latestYear" label="Tax Year" current={sortField} dir={sortDir} onSort={toggleSort} />
                 <SortableHeader field="returnStatus" label="Return Status" current={sortField} dir={sortDir} onSort={toggleSort} />
                 <SortableHeader field="status" label="Client Status" current={sortField} dir={sortDir} onSort={toggleSort} />
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {sorted.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50 transition">
+                <tr key={r.id} className="hover:bg-card-hover transition">
                   {/* Client name */}
                   <td className="px-4 py-3">
                     <Link
                       to={`/clients/${r.id}`}
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                      className="text-sm font-semibold text-primary-text hover:underline"
                     >
                       {r.name}
                     </Link>
                   </td>
 
                   {/* Entity */}
-                  <td className="px-4 py-3 text-sm text-slate-700">
+                  <td className="px-4 py-3 text-sm text-tx">
                     {r.primaryEntity}
                     {r.entityCount > 1 && (
-                      <span className="ml-1.5 text-xs text-slate-400">
+                      <span className="ml-1.5 text-xs text-tx-muted">
                         +{r.entityCount - 1} more
                       </span>
                     )}
@@ -390,13 +390,13 @@ export default function Clients() {
 
                   {/* Type */}
                   <td className="px-4 py-3">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                    <span className="rounded bg-surface-alt px-2 py-0.5 text-xs font-medium text-tx-secondary">
                       {r.entityType}
                     </span>
                   </td>
 
                   {/* Tax Year */}
-                  <td className="px-4 py-3 text-sm tabular-nums text-slate-700">
+                  <td className="px-4 py-3 text-sm tabular-nums text-tx">
                     {r.latestYear ?? "\u2014"}
                   </td>
 
@@ -415,21 +415,21 @@ export default function Clients() {
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         to={`/clients/${r.id}`}
-                        className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        className="rounded-lg bg-primary-subtle px-2.5 py-1 text-xs font-medium text-primary-text transition hover:bg-primary-subtle/80"
                       >
                         Open
                       </Link>
                       {r.returnId && (
                         <Link
                           to={`/tax-returns/${r.returnId}/editor`}
-                          className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+                          className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-white transition hover:bg-primary-hover"
                         >
                           Edit Return
                         </Link>
                       )}
                       <button
                         onClick={() => handleDeleteClient(r.id, r.name)}
-                        className="rounded-md px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                        className="rounded-lg px-2.5 py-1 text-xs font-medium text-danger transition hover:bg-danger-subtle hover:text-danger-hover"
                       >
                         Delete
                       </button>
@@ -441,11 +441,11 @@ export default function Clients() {
           </table>
 
           {/* Table footer */}
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-2">
-            <span className="text-xs text-slate-400">
+          <div className="flex items-center justify-between border-t border-border bg-surface-alt px-4 py-2">
+            <span className="text-xs text-tx-muted">
               Showing {sorted.length} of {rows.length} clients
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-tx-muted">
               Sort: {sortField} ({sortDir})
             </span>
           </div>
@@ -475,12 +475,12 @@ function SortableHeader({
   const isActive = current === field;
   return (
     <th
-      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 cursor-pointer select-none hover:text-slate-700"
+      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary cursor-pointer select-none hover:text-tx"
       onClick={() => onSort(field)}
     >
       {label}
       {isActive && (
-        <span className="ml-1 text-blue-500">
+        <span className="ml-1 text-primary-text">
           {dir === "asc" ? "\u25B2" : "\u25BC"}
         </span>
       )}
@@ -490,8 +490,8 @@ function SortableHeader({
 
 function StatusPill({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    active: "bg-blue-50 text-blue-700",
-    inactive: "bg-slate-100 text-slate-500",
+    active: "bg-primary-subtle text-primary-text",
+    inactive: "bg-surface-alt text-tx-secondary",
   };
   return (
     <span
@@ -506,13 +506,13 @@ function StatusPill({ status }: { status: string }) {
 
 function ReturnStatusPill({ status }: { status: string }) {
   const config: Record<string, { bg: string; label: string }> = {
-    "\u2014":     { bg: "bg-slate-50 text-slate-400",   label: "\u2014" },
-    no_return:    { bg: "bg-slate-100 text-slate-500",  label: "No Return" },
-    draft:        { bg: "bg-slate-100 text-slate-600",  label: "Draft" },
-    in_progress:  { bg: "bg-amber-50 text-amber-700",   label: "In Progress" },
-    in_review:    { bg: "bg-amber-50 text-amber-700",   label: "In Review" },
-    approved:     { bg: "bg-blue-50 text-blue-700",     label: "Approved" },
-    filed:        { bg: "bg-green-50 text-green-700",   label: "Filed" },
+    "\u2014":     { bg: "bg-surface-alt text-tx-muted",        label: "\u2014" },
+    no_return:    { bg: "bg-surface-alt text-tx-secondary",    label: "No Return" },
+    draft:        { bg: "bg-surface-alt text-tx-secondary",    label: "Draft" },
+    in_progress:  { bg: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", label: "In Progress" },
+    in_review:    { bg: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", label: "In Review" },
+    approved:     { bg: "bg-primary-subtle text-primary-text", label: "Approved" },
+    filed:        { bg: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400", label: "Filed" },
   };
   const c = config[status] || config["\u2014"];
   return (

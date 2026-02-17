@@ -9,10 +9,10 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120s.pdf",
       "revision_date": "2024-12",
-      "sha256": null,
+      "sha256": "cbebad5922b5e457449024823a8976801ccc5d09d8363397f650527f2cb0b9c3",
       "local_path": "2025/f1120s.pdf",
-      "pages": 6,
-      "notes": "SHA256 will be populated after first download via update_irs_forms.py"
+      "pages": 5,
+      "notes": "Extracted pages 1-5 from official IRS 1120-S booklet (print-quality, non-fillable, watermark removed)"
     },
     {
       "form_id": "f1120sk1",
@@ -21,7 +21,7 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120ssk.pdf",
       "revision_date": "2024-12",
-      "sha256": null,
+      "sha256": "104ac7b1137cb78c9051d4e3424630dca233887f17928b311fef6fd578baacd0",
       "local_path": "2025/f1120ssk.pdf",
       "pages": 2,
       "notes": "Schedule K-1 for individual shareholders"
@@ -33,7 +33,7 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1065.pdf",
       "revision_date": "2024-12",
-      "sha256": null,
+      "sha256": "0f19f556e12ef53c41ba27e5930b4373103f3abcf64693c4ea686451b2a8f56f",
       "local_path": "2025/f1065.pdf",
       "pages": 6,
       "notes": "Partnership income tax return"
@@ -45,7 +45,7 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1065sk1.pdf",
       "revision_date": "2024-12",
-      "sha256": null,
+      "sha256": "66098d4d48537ce2dac1f093d6351567957896e5843d8c524823b380068f6547",
       "local_path": "2025/f1065sk1.pdf",
       "pages": 2,
       "notes": "Schedule K-1 for individual partners"
@@ -57,10 +57,22 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120.pdf",
       "revision_date": "2024-12",
-      "sha256": null,
+      "sha256": "016c7fb4042a565c23a98014b17019af7ddc89e3260dd3f926b84d6688b7be6e",
       "local_path": "2025/f1120.pdf",
       "pages": 5,
       "notes": "C-Corporation income tax return"
+    },
+    {
+      "form_id": "f7206",
+      "form_code": "7206",
+      "title": "Self-Employed Health Insurance Deduction",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f7206.pdf",
+      "revision_date": "2024-10",
+      "sha256": "822203c9bbd958e651e243bbf6353c4c8e78abbde412e06caf6db5f88fe68ee1",
+      "local_path": "2025/f7206.pdf",
+      "pages": 1,
+      "notes": "Self-employed health insurance deduction, generated per >2% S-Corp shareholder"
     }
   ]
 }

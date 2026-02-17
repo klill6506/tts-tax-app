@@ -88,9 +88,84 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("M2_8", lambda v: _d(v, "M2_6") - _d(v, "M2_7")),
 ]
 
+# ---------------------------------------------------------------------------
+# 1065 Formulas  (line_number, callable(values) -> Decimal)
+# ORDER MATTERS — dependencies must come before dependents.
+# ---------------------------------------------------------------------------
+
+FORMULAS_1065: list[tuple[str, callable]] = [
+    # Page 1 Income
+    ("1c", lambda v: _d(v, "1a") - _d(v, "1b")),
+    ("3", lambda v: _d(v, "1c") - _d(v, "2")),
+    ("8", lambda v: _sum(v, "3", "4", "5", "6", "7")),
+    # Page 1 Deductions
+    ("21", lambda v: _sum(v, "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")),
+    ("22", lambda v: _d(v, "8") - _d(v, "21")),
+    # Schedule L
+    ("L14a", lambda v: _sum(v, "L1a", "L2a", "L3a", "L6a", "L7a") + _d(v, "L9a") - _d(v, "L9b") + _d(v, "L11a") + _d(v, "L13a")),
+    ("L14d", lambda v: _sum(v, "L1d", "L2d", "L3d", "L6d", "L7d") + _d(v, "L9d") - _d(v, "L9e") + _d(v, "L11d") + _d(v, "L13d")),
+    ("L23a", lambda v: _sum(v, "L15a", "L16a", "L17a", "L19a", "L21a", "L22a")),
+    ("L23d", lambda v: _sum(v, "L15d", "L16d", "L17d", "L19d", "L21d", "L22d")),
+    # M-1
+    ("M1_5", lambda v: _sum(v, "M1_1", "M1_2", "M1_3", "M1_4")),
+    ("M1_8", lambda v: _d(v, "M1_6") + _d(v, "M1_7")),
+    ("M1_9", lambda v: _d(v, "M1_5") - _d(v, "M1_8")),
+    # M-2
+    ("M2_5", lambda v: _d(v, "M2_1") + _d(v, "M2_2a") + _d(v, "M2_2b") + _d(v, "M2_3") + _d(v, "M2_4")),
+    ("M2_8", lambda v: _d(v, "M2_6a") + _d(v, "M2_6b") + _d(v, "M2_7")),
+    ("M2_9", lambda v: _d(v, "M2_5") - _d(v, "M2_8")),
+]
+
+# ---------------------------------------------------------------------------
+# 1120 Formulas  (line_number, callable(values) -> Decimal)
+# ORDER MATTERS — dependencies must come before dependents.
+# ---------------------------------------------------------------------------
+
+FORMULAS_1120: list[tuple[str, callable]] = [
+    # Page 1 Income
+    ("1c", lambda v: _d(v, "1a") - _d(v, "1b")),
+    ("3", lambda v: _d(v, "1c") - _d(v, "2")),
+    ("11", lambda v: _sum(v, "3", "4", "5", "6", "7", "8", "9", "10")),
+    # Page 1 Deductions
+    ("27", lambda v: _sum(v, "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26")),
+    ("28", lambda v: _d(v, "11") - _d(v, "27")),
+    ("29c", lambda v: _d(v, "29a") + _d(v, "29b")),
+    ("30", lambda v: _d(v, "28") - _d(v, "29c")),
+    # Schedule C
+    ("C9", lambda v: _sum(v, "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8")),
+    ("C20", lambda v: _d(v, "C9") + _sum(v, "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18")),
+    ("C21", lambda v: _d(v, "C19")),
+    # Schedule J
+    ("J1", lambda v: _d(v, "30")),
+    ("J2", lambda v: (_d(v, "J1") * Decimal("0.21")).quantize(Decimal("0.01"))),
+    ("J4", lambda v: _d(v, "J2") + _d(v, "J3")),
+    ("J5e", lambda v: _sum(v, "J5a", "J5b", "J5c", "J5d")),
+    ("J6", lambda v: max(ZERO, _d(v, "J4") - _d(v, "J5e"))),
+    ("J9", lambda v: _d(v, "J6") + _d(v, "J7") + _d(v, "J8")),
+    # Page 1 Tax
+    ("31", lambda v: _d(v, "J9")),
+    ("34", lambda v: max(ZERO, _d(v, "31") - _d(v, "32"))),
+    ("35", lambda v: max(ZERO, _d(v, "32") - _d(v, "31"))),
+    # Schedule L
+    ("L15a", lambda v: _sum(v, "L1a", "L2a", "L3a", "L4a", "L5a", "L6a", "L7a", "L8a", "L9a") + _d(v, "L10a") - _d(v, "L10b") + _d(v, "L11a") - _d(v, "L11b") + _d(v, "L12a") + _d(v, "L13a") - _d(v, "L13b") + _d(v, "L14a")),
+    ("L15d", lambda v: _sum(v, "L1d", "L2d", "L3d", "L4d", "L5d", "L6d", "L7d", "L8d", "L9d") + _d(v, "L10d") - _d(v, "L10e") + _d(v, "L11d") - _d(v, "L11e") + _d(v, "L12d") + _d(v, "L13d") - _d(v, "L13e") + _d(v, "L14d")),
+    ("L28a", lambda v: _sum(v, "L16a", "L17a", "L18a", "L19a", "L20a", "L21a", "L22a_pref", "L22a_com", "L23a", "L24a", "L25a", "L26a") - _d(v, "L27a")),
+    ("L28d", lambda v: _sum(v, "L16d", "L17d", "L18d", "L19d", "L20d", "L21d", "L22d_pref", "L22d_com", "L23d", "L24d", "L25d", "L26d") - _d(v, "L27d")),
+    # M-1
+    ("M1_6", lambda v: _sum(v, "M1_1", "M1_2", "M1_3", "M1_4", "M1_5a", "M1_5b", "M1_5c", "M1_5d")),
+    ("M1_9", lambda v: _d(v, "M1_7a") + _d(v, "M1_7b") + _d(v, "M1_8a") + _d(v, "M1_8b")),
+    ("M1_10", lambda v: _d(v, "M1_6") - _d(v, "M1_9")),
+    # M-2
+    ("M2_4", lambda v: _d(v, "M2_1") + _d(v, "M2_2") + _d(v, "M2_3")),
+    ("M2_7", lambda v: _d(v, "M2_5a") + _d(v, "M2_5b") + _d(v, "M2_5c") + _d(v, "M2_6")),
+    ("M2_8", lambda v: _d(v, "M2_4") - _d(v, "M2_7")),
+]
+
 # Registry by form code
 FORMULA_REGISTRY: dict[str, list[tuple[str, callable]]] = {
     "1120-S": FORMULAS_1120S,
+    "1065": FORMULAS_1065,
+    "1120": FORMULAS_1120,
 }
 
 
@@ -128,10 +203,16 @@ def compute_return(tax_return) -> int:
     # Evaluate formulas in order, updating values dict as we go
     updated = 0
     for line_number, formula_fn in formulas:
+        fv = fv_by_line.get(line_number)
+
+        # Respect manual overrides — if a user manually set a computed field,
+        # keep their value and use it for downstream formulas.
+        if fv and fv.is_overridden:
+            continue
+
         result = formula_fn(values).quantize(Decimal("0.01"))
         values[line_number] = result  # update for downstream formulas
 
-        fv = fv_by_line.get(line_number)
         if fv:
             new_val = str(result)
             if fv.value != new_val:

@@ -123,6 +123,12 @@ class ReturnStatus(models.TextChoices):
     FILED = "filed", "Filed"
 
 
+class AccountingMethod(models.TextChoices):
+    CASH = "cash", "Cash"
+    ACCRUAL = "accrual", "Accrual"
+    OTHER = "other", "Other"
+
+
 class TaxReturn(models.Model):
     """A single tax return for a tax year, linked to a form definition."""
 
@@ -142,6 +148,14 @@ class TaxReturn(models.Model):
         choices=ReturnStatus.choices,
         default=ReturnStatus.DRAFT,
     )
+    # Return-level header fields
+    accounting_method = models.CharField(
+        max_length=10,
+        choices=AccountingMethod.choices,
+        default=AccountingMethod.CASH,
+    )
+    tax_year_start = models.DateField(null=True, blank=True)
+    tax_year_end = models.DateField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -194,3 +208,235 @@ class FormFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.form_line.line_number} = {self.value}"
+
+
+# ---------------------------------------------------------------------------
+# Other Deductions detail schedule
+# ---------------------------------------------------------------------------
+
+
+class DeductionSource(models.TextChoices):
+    MANUAL = "manual", "Manual"
+    TB_IMPORT = "tb_import", "TB Import"
+
+
+class OtherDeduction(models.Model):
+    """A single line-item in the Other Deductions detail schedule."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="other_deductions",
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    category = models.CharField(max_length=100, blank=True, default="")
+    sort_order = models.IntegerField(default=0)
+    source = models.CharField(
+        max_length=10,
+        choices=DeductionSource.choices,
+        default=DeductionSource.MANUAL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "description"]
+
+    def __str__(self):
+        return f"{self.description}: {self.amount}"
+
+
+# ---------------------------------------------------------------------------
+# Officer (per return)
+# ---------------------------------------------------------------------------
+
+
+class Officer(models.Model):
+    """An officer listed on a tax return."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="officers",
+    )
+    name = models.CharField(max_length=255)
+    title = models.CharField(max_length=100, blank=True, default="")
+    ssn = models.CharField(max_length=11, blank=True, default="")
+    percent_ownership = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+    )
+    compensation = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+    )
+    sort_order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.title})"
+
+
+# ---------------------------------------------------------------------------
+# Shareholder (per return — drives K-1 generation)
+# ---------------------------------------------------------------------------
+
+
+class Shareholder(models.Model):
+    """A shareholder listed on a tax return, used for K-1 generation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="shareholders",
+    )
+
+    # Identity
+    name = models.CharField(max_length=255)
+    ssn = models.CharField(
+        max_length=11, blank=True, default="",
+        help_text="SSN or TIN (formatted XXX-XX-XXXX)",
+    )
+
+    # Address (for K-1 delivery)
+    address_line1 = models.CharField(max_length=255, blank=True, default="")
+    address_line2 = models.CharField(max_length=255, blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    state = models.CharField(max_length=2, blank=True, default="")
+    zip_code = models.CharField(max_length=10, blank=True, default="")
+
+    # Ownership
+    ownership_percentage = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Percentage of stock ownership for the tax year.",
+    )
+    beginning_shares = models.IntegerField(
+        default=0,
+        help_text="Number of shares owned at beginning of tax year.",
+    )
+    ending_shares = models.IntegerField(
+        default=0,
+        help_text="Number of shares owned at end of tax year.",
+    )
+
+    # Financial data (drives K-1 and Form 7206)
+    distributions = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Cash and property distributions to this shareholder (K-1 line 16d).",
+    )
+    health_insurance_premium = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Health insurance premiums paid by S-Corp for >2%% shareholder. Drives Form 7206.",
+    )
+
+    # Client linking (shared entity support)
+    linked_client = models.ForeignKey(
+        "clients.Client",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shareholder_links",
+        help_text="Link to a client record if this shareholder is also a client.",
+    )
+
+    # Flags
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the shareholder was active during the tax year.",
+    )
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.ownership_percentage}%)"
+
+
+# ---------------------------------------------------------------------------
+# Rental Property — Form 8825 (per return)
+# ---------------------------------------------------------------------------
+
+
+class PropertyType(models.TextChoices):
+    SINGLE_FAMILY = "1", "Single family residence"
+    MULTI_FAMILY = "2", "Multi-family residence"
+    VACATION = "3", "Vacation/short-term rental"
+    COMMERCIAL = "4", "Commercial"
+    LAND = "5", "Land"
+    OTHER = "6", "Other"
+
+
+class RentalProperty(models.Model):
+    """A rental property listed on Form 8825."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="rental_properties",
+    )
+
+    # Property info
+    description = models.CharField(
+        max_length=255,
+        help_text="Property address or description.",
+    )
+    property_type = models.CharField(
+        max_length=1,
+        choices=PropertyType.choices,
+        default=PropertyType.OTHER,
+    )
+    fair_rental_days = models.IntegerField(default=365)
+    personal_use_days = models.IntegerField(default=0)
+
+    # Income
+    rents_received = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Expenses (each maps to a line on Form 8825)
+    advertising = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    auto_and_travel = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    cleaning_and_maintenance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    commissions = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    insurance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    legal_and_professional = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    interest_mortgage = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    interest_other = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    repairs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    taxes = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    utilities = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    depreciation = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    other_expenses = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "description"]
+
+    @property
+    def total_expenses(self):
+        from decimal import Decimal
+        return sum([
+            self.advertising, self.auto_and_travel,
+            self.cleaning_and_maintenance, self.commissions,
+            self.insurance, self.legal_and_professional,
+            self.interest_mortgage, self.interest_other,
+            self.repairs, self.taxes, self.utilities,
+            self.depreciation, self.other_expenses,
+        ], Decimal("0"))
+
+    @property
+    def net_rent(self):
+        return self.rents_received - self.total_expenses
+
+    def __str__(self):
+        return f"{self.description} (net: {self.net_rent})"

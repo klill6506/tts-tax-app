@@ -21,3 +21,13 @@ export async function patch(path: string, body?: unknown) {
 export async function del(path: string) {
   return api("DELETE", path);
 }
+
+export async function uploadFile(
+  path: string,
+  fields: Record<string, string>,
+  file: File
+) {
+  // Electron 29+ requires webUtils.getPathForFile() to get the disk path
+  const filePath = window.api.getFilePath(file);
+  return window.api.uploadFile(path, fields, "file", filePath, file.name);
+}

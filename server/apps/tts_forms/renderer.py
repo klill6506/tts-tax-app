@@ -31,6 +31,10 @@ from .coordinates.f1120 import HEADER_FIELDS as F1120_HEADER_FIELDS
 from .coordinates.f1120s import FIELD_MAP as F1120S_FIELD_MAP
 from .coordinates.f1120s import HEADER_FIELDS as F1120S_HEADER_FIELDS
 from .coordinates.f1120s import FieldCoord
+from .coordinates.f1120sk1 import K1_FIELD_MAP as F1120SK1_FIELD_MAP
+from .coordinates.f1120sk1 import K1_HEADER as F1120SK1_HEADER
+from .coordinates.f7206 import FIELD_MAP as F7206_FIELD_MAP
+from .coordinates.f7206 import HEADER_FIELDS as F7206_HEADER_FIELDS
 from .statements import render_statement_pages
 
 # ---------------------------------------------------------------------------
@@ -48,12 +52,16 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120s": F1120S_FIELD_MAP,
     "f1065": F1065_FIELD_MAP,
     "f1120": F1120_FIELD_MAP,
+    "f1120sk1": F1120SK1_FIELD_MAP,
+    "f7206": F7206_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120s": F1120S_HEADER_FIELDS,
     "f1065": F1065_HEADER_FIELDS,
     "f1120": F1120_HEADER_FIELDS,
+    "f1120sk1": F1120SK1_HEADER,
+    "f7206": F7206_HEADER_FIELDS,
 }
 
 # Font settings
@@ -352,3 +360,201 @@ def _build_header_data(tax_return) -> dict[str, str]:
     header["tax_year_end"] = f"12/31/{tax_year.year}"
 
     return header
+
+
+# ---------------------------------------------------------------------------
+# Schedule K-1 rendering
+# ---------------------------------------------------------------------------
+
+# Maps Schedule K line_number → K-1 Part III field key(s)
+# For simple lines, maps to a single amount field.
+# For coded lines (16), maps to code+amount pair.
+SCHED_K_TO_K1_MAP: dict[str, str] = {
+    "K1": "1",
+    "K2": "2",
+    "K3": "3",
+    "K4": "4",
+    "K5a": "5a",
+    "K5b": "5b",
+    "K6": "6",
+    "K7": "7",
+    "K8a": "8a",
+    "K9": "9",
+    "K10": "10",
+    "K11": "11",
+    "K12a": "12",
+}
+
+# K16 sub-items: (Schedule K line, K-1 code letter, code_field, amount_field)
+K16_ITEMS = [
+    ("K16a", "A", "16_code_1", "16_amt_1"),
+    ("K16b", "B", "16_code_2", "16_amt_2"),
+    ("K16c", "C", "16_code_3", "16_amt_3"),
+    ("K16d", "D", "16_code_4", "16_amt_4"),
+]
+
+
+def render_k1(tax_return, shareholder) -> bytes:
+    """
+    Render a single Schedule K-1 (Form 1120-S) for one shareholder.
+
+    Part I: corporation info from entity.
+    Part II: shareholder info from Shareholder model.
+    Part III: Schedule K values × ownership_percentage / 100.
+    Line 16d uses shareholder.distributions directly.
+    Line 17 code AC added if health_insurance_premium > 0.
+    """
+    from apps.returns.models import FormFieldValue
+
+    entity = tax_return.tax_year.entity
+    year = tax_return.tax_year.year
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    ownership_pct = shareholder.ownership_percentage / Decimal("100")
+
+    # ---- Part I + Part II header data ----
+    city_state_zip = ", ".join(
+        p for p in [entity.city, entity.state] if p
+    )
+    if entity.zip_code:
+        city_state_zip += f" {entity.zip_code}"
+
+    sh_city_state_zip = ", ".join(
+        p for p in [shareholder.city, shareholder.state] if p
+    )
+    if shareholder.zip_code:
+        sh_city_state_zip += f" {shareholder.zip_code}"
+
+    header_data = {
+        "corp_ein": entity.ein or "",
+        "corp_name": entity.legal_name or entity.name,
+        "corp_address": entity.address_line1 or "",
+        "corp_city_state_zip": city_state_zip,
+        "tax_year_begin": f"01/01/{year}",
+        "tax_year_end": f"12/31/{year}",
+        "sh_ssn": shareholder.ssn or "",
+        "sh_name": shareholder.name,
+        "sh_address": shareholder.address_line1 or "",
+        "sh_city_state_zip": sh_city_state_zip,
+        "sh_ownership_pct": f"{shareholder.ownership_percentage}",
+        "sh_shares_boy": str(shareholder.beginning_shares) if shareholder.beginning_shares else "",
+        "sh_shares_eoy": str(shareholder.ending_shares) if shareholder.ending_shares else "",
+    }
+
+    # ---- Load Schedule K field values ----
+    fvs = (
+        FormFieldValue.objects.filter(tax_return=tax_return)
+        .select_related("form_line")
+    )
+    k_values: dict[str, str] = {}
+    for fv in fvs:
+        ln = fv.form_line.line_number
+        if ln.startswith("K"):
+            k_values[ln] = fv.value
+
+    # ---- Part III: compute shareholder's share ----
+    field_values: dict[str, tuple[str, str]] = {}
+
+    # Simple pro-rata lines
+    for k_line, k1_line in SCHED_K_TO_K1_MAP.items():
+        raw = k_values.get(k_line, "")
+        if not raw:
+            continue
+        try:
+            amount = Decimal(raw)
+        except InvalidOperation:
+            continue
+        if amount == 0:
+            continue
+        share = (amount * ownership_pct).quantize(Decimal("0.01"))
+        field_values[k1_line] = (str(share), "currency")
+
+    # K16 sub-items (code+amount pairs)
+    for k_line, code_letter, code_field, amt_field in K16_ITEMS:
+        if k_line == "K16d":
+            # Distributions: use per-shareholder amount, not pro rata
+            amount = shareholder.distributions
+        else:
+            raw = k_values.get(k_line, "")
+            if not raw:
+                continue
+            try:
+                amount = (Decimal(raw) * ownership_pct).quantize(Decimal("0.01"))
+            except InvalidOperation:
+                continue
+        if amount == 0:
+            continue
+        field_values[code_field] = (code_letter, "text")
+        field_values[amt_field] = (str(amount), "currency")
+
+    # Line 17 code AC: health insurance (if applicable)
+    if shareholder.health_insurance_premium and shareholder.health_insurance_premium > 0:
+        field_values["17_code_1"] = ("AC", "text")
+        field_values["17_amt_1"] = (str(shareholder.health_insurance_premium), "currency")
+
+    return render(
+        form_id="f1120sk1",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+def render_all_k1s(tax_return) -> bytes:
+    """Render all K-1s for a return, concatenated into a single PDF."""
+    from apps.returns.models import Shareholder
+
+    shareholders = Shareholder.objects.filter(
+        tax_return=tax_return, is_active=True
+    ).order_by("sort_order", "name")
+
+    if not shareholders.exists():
+        raise ValueError("No active shareholders found for this return.")
+
+    writer = PdfWriter()
+    for sh in shareholders:
+        k1_bytes = render_k1(tax_return, sh)
+        k1_reader = PdfReader(io.BytesIO(k1_bytes))
+        for page in k1_reader.pages:
+            writer.add_page(page)
+
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Form 7206 rendering
+# ---------------------------------------------------------------------------
+
+
+def render_7206(tax_return, shareholder) -> bytes:
+    """
+    Render Form 7206 (Self-Employed Health Insurance Deduction) for a shareholder.
+
+    For S-Corp >2% shareholders, fills:
+    - Header: shareholder name + SSN
+    - Line 1: health insurance premium amount
+    - Line 3: total (= line 1, since line 2 is usually 0)
+
+    Lines 4-10 are skipped for S-Corp shareholders per IRS instructions.
+    Lines 11-14 require 1040 data and are left for the individual preparer.
+    """
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    premium = shareholder.health_insurance_premium or Decimal("0")
+
+    header_data = {
+        "taxpayer_name": shareholder.name,
+        "taxpayer_ssn": shareholder.ssn or "",
+    }
+
+    field_values: dict[str, tuple[str, str]] = {
+        "1": (str(premium), "currency"),
+        "3": (str(premium), "currency"),  # line 3 = line 1 + line 2
+    }
+
+    return render(
+        form_id="f7206",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )

@@ -36,13 +36,18 @@ class EntityViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsFirmMember]
 
     def get_queryset(self):
+        from django.db.models import Q
+
         qs = Entity.objects.filter(
             client__firm=self.request.firm
         ).select_related("client")
-        # Optional filter by client
+        # Optional filter by client — include directly-owned AND shareholder-linked
         client_id = self.request.query_params.get("client")
         if client_id:
-            qs = qs.filter(client_id=client_id)
+            qs = qs.filter(
+                Q(client_id=client_id)
+                | Q(tax_years__tax_return__shareholders__linked_client_id=client_id)
+            ).distinct()
         return qs
 
     def get_serializer_class(self):

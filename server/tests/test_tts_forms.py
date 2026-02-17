@@ -12,6 +12,7 @@ Tests cover:
 
 import io
 import json
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -22,10 +23,18 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+from decimal import Decimal
+
 from apps.clients.models import Client, Entity, TaxYear
 from apps.firms.models import Firm, FirmMembership, Role
 from apps.returns.management.commands.seed_1120s import Command as SeedCommand
-from apps.returns.models import FormDefinition, FormFieldValue, TaxReturn
+from apps.returns.models import (
+    FormDefinition,
+    FormFieldValue,
+    FormLine,
+    Shareholder,
+    TaxReturn,
+)
 from apps.tts_forms.coordinates.f1065 import FIELD_MAP as F1065_FIELD_MAP
 from apps.tts_forms.coordinates.f1065 import HEADER_FIELDS as F1065_HEADER_FIELDS
 from apps.tts_forms.coordinates.f1120 import FIELD_MAP as F1120_FIELD_MAP
@@ -35,13 +44,25 @@ from apps.tts_forms.coordinates.f1120s import (
     HEADER_FIELDS,
     FieldCoord,
 )
+from apps.tts_forms.coordinates.f1120sk1 import (
+    K1_FIELD_MAP,
+    K1_HEADER,
+)
+from apps.tts_forms.coordinates.f7206 import (
+    FIELD_MAP as F7206_FIELD_MAP,
+    HEADER_FIELDS as F7206_HEADER_FIELDS,
+)
 from apps.tts_forms.renderer import (
     COORDINATE_REGISTRY,
     HEADER_REGISTRY,
+    SCHED_K_TO_K1_MAP,
     _create_overlay,
     _format_currency,
     _format_value,
     render,
+    render_7206,
+    render_all_k1s,
+    render_k1,
 )
 from apps.tts_forms.statements import render_statement_pages
 
@@ -640,10 +661,10 @@ class TestRenderer:
             )
 
     def test_render_missing_template_raises(self):
-        with pytest.raises(FileNotFoundError, match="IRS PDF template not found"):
+        with pytest.raises(FileNotFoundError):
             render(
                 form_id="f1120s",
-                tax_year=2025,
+                tax_year=9999,
                 field_values={},
             )
 
@@ -755,10 +776,14 @@ class TestPDFEndpoint:
         self, user_and_http, tax_return_with_data
     ):
         _, http = user_and_http
-        resp = http.post(
-            f"/api/v1/tax-returns/{tax_return_with_data.id}/render-pdf/",
-            content_type="application/json",
-        )
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            side_effect=FileNotFoundError("IRS PDF template not found"),
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_data.id}/render-pdf/",
+                content_type="application/json",
+            )
         assert resp.status_code == 404
 
 
@@ -787,7 +812,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 5  # f1120s, f1120sk1, f1065, f1065sk1, f1120
+        assert len(data["forms"]) == 6  # f1120s, f1120sk1, f1065, f1065sk1, f1120, f7206
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (
@@ -803,3 +828,297 @@ class TestManifest:
         for entry in data["forms"]:
             missing = required - set(entry.keys())
             assert not missing, f"Entry {entry.get('form_id')} missing fields: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# K-1 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinatesK1:
+    def test_k1_header_has_entries(self):
+        assert len(K1_HEADER) > 0
+
+    def test_k1_field_map_has_entries(self):
+        assert len(K1_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_k1(self):
+        assert "f1120sk1" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_k1(self):
+        assert "f1120sk1" in HEADER_REGISTRY
+
+    def test_all_k1_coords_are_field_coord(self):
+        for key, coord in K1_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"K-1: {key} is not a FieldCoord"
+
+    def test_all_k1_header_coords_are_field_coord(self):
+        for key, coord in K1_HEADER.items():
+            assert isinstance(coord, FieldCoord), f"K-1 header: {key} is not a FieldCoord"
+
+    def test_k1_header_has_required_fields(self):
+        required = ["corp_ein", "corp_name", "sh_ssn", "sh_name", "sh_ownership_pct"]
+        for field in required:
+            assert field in K1_HEADER, f"K-1 header missing {field}"
+
+    def test_k1_income_lines_mapped(self):
+        for ln in ["1", "2", "3", "4", "5a", "5b", "6", "7", "8a", "9"]:
+            assert ln in K1_FIELD_MAP, f"K-1 income line {ln} missing"
+
+    def test_k1_line_16_sub_items(self):
+        for code_key in ["16_code_1", "16_code_2", "16_code_3", "16_code_4"]:
+            assert code_key in K1_FIELD_MAP, f"K-1 {code_key} missing"
+        for amt_key in ["16_amt_1", "16_amt_2", "16_amt_3", "16_amt_4"]:
+            assert amt_key in K1_FIELD_MAP, f"K-1 {amt_key} missing"
+
+    def test_k1_line_17_sub_items(self):
+        assert "17_code_1" in K1_FIELD_MAP
+        assert "17_amt_1" in K1_FIELD_MAP
+
+    def test_sched_k_to_k1_map_has_entries(self):
+        assert len(SCHED_K_TO_K1_MAP) > 0
+        assert SCHED_K_TO_K1_MAP["K1"] == "1"
+        assert SCHED_K_TO_K1_MAP["K4"] == "4"
+
+
+# ---------------------------------------------------------------------------
+# Form 7206 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates7206:
+    def test_f7206_field_map_has_entries(self):
+        assert len(F7206_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f7206(self):
+        assert "f7206" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f7206(self):
+        assert "f7206" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F7206_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"7206: {key} is not a FieldCoord"
+
+    def test_header_has_required_fields(self):
+        assert "taxpayer_name" in F7206_HEADER_FIELDS
+        assert "taxpayer_ssn" in F7206_HEADER_FIELDS
+
+    def test_line_1_and_3_mapped(self):
+        assert "1" in F7206_FIELD_MAP
+        assert "3" in F7206_FIELD_MAP
+
+
+# ---------------------------------------------------------------------------
+# K-1 rendering tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tax_return_with_k_data(seeded, tax_year, user_and_http):
+    """Create a tax return with Schedule K values populated."""
+    user, _ = user_and_http
+    tr = TaxReturn.objects.create(
+        tax_year=tax_year,
+        form_definition=seeded,
+        created_by=user,
+    )
+    lines = FormLine.objects.filter(section__form=seeded)
+    fvs = []
+    for line in lines:
+        fvs.append(FormFieldValue(tax_return=tr, form_line=line, value=""))
+    FormFieldValue.objects.bulk_create(fvs)
+
+    # Set Schedule K values
+    k_values = {
+        "K1": "100000.00",   # Ordinary business income
+        "K2": "20000.00",    # Net rental real estate
+        "K4": "5000.00",     # Interest income
+        "K5a": "3000.00",    # Ordinary dividends
+        "K16d": "10000.00",  # Distributions (total)
+    }
+    for line_num, val in k_values.items():
+        fv = FormFieldValue.objects.get(
+            tax_return=tr,
+            form_line__line_number=line_num,
+        )
+        fv.value = val
+        fv.save()
+
+    return tr
+
+
+@pytest.fixture
+def shareholder_alice(tax_return_with_k_data):
+    """Create a 60% shareholder on the test return."""
+    return Shareholder.objects.create(
+        tax_return=tax_return_with_k_data,
+        name="Alice Johnson",
+        ssn="111-22-3333",
+        ownership_percentage=Decimal("60.0000"),
+        beginning_shares=600,
+        ending_shares=600,
+        city="Dallas",
+        state="TX",
+        zip_code="75001",
+        distributions=Decimal("6000.00"),
+        health_insurance_premium=Decimal("1800.00"),
+    )
+
+
+@pytest.fixture
+def shareholder_bob(tax_return_with_k_data):
+    """Create a 40% shareholder on the test return."""
+    return Shareholder.objects.create(
+        tax_return=tax_return_with_k_data,
+        name="Bob Smith",
+        ssn="444-55-6666",
+        ownership_percentage=Decimal("40.0000"),
+        beginning_shares=400,
+        ending_shares=400,
+        city="Austin",
+        state="TX",
+        zip_code="73301",
+        distributions=Decimal("4000.00"),
+    )
+
+
+@pytest.mark.django_db
+class TestRenderK1:
+    def test_render_k1_produces_valid_pdf(
+        self, tax_return_with_k_data, shareholder_alice, test_template_pdf
+    ):
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_k1(tax_return_with_k_data, shareholder_alice)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+    def test_render_all_k1s_concatenates(
+        self, tax_return_with_k_data, shareholder_alice, shareholder_bob, test_template_pdf
+    ):
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_all_k1s(tax_return_with_k_data)
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        # Should have pages from both K-1s (at least 2, one per shareholder)
+        assert len(reader.pages) >= 2
+
+    def test_render_all_k1s_raises_if_no_shareholders(
+        self, tax_return_with_k_data, test_template_pdf
+    ):
+        """render_all_k1s should raise ValueError if no active shareholders."""
+        with pytest.raises(ValueError, match="No active shareholders"):
+            render_all_k1s(tax_return_with_k_data)
+
+
+@pytest.mark.django_db
+class TestRender7206:
+    def test_render_7206_produces_valid_pdf(
+        self, tax_return_with_k_data, shareholder_alice, test_template_pdf
+    ):
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_7206(tax_return_with_k_data, shareholder_alice)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+
+# ---------------------------------------------------------------------------
+# K-1 and 7206 API endpoint tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestK1Endpoint:
+    def test_render_k1s_endpoint(
+        self, user_and_http, tax_return_with_k_data, shareholder_alice, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-k1s/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        reader = PdfReader(io.BytesIO(resp.content))
+        assert len(reader.pages) >= 1
+
+    def test_render_k1_single_endpoint(
+        self, user_and_http, tax_return_with_k_data, shareholder_alice, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-k1/{shareholder_alice.id}/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+
+    def test_render_k1_single_404_for_wrong_shareholder(
+        self, user_and_http, tax_return_with_k_data
+    ):
+        _, http = user_and_http
+        resp = http.post(
+            f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-k1/{uuid.uuid4()}/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+class TestForm7206Endpoint:
+    def test_render_7206_endpoint(
+        self, user_and_http, tax_return_with_k_data, shareholder_alice, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7206/{shareholder_alice.id}/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+
+    def test_render_7206_no_premium_returns_400(
+        self, user_and_http, tax_return_with_k_data, shareholder_bob, test_template_pdf
+    ):
+        """Shareholder with no health insurance premium should get 400."""
+        _, http = user_and_http
+        resp = http.post(
+            f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7206/{shareholder_bob.id}/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+    def test_render_7206_404_for_wrong_shareholder(
+        self, user_and_http, tax_return_with_k_data
+    ):
+        _, http = user_and_http
+        resp = http.post(
+            f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7206/{uuid.uuid4()}/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 404

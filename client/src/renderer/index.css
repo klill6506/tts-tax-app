@@ -1,1 +1,178 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Dark mode variant for Tailwind v4
+ * --------------------------------------------------------------------------- */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Semantic color tokens
+ *
+ * All UI colors flow through these CSS custom properties.
+ * Components use Tailwind utilities like bg-surface, text-primary, etc.
+ * Switching themes only changes the variable values — zero class changes.
+ * --------------------------------------------------------------------------- */
+@theme {
+  /* Surfaces */
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+
+  /* Navigation (dark in both modes) */
+  --color-nav: var(--nav);
+  --color-nav-active: var(--nav-active);
+  --color-nav-border: var(--nav-border);
+
+  /* Borders */
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+
+  /* Form inputs */
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+
+  /* Text */
+  --color-tx: var(--tx);
+  --color-tx-secondary: var(--tx-secondary);
+  --color-tx-muted: var(--tx-muted);
+  --color-tx-on-dark: var(--tx-on-dark);
+
+  /* Primary (blue) */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-text: var(--primary-text);
+
+  /* Accent (amber/gold) */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+
+  /* Success (green — create/start actions) */
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+
+  /* Danger (red — errors, destructive) */
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-subtle: var(--danger-subtle);
+
+  /* Focus ring */
+  --color-focus-ring: var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------------------
+ * Light theme (default)
+ * Warm neutrals — stone-based, not cold slate
+ * --------------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --surface: #faf8f6;
+  --surface-alt: #f0ede8;
+  --card: #ffffff;
+  --card-hover: #f8f6f3;
+
+  /* Navigation */
+  --nav: #1e293b;
+  --nav-active: #334155;
+  --nav-border: #334155;
+
+  /* Borders */
+  --border: #d6d0c8;
+  --border-subtle: #e8e3dc;
+
+  /* Form inputs */
+  --input: #ffffff;
+  --input-border: #c4bcb2;
+
+  /* Text */
+  --tx: #1c1917;
+  --tx-secondary: #57534e;
+  --tx-muted: #a8a29e;
+  --tx-on-dark: #d6d3d1;
+
+  /* Primary (blue) */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-subtle: #dbeafe;
+  --primary-text: #2563eb;
+
+  /* Accent (amber) */
+  --accent: #d97706;
+  --accent-hover: #b45309;
+
+  /* Success (green) */
+  --success: #16a34a;
+  --success-hover: #15803d;
+
+  /* Danger (red) */
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-subtle: #fef2f2;
+
+  /* Focus ring */
+  --focus-ring: #2563eb40;
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark theme
+ * Not pitch black — slate-900 base, reduced contrast
+ * --------------------------------------------------------------------------- */
+.dark {
+  /* Surfaces */
+  --surface: #0f172a;
+  --surface-alt: #1e293b;
+  --card: #1e293b;
+  --card-hover: #283548;
+
+  /* Navigation */
+  --nav: #0f172a;
+  --nav-active: #1e293b;
+  --nav-border: #1e293b;
+
+  /* Borders */
+  --border: #334155;
+  --border-subtle: #1e293b;
+
+  /* Form inputs */
+  --input: #1e293b;
+  --input-border: #475569;
+
+  /* Text */
+  --tx: #e7e5e4;
+  --tx-secondary: #a8a29e;
+  --tx-muted: #78716c;
+  --tx-on-dark: #d6d3d1;
+
+  /* Primary (blue — lighter for dark bg) */
+  --primary: #60a5fa;
+  --primary-hover: #93bbfd;
+  --primary-subtle: #1e3a5f;
+  --primary-text: #60a5fa;
+
+  /* Accent (amber — more saturated) */
+  --accent: #fbbf24;
+  --accent-hover: #f59e0b;
+
+  /* Success (green — lighter) */
+  --success: #4ade80;
+  --success-hover: #22c55e;
+
+  /* Danger (red — lighter) */
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+  --danger-subtle: #3b1111;
+
+  /* Focus ring */
+  --focus-ring: #60a5fa40;
+}
+
+/* ---------------------------------------------------------------------------
+ * Global defaults
+ * --------------------------------------------------------------------------- */
+body {
+  background-color: var(--surface);
+  color: var(--tx);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

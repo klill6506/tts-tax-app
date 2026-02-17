@@ -148,55 +148,55 @@ export default function EntityDetail() {
 
   // ---- Render ----
 
-  if (loading) return <p className="text-sm text-slate-500">Loading...</p>;
-  if (!client || !entity) return <p className="text-sm text-red-600">Entity not found.</p>;
+  if (loading) return <p className="text-sm text-tx-secondary">Loading...</p>;
+  if (!client || !entity) return <p className="text-sm text-danger">Entity not found.</p>;
 
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-4 text-sm text-slate-500">
-        <Link to="/" className="text-blue-600 hover:underline">Client Manager</Link>
+      <div className="mb-4 text-sm text-tx-secondary">
+        <Link to="/" className="text-primary-text hover:underline">Client Manager</Link>
         <span className="mx-2">/</span>
-        <Link to={`/clients/${clientId}`} className="text-blue-600 hover:underline">{client.name}</Link>
+        <Link to={`/clients/${clientId}`} className="text-primary-text hover:underline">{client.name}</Link>
         <span className="mx-2">/</span>
-        <span className="font-medium text-slate-800">{entity.name}</span>
+        <span className="font-medium text-tx">{entity.name}</span>
       </div>
 
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{entity.name}</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-tx">{entity.name}</h1>
+          <p className="text-sm text-tx-secondary">
             {entityTypeLabel(entity.entity_type)} &mdash; {taxYears.length}{" "}
             {taxYears.length === 1 ? "tax year" : "tax years"}
           </p>
         </div>
         <button
           onClick={() => setShowNewTaxYear(true)}
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+          className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover"
         >
           + Add Tax Year
         </button>
       </div>
 
       {/* Entity info card */}
-      <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-5 rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-6">
           <div>
-            <span className="text-xs font-medium uppercase text-slate-400">Client</span>
-            <p className="text-sm font-medium text-slate-800">{client.name}</p>
+            <span className="text-xs font-medium uppercase text-tx-muted">Client</span>
+            <p className="text-sm font-medium text-tx">{client.name}</p>
           </div>
-          <div className="h-8 w-px bg-slate-200" />
+          <div className="h-8 w-px bg-surface-alt" />
           <div>
-            <span className="text-xs font-medium uppercase text-slate-400">Entity Type</span>
-            <p className="text-sm font-medium text-slate-800">
+            <span className="text-xs font-medium uppercase text-tx-muted">Entity Type</span>
+            <p className="text-sm font-medium text-tx">
               {entityTypeLabel(entity.entity_type)}
             </p>
           </div>
-          <div className="h-8 w-px bg-slate-200" />
+          <div className="h-8 w-px bg-surface-alt" />
           <div>
-            <span className="text-xs font-medium uppercase text-slate-400">Tax Years</span>
-            <p className="text-sm font-medium text-slate-800">{taxYears.length}</p>
+            <span className="text-xs font-medium uppercase text-tx-muted">Tax Years</span>
+            <p className="text-sm font-medium text-tx">{taxYears.length}</p>
           </div>
         </div>
       </div>
@@ -205,11 +205,11 @@ export default function EntityDetail() {
       {showNewTaxYear && (
         <form
           onSubmit={handleCreateTaxYear}
-          className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4"
+          className="mb-4 rounded-lg border border-border-subtle bg-card p-4"
         >
           <div className="flex items-end gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Tax Year
               </label>
               <input
@@ -219,20 +219,20 @@ export default function EntityDetail() {
                 max={2099}
                 value={newTaxYearValue}
                 onChange={(e) => setNewTaxYearValue(e.target.value)}
-                className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm tabular-nums shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-28 rounded-md border border-border bg-input px-3 py-2 text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring placeholder:text-tx-muted"
               />
             </div>
             <button
               type="submit"
               disabled={creatingTaxYear}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+              className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover disabled:opacity-50"
             >
               {creatingTaxYear ? "Creating..." : "Create"}
             </button>
             <button
               type="button"
               onClick={() => setShowNewTaxYear(false)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-tx-secondary transition hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -242,27 +242,27 @@ export default function EntityDetail() {
 
       {/* Tax years table */}
       {taxYears.length === 0 && !showNewTaxYear ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm text-tx-secondary">
             No tax years yet. Click "+ Add Tax Year" to get started.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-100">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-alt">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tax Year</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Return</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Tax Year</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Return</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {taxYears.map((ty, idx) => (
-                <tr key={ty.id} className={`transition hover:bg-blue-50 ${idx % 2 === 1 ? "bg-slate-50/70" : ""}`}>
+                <tr key={ty.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface/70" : ""}`}>
                   <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-tx">
                       {ty.year}
                     </span>
                   </td>
@@ -271,18 +271,18 @@ export default function EntityDetail() {
                   </td>
                   <td className="px-4 py-3">
                     {ty.tax_return_id ? (
-                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      <span className="rounded bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary-text">
                         Active
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-400">No return</span>
+                      <span className="text-xs text-tx-muted">No return</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         to={`/tax-years/${ty.id}/trial-balance`}
-                        className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        className="rounded-lg bg-primary-subtle px-3 py-1.5 text-xs font-medium text-primary-text transition hover:bg-primary-subtle"
                       >
                         Trial Balance
                       </Link>
@@ -290,13 +290,13 @@ export default function EntityDetail() {
                         <>
                           <Link
                             to={`/tax-returns/${ty.tax_return_id}/editor`}
-                            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-hover"
                           >
                             Open Return
                           </Link>
                           <button
                             onClick={() => handleDeleteReturn(ty.id, ty.tax_return_id!)}
-                            className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100"
+                            className="rounded-lg bg-danger-subtle px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-danger-subtle"
                           >
                             Delete Return
                           </button>
@@ -305,14 +305,14 @@ export default function EntityDetail() {
                         <button
                           onClick={() => handleStartReturn(ty.id)}
                           disabled={creatingReturn === ty.id}
-                          className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                          className="rounded-lg bg-success px-3 py-1.5 text-xs font-medium text-white transition hover:bg-success-hover disabled:opacity-50"
                         >
                           {creatingReturn === ty.id ? "Creating..." : "Start Return"}
                         </button>
                       )}
                       <button
                         onClick={() => handleDeleteTaxYear(ty.id, ty.year)}
-                        className="rounded-md px-2.5 py-1.5 text-xs font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-danger-subtle"
                       >
                         Delete
                       </button>
@@ -322,8 +322,8 @@ export default function EntityDetail() {
               ))}
             </tbody>
           </table>
-          <div className="border-t border-slate-200 bg-slate-50 px-4 py-2">
-            <span className="text-xs text-slate-400">
+          <div className="border-t border-border bg-surface px-4 py-2">
+            <span className="text-xs text-tx-muted">
               {taxYears.length} {taxYears.length === 1 ? "tax year" : "tax years"}
             </span>
           </div>
@@ -339,11 +339,11 @@ export default function EntityDetail() {
 
 function ReturnStatusPill({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-600",
+    draft: "bg-surface-alt text-tx-secondary",
     in_progress: "bg-amber-50 text-amber-700",
     in_review: "bg-amber-50 text-amber-700",
-    approved: "bg-blue-50 text-blue-700",
-    filed: "bg-green-50 text-green-700",
+    approved: "bg-primary-subtle text-primary-text",
+    filed: "bg-card text-success",
   };
   return (
     <span
