@@ -6,6 +6,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
+ * Typography — professional sans-serif
+ * --------------------------------------------------------------------------- */
+@theme {
+  --font-sans: "Inter", "Arial", "Tahoma", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
  * Semantic color tokens
  *
  * All UI colors flow through these CSS custom properties.
@@ -171,6 +178,7 @@
  * Global defaults
  * --------------------------------------------------------------------------- */
 body {
+  font-family: "Inter", "Arial", "Tahoma", "Segoe UI", system-ui, sans-serif;
   background-color: var(--surface);
   color: var(--tx);
   -webkit-font-smoothing: antialiased;

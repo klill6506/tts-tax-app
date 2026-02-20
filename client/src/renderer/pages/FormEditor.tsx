@@ -207,8 +207,7 @@ function computeFields(fieldValues: FieldValue[]): FieldValue[] {
 const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "info", label: "Info", sections: [] },
   { id: "shareholders", label: "Shareholders", sections: [] },
-  { id: "page1", label: "Income & Deductions", sections: ["page1_income", "sched_a", "page1_deductions"] },
-  { id: "other_ded", label: "Other Ded.", sections: [] },
+  { id: "page1", label: "Income & Deductions", sections: ["page1_income", "sched_a", "page1_deductions", "page1_tax"] },
   { id: "rental", label: "Rental (8825)", sections: [] },
   { id: "sched_b", label: "Schedule B", sections: ["sched_b"] },
   { id: "sched_k", label: "Schedule K", sections: ["sched_k"] },
@@ -473,10 +472,12 @@ export default function FormEditor() {
           shareholders={returnData.shareholders || []}
           onRefresh={refreshReturn}
         />
-      ) : activeTab === "other_ded" ? (
-        <OtherDeductionsSection
+      ) : activeTab === "page1" ? (
+        <IncomeDeductionsSection
           taxReturnId={taxReturnId!}
-          deductions={returnData.other_deductions || []}
+          fieldsBySection={fieldsBySection}
+          otherDeductions={returnData.other_deductions || []}
+          onChange={handleFieldChange}
           onRefresh={refreshReturn}
         />
       ) : activeTab === "rental" ? (
@@ -1076,7 +1077,246 @@ function InfoSection({
 }
 
 // ---------------------------------------------------------------------------
-// Other Deductions Section
+// Income & Deductions Section (merged view)
+// ---------------------------------------------------------------------------
+
+/** Lines 7-19 that are standard deduction lines (not computed totals). */
+const DEDUCTION_LINE_RANGE = ["7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
+/** Computed summary lines shown after deductions. */
+const DEDUCTION_SUMMARY_LINES = ["20", "21"];
+/** Tax & Payments section shown at the bottom. */
+const TAX_SECTION_CODE = "page1_tax";
+
+function IncomeDeductionsSection({
+  taxReturnId,
+  fieldsBySection,
+  otherDeductions,
+  onChange,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  fieldsBySection: Record<string, FieldValue[]>;
+  otherDeductions: OtherDeductionRow[];
+  onChange: (formLineId: string, value: string) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const [categories, setCategories] = useState<string[]>([]);
+  const [localOther, setLocalOther] = useState<OtherDeductionRow[]>(otherDeductions);
+
+  useEffect(() => { setLocalOther(otherDeductions); }, [otherDeductions]);
+
+  useEffect(() => {
+    get("/tax-returns/deduction-categories/").then((res) => {
+      if (res.ok) setCategories(res.data as string[]);
+    });
+  }, []);
+
+  // --- Other deduction CRUD ---
+  async function addDeduction() {
+    await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
+      description: "",
+      amount: "0",
+      category: "",
+      sort_order: localOther.length + 1,
+      source: "manual",
+    });
+    await onRefresh();
+  }
+
+  async function updateDeduction(dedId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/other-deductions/${dedId}/`, { [field]: value });
+    await onRefresh();
+  }
+
+  async function deleteDeduction(dedId: string) {
+    if (!confirm("Delete this deduction?")) return;
+    await del(`/tax-returns/${taxReturnId}/other-deductions/${dedId}/`);
+    await onRefresh();
+  }
+
+  function handleLocalOtherChange(dedId: string, field: keyof OtherDeductionRow, value: string) {
+    setLocalOther((prev) => prev.map((r) => (r.id === dedId ? { ...r, [field]: value } : r)));
+  }
+
+  // --- Separate fields by role ---
+  const incomeFields = fieldsBySection["page1_income"] || [];
+  const cogsFields = fieldsBySection["sched_a"] || [];
+  const deductionFields = fieldsBySection["page1_deductions"] || [];
+  const taxFields = fieldsBySection[TAX_SECTION_CODE] || [];
+
+  // Split deductions into individual line items vs summary
+  const stdDeductionItems = deductionFields.filter(
+    (f) => DEDUCTION_LINE_RANGE.includes(f.line_number)
+  );
+  const summaryLines = deductionFields.filter(
+    (f) => DEDUCTION_SUMMARY_LINES.includes(f.line_number)
+  );
+
+  // --- Build merged + sorted deduction list ---
+  type DeductionItem =
+    | { type: "form_line"; field: FieldValue }
+    | { type: "other_ded"; row: OtherDeductionRow };
+
+  const mergedDeductions: DeductionItem[] = useMemo(() => {
+    const items: DeductionItem[] = [];
+
+    // Add standard form deduction lines (skip Line 19 "Other deductions" — we show its detail inline)
+    for (const f of stdDeductionItems) {
+      if (f.line_number === "19") continue; // replaced by inline detail
+      items.push({ type: "form_line", field: f });
+    }
+
+    // Add other deduction rows
+    for (const row of localOther) {
+      items.push({ type: "other_ded", row });
+    }
+
+    // Sort alphabetically by display label
+    items.sort((a, b) => {
+      const labelA = a.type === "form_line" ? a.field.label : (a.row.description || "zzz");
+      const labelB = b.type === "form_line" ? b.field.label : (b.row.description || "zzz");
+      return labelA.localeCompare(labelB, "en", { sensitivity: "base" });
+    });
+
+    return items;
+  }, [stdDeductionItems, localOther]);
+
+  return (
+    <div className="space-y-4">
+      {/* ===== INCOME ===== */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Income
+        </div>
+        <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
+          <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
+          <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {incomeFields.map((fv) => (
+            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+          ))}
+        </div>
+      </div>
+
+      {/* ===== COST OF GOODS SOLD ===== */}
+      {cogsFields.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+            Cost of Goods Sold
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {cogsFields.map((fv) => (
+              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===== DEDUCTIONS (merged & alphabetical) ===== */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
+          <span className="text-xs font-bold uppercase tracking-wider text-tx-secondary">Deductions</span>
+          <button
+            onClick={addDeduction}
+            className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
+          >
+            Add Deduction
+          </button>
+        </div>
+        {/* Column header */}
+        <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-2.5">
+          <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
+          <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
+          <div className="w-16 shrink-0" />
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {mergedDeductions.map((item, idx) => {
+            if (item.type === "form_line") {
+              return (
+                <div key={item.field.id} className={`flex items-center gap-4 px-4 py-3 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
+                  <div className="w-14 shrink-0 text-sm font-medium text-tx-secondary">{item.field.line_number}</div>
+                  <div className="flex-1">
+                    <span className="text-sm text-tx">{item.field.label}</span>
+                    {item.field.is_computed && <span className="ml-2 text-xs italic text-tx-muted">Calculated</span>}
+                  </div>
+                  <div className="w-48 shrink-0">
+                    <FieldInput field={item.field} onChange={onChange} />
+                  </div>
+                  <div className="w-16 shrink-0" />
+                </div>
+              );
+            } else {
+              const row = item.row;
+              return (
+                <div key={row.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="w-14 shrink-0 text-sm text-tx-muted">•</div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      list={`ded-cats-${row.id}`}
+                      value={row.description}
+                      onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
+                      onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
+                      className="w-full rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                      placeholder="Enter or select deduction..."
+                    />
+                    <datalist id={`ded-cats-${row.id}`}>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="w-48 shrink-0">
+                    <CurrencyInput
+                      value={row.amount}
+                      onValueChange={(v) => {
+                        handleLocalOtherChange(row.id, "amount", v);
+                        updateDeduction(row.id, "amount", v);
+                      }}
+                    />
+                  </div>
+                  <div className="w-16 shrink-0 text-center">
+                    <button
+                      onClick={() => deleteDeduction(row.id)}
+                      className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+          })}
+
+          {/* Summary lines: Total Deductions + Ordinary Business Income */}
+          {summaryLines.map((fv) => (
+            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+          ))}
+        </div>
+      </div>
+
+      {/* ===== TAX & PAYMENTS ===== */}
+      {taxFields.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+            Tax and Payments
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {taxFields.map((fv) => (
+              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Other Deductions Section (legacy — kept for reference)
 // ---------------------------------------------------------------------------
 
 function OtherDeductionsSection({
@@ -1625,12 +1865,19 @@ function RentalPropertiesSection({
 
   async function addProperty() {
     setSaving(true);
-    await post(`/tax-returns/${taxReturnId}/rental-properties/`, {
+    const res = await post(`/tax-returns/${taxReturnId}/rental-properties/`, {
       description: "",
       property_type: "6",
       rents_received: "0",
     });
-    await onRefresh();
+    if (res.ok) {
+      await onRefresh();
+      // Auto-expand the newly created property
+      const newProp = res.data as RentalPropertyRow;
+      if (newProp?.id) setExpandedId(newProp.id);
+    } else {
+      alert("Failed to add property. Please try again.");
+    }
     setSaving(false);
   }
 
