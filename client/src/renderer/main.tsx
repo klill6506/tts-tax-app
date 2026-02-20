@@ -13,6 +13,7 @@ import EntityDetail from "./pages/EntityDetail";
 import TrialBalance from "./pages/TrialBalance";
 import FormEditor from "./pages/FormEditor";
 import FormPreview from "./pages/FormPreview";
+import ReturnManager from "./pages/ReturnManager";
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -32,6 +33,9 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         {/* Client Manager (home) */}
         <Route path="/" element={<Dashboard />} />
+
+        {/* Return Manager */}
+        <Route path="/returns" element={<ReturnManager />} />
 
         {/* Entity Manager for a client */}
         <Route path="/clients/:clientId" element={<ClientDetail />} />

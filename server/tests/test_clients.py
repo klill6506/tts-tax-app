@@ -222,6 +222,82 @@ class TestEntityEndpoints:
 
 
 # ---------------------------------------------------------------------------
+# Entity duplicate prevention tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestEntityDuplicatePrevention:
+    def test_cannot_create_duplicate_entity(self, user_and_client, sample_client):
+        _, http = user_and_client
+        data = {
+            "client": str(sample_client.id),
+            "name": "Acme S-Corp",
+            "entity_type": "scorp",
+        }
+        resp1 = http.post(
+            "/api/v1/entities/", data=data, content_type="application/json"
+        )
+        assert resp1.status_code == 201
+        resp2 = http.post(
+            "/api/v1/entities/", data=data, content_type="application/json"
+        )
+        assert resp2.status_code == 400
+        # DRF's built-in UniqueTogetherValidator catches exact-case duplicates
+        body = str(resp2.json()).lower()
+        assert "unique" in body or "already exists" in body
+
+    def test_can_create_same_name_different_type(
+        self, user_and_client, sample_client
+    ):
+        _, http = user_and_client
+        resp1 = http.post(
+            "/api/v1/entities/",
+            data={
+                "client": str(sample_client.id),
+                "name": "Smith",
+                "entity_type": "scorp",
+            },
+            content_type="application/json",
+        )
+        assert resp1.status_code == 201
+        resp2 = http.post(
+            "/api/v1/entities/",
+            data={
+                "client": str(sample_client.id),
+                "name": "Smith",
+                "entity_type": "partnership",
+            },
+            content_type="application/json",
+        )
+        assert resp2.status_code == 201
+
+    def test_case_insensitive_duplicate_check(
+        self, user_and_client, sample_client
+    ):
+        _, http = user_and_client
+        http.post(
+            "/api/v1/entities/",
+            data={
+                "client": str(sample_client.id),
+                "name": "Acme Corp",
+                "entity_type": "scorp",
+            },
+            content_type="application/json",
+        )
+        resp = http.post(
+            "/api/v1/entities/",
+            data={
+                "client": str(sample_client.id),
+                "name": "acme corp",
+                "entity_type": "scorp",
+            },
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+        assert "already exists" in str(resp.json())
+
+
+# ---------------------------------------------------------------------------
 # TaxYear CRUD endpoint tests
 # ---------------------------------------------------------------------------
 

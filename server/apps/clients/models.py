@@ -97,6 +97,12 @@ class Entity(models.Model):
     class Meta:
         ordering = ["name"]
         verbose_name_plural = "entities"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["client", "name", "entity_type"],
+                name="unique_client_entity_name_type",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.get_entity_type_display()})"

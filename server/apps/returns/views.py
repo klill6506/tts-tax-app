@@ -161,6 +161,8 @@ class TaxReturnViewSet(
         return TaxReturnListSerializer
 
     def get_queryset(self):
+        from django.db.models import Q
+
         qs = TaxReturn.objects.filter(
             tax_year__entity__client__firm=self.request.firm
         ).select_related(
@@ -174,9 +176,29 @@ class TaxReturnViewSet(
             "shareholders",
             "rental_properties",
         )
+        # Filter by tax year UUID (existing)
         tax_year_id = self.request.query_params.get("tax_year")
         if tax_year_id:
             qs = qs.filter(tax_year_id=tax_year_id)
+        # Filter by calendar year
+        year = self.request.query_params.get("year")
+        if year:
+            qs = qs.filter(tax_year__year=year)
+        # Filter by return status
+        ret_status = self.request.query_params.get("status")
+        if ret_status:
+            qs = qs.filter(status=ret_status)
+        # Filter by form code (e.g. "1120-S")
+        form_code = self.request.query_params.get("form_code")
+        if form_code:
+            qs = qs.filter(form_definition__code=form_code)
+        # Search across client name and entity name
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(tax_year__entity__name__icontains=search)
+                | Q(tax_year__entity__client__name__icontains=search)
+            )
         return qs
 
     # ------------------------------------------------------------------

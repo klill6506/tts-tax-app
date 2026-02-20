@@ -238,8 +238,17 @@ class TaxReturnListSerializer(serializers.ModelSerializer):
     entity_name = serializers.CharField(
         source="tax_year.entity.name", read_only=True
     )
+    entity_type = serializers.CharField(
+        source="tax_year.entity.entity_type", read_only=True
+    )
+    entity_id = serializers.UUIDField(
+        source="tax_year.entity.id", read_only=True
+    )
     client_name = serializers.CharField(
         source="tax_year.entity.client.name", read_only=True
+    )
+    client_id = serializers.UUIDField(
+        source="tax_year.entity.client.id", read_only=True
     )
 
     class Meta:
@@ -249,7 +258,10 @@ class TaxReturnListSerializer(serializers.ModelSerializer):
             "tax_year_id",
             "year",
             "entity_name",
+            "entity_type",
+            "entity_id",
             "client_name",
+            "client_id",
             "form_code",
             "status",
             "created_at",

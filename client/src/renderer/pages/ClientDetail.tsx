@@ -113,7 +113,13 @@ export default function ClientDetail() {
       setNewType("scorp");
       setShowNew(false);
     } else {
-      alert("Failed to create entity.");
+      const err = res.data as Record<string, string | string[]>;
+      const msg =
+        (Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors)
+        || (Array.isArray(err.name) ? err.name[0] : err.name)
+        || (Array.isArray(err.detail) ? err.detail[0] : err.detail)
+        || "Failed to create entity.";
+      alert(msg);
     }
   }
 

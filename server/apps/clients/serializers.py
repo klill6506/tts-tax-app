@@ -66,6 +66,30 @@ class EntityCreateSerializer(serializers.ModelSerializer):
                 firm=request.firm
             )
 
+    def validate(self, attrs):
+        client = attrs.get("client")
+        name = attrs.get("name")
+        entity_type = attrs.get("entity_type")
+
+        if client and name and entity_type:
+            # On update, exclude the current instance
+            instance_id = self.instance.id if self.instance else None
+
+            qs = Entity.objects.filter(
+                client=client,
+                name__iexact=name,
+                entity_type=entity_type,
+            )
+            if instance_id:
+                qs = qs.exclude(id=instance_id)
+
+            if qs.exists():
+                raise serializers.ValidationError(
+                    f"An entity named '{name}' of type "
+                    f"'{entity_type}' already exists for this client."
+                )
+        return attrs
+
 
 class TaxYearSerializer(serializers.ModelSerializer):
     entity_id = serializers.UUIDField(source="entity.id", read_only=True)

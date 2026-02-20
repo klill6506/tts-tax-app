@@ -48,7 +48,7 @@ const MENUS: MenuGroup[] = [
   {
     label: "Returns",
     items: [
-      { label: "All Returns", to: "/returns", disabled: true },
+      { label: "All Returns", to: "/returns" },
       { label: "In Progress", disabled: true },
       { label: "Ready for Review", disabled: true },
       { label: "Filed", disabled: true },
@@ -103,6 +103,7 @@ const MENUS: MenuGroup[] = [
 
 const NAV_TABS = [
   { to: "/", label: "Client Manager", end: true },
+  { to: "/returns", label: "Return Manager", end: true },
 ];
 
 // ---------------------------------------------------------------------------

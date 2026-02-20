@@ -216,6 +216,57 @@ class TestTaxReturnEndpoints:
         )
         assert resp.status_code == 404
 
+    def test_list_returns_includes_entity_type(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        _create_return(http, tax_year.id)
+        resp = http.get("/api/v1/tax-returns/")
+        assert resp.status_code == 200
+        data = resp.json()[0]
+        assert data["entity_type"] == "scorp"
+        assert "client_id" in data
+        assert "entity_id" in data
+
+    def test_list_returns_filter_by_status(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        _create_return(http, tax_year.id)
+        resp = http.get("/api/v1/tax-returns/?status=draft")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+        resp = http.get("/api/v1/tax-returns/?status=filed")
+        assert len(resp.json()) == 0
+
+    def test_list_returns_filter_by_year(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        _create_return(http, tax_year.id)
+        resp = http.get("/api/v1/tax-returns/?year=2025")
+        assert len(resp.json()) == 1
+        resp = http.get("/api/v1/tax-returns/?year=2024")
+        assert len(resp.json()) == 0
+
+    def test_list_returns_filter_by_form_code(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        _create_return(http, tax_year.id)
+        resp = http.get("/api/v1/tax-returns/?form_code=1120-S")
+        assert len(resp.json()) == 1
+        resp = http.get("/api/v1/tax-returns/?form_code=1065")
+        assert len(resp.json()) == 0
+
+    def test_list_returns_search(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        _create_return(http, tax_year.id)
+        resp = http.get("/api/v1/tax-returns/?search=Returns")
+        assert len(resp.json()) == 1
+        resp = http.get("/api/v1/tax-returns/?search=nonexistent")
+        assert len(resp.json()) == 0
+
+    def test_delete_return(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        resp = _create_return(http, tax_year.id)
+        rid = resp.json()["id"]
+        del_resp = http.delete(f"/api/v1/tax-returns/{rid}/")
+        assert del_resp.status_code == 204
+        assert TaxReturn.objects.filter(id=rid).count() == 0
+
     def test_firm_isolation(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
         http.post(
