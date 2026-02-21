@@ -171,6 +171,7 @@ class TaxReturnViewSet(
             "form_definition",
             "tax_year__entity__client",
             "created_by",
+            "preparer",
         ).prefetch_related(
             "field_values__form_line__section",
             "other_deductions",
@@ -295,15 +296,25 @@ class TaxReturnViewSet(
             "is_address_change", "is_amended_return",
             "s_election_date", "number_of_shareholders",
             "product_or_service", "business_activity_code",
+            # Preparer
+            "preparer", "signature_date",
+        }
+        nullable_fields = {
+            "s_election_date", "number_of_shareholders",
+            "preparer", "signature_date",
         }
         updated = 0
         for field in allowed:
             if field in request.data:
                 val = request.data[field]
                 # Handle null/blank for nullable fields
-                if val == "" and field in ("s_election_date", "number_of_shareholders"):
+                if val == "" and field in nullable_fields:
                     val = None
-                setattr(tax_return, field, val)
+                # For FK fields, convert UUID string to _id
+                if field == "preparer":
+                    setattr(tax_return, "preparer_id", val)
+                else:
+                    setattr(tax_return, field, val)
                 updated += 1
         if updated:
             tax_return.save()

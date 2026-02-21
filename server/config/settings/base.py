@@ -40,7 +40,13 @@ INSTALLED_APPS = [
     "apps.diagnostics",
     "apps.returns",
     "apps.tts_forms",
+    "apps.ai_help",
 ]
+
+# ---------------------------------------------------------------------------
+# AI Help (Google Gemini)
+# ---------------------------------------------------------------------------
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

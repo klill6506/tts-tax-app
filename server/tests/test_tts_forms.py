@@ -812,7 +812,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 6  # f1120s, f1120sk1, f1065, f1065sk1, f1120, f7206
+        assert len(data["forms"]) == 9  # 6 form templates + 3 instruction PDFs
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (

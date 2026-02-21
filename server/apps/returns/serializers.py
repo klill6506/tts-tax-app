@@ -234,6 +234,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(
         source="tax_year.entity.client.name", read_only=True
     )
+    # Preparer assignment (firm-level)
+    preparer_display_name = serializers.CharField(
+        source="preparer.name", read_only=True, default=None
+    )
 
     class Meta:
         model = TaxReturn
@@ -259,6 +263,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "number_of_shareholders",
             "product_or_service",
             "business_activity_code",
+            # Preparer
+            "preparer",
+            "preparer_display_name",
+            "signature_date",
             # Nested data
             "field_values",
             "other_deductions",

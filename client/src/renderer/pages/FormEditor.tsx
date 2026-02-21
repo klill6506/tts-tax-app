@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { get, patch, post, del } from "../lib/api";
+import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
 
 // ---------------------------------------------------------------------------
@@ -139,6 +140,10 @@ interface TaxReturnData {
   number_of_shareholders: number | null;
   product_or_service: string;
   business_activity_code: string;
+  // Preparer assignment
+  preparer: string | null;
+  preparer_display_name: string | null;
+  signature_date: string | null;
   field_values: FieldValue[];
   other_deductions: OtherDeductionRow[];
   officers: OfficerRow[];
@@ -255,6 +260,16 @@ export default function FormEditor() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("info");
+
+  // Form context — so AiHelpPanel knows which form/tab we're on
+  const { setFormContext, clearFormContext } = useFormContext();
+  useEffect(() => {
+    if (returnData) {
+      const tabLabel = SECTION_TABS.find((t) => t.id === activeTab)?.label || "";
+      setFormContext(returnData.form_code, tabLabel);
+    }
+    return () => clearFormContext();
+  }, [returnData?.form_code, activeTab]);
 
   // Dirty tracking
   const dirtyRef = useRef<Map<string, string>>(new Map());
@@ -524,7 +539,7 @@ export default function FormEditor() {
       ) : activeTab === "preparer" ? (
         <PreparerSection
           taxReturnId={taxReturnId!}
-          initialData={returnData.preparer_info}
+          returnData={returnData}
           onRefresh={refreshReturn}
         />
       ) : (
@@ -1295,69 +1310,85 @@ function InfoSection({
 // Preparer Section — Preparer, Firm, and Third-Party Designee
 // ---------------------------------------------------------------------------
 
+interface PreparerOption {
+  id: string;
+  name: string;
+  ptin: string;
+  is_active: boolean;
+}
+
+interface PreparerDetail {
+  id: string;
+  name: string;
+  ptin: string;
+  is_self_employed: boolean;
+  firm_name: string;
+  firm_ein: string;
+  firm_phone: string;
+  firm_address: string;
+  firm_city: string;
+  firm_state: string;
+  firm_zip: string;
+  designee_name: string;
+  designee_phone: string;
+  designee_pin: string;
+  is_active: boolean;
+}
+
 function PreparerSection({
   taxReturnId,
-  initialData,
+  returnData,
   onRefresh,
 }: {
   taxReturnId: string;
-  initialData: PreparerInfoData | null;
+  returnData: TaxReturnData;
   onRefresh: () => Promise<void>;
 }) {
-  const [data, setData] = useState<PreparerInfoData | null>(initialData);
-  const [loading, setLoading] = useState(!initialData);
+  const navigate = useNavigate();
+  const [preparers, setPreparers] = useState<PreparerOption[]>([]);
+  const [selectedId, setSelectedId] = useState<string>(returnData.preparer || "");
+  const [signatureDate, setSignatureDate] = useState<string>(returnData.signature_date || "");
+  const [detail, setDetail] = useState<PreparerDetail | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
-  // Fetch preparer info (get-or-create)
+  // Load preparer list
   useEffect(() => {
-    if (initialData) {
-      setData(initialData);
-      setLoading(false);
-      return;
-    }
-    get(`/tax-returns/${taxReturnId}/preparer/`).then((res) => {
-      if (res.ok) setData(res.data as PreparerInfoData);
+    get("/preparers/").then((res) => {
+      if (res.ok) setPreparers(res.data as PreparerOption[]);
       setLoading(false);
     });
-  }, [taxReturnId, initialData]);
+  }, []);
 
-  function handleChange(field: keyof PreparerInfoData, value: string | boolean) {
-    if (!data) return;
-    setData({ ...data, [field]: value });
-  }
+  // Load detail when selection changes
+  useEffect(() => {
+    if (!selectedId) {
+      setDetail(null);
+      return;
+    }
+    get(`/preparers/${selectedId}/`).then((res) => {
+      if (res.ok) setDetail(res.data as PreparerDetail);
+    });
+  }, [selectedId]);
 
-  function formatEIN(raw: string): string {
-    const digits = raw.replace(/\D/g, "").slice(0, 9);
-    if (digits.length > 2) return digits.slice(0, 2) + "-" + digits.slice(2);
-    return digits;
-  }
+  // Sync from returnData when it refreshes
+  useEffect(() => {
+    setSelectedId(returnData.preparer || "");
+    setSignatureDate(returnData.signature_date || "");
+  }, [returnData.preparer, returnData.signature_date]);
 
-  async function savePreparer() {
-    if (!data) return;
+  async function handleSave() {
     setSaving(true);
     setSaveMsg(null);
-    const res = await patch(`/tax-returns/${taxReturnId}/preparer/`, {
-      preparer_name: data.preparer_name,
-      ptin: data.ptin,
-      signature_date: data.signature_date || null,
-      is_self_employed: data.is_self_employed,
-      firm_name: data.firm_name,
-      firm_ein: data.firm_ein,
-      firm_phone: data.firm_phone,
-      firm_address: data.firm_address,
-      firm_city: data.firm_city,
-      firm_state: data.firm_state,
-      firm_zip: data.firm_zip,
-      designee_name: data.designee_name,
-      designee_phone: data.designee_phone,
-      designee_pin: data.designee_pin,
+    const res = await patch(`/tax-returns/${taxReturnId}/info/`, {
+      preparer: selectedId || "",
+      signature_date: signatureDate || "",
     });
     setSaving(false);
     if (res.ok) {
-      setData(res.data as PreparerInfoData);
       await onRefresh();
-      setSaveMsg("Preparer info saved.");
+      setSaveMsg("Preparer assignment saved.");
       setTimeout(() => setSaveMsg(null), 3000);
     } else {
       setSaveMsg("Save failed.");
@@ -1367,215 +1398,155 @@ function PreparerSection({
   const inputClass =
     "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
-  if (loading) return <p className="text-sm text-tx-secondary">Loading preparer info...</p>;
-  if (!data) return <p className="text-sm text-tx-muted">Unable to load preparer info.</p>;
+  if (loading) return <p className="text-sm text-tx-secondary">Loading preparers...</p>;
 
   return (
     <div className="space-y-6">
-      {/* Paid Preparer */}
+      {/* Preparer Selection */}
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-bold text-tx">Paid Preparer</h3>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <h3 className="mb-4 text-sm font-bold text-tx">Assign Preparer</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                Preparer Name
+                Preparer
               </label>
-              <input
-                type="text"
-                value={data.preparer_name || ""}
-                onChange={(e) => handleChange("preparer_name", e.target.value)}
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
                 className={inputClass}
-              />
+              >
+                <option value="">— Select a preparer —</option>
+                {preparers.filter((p) => p.is_active).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.ptin ? ` (${p.ptin})` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                PTIN
-              </label>
-              <input
-                type="text"
-                value={data.ptin || ""}
-                onChange={(e) => handleChange("ptin", e.target.value)}
-                className={inputClass}
-                placeholder="P00000000"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Signature Date
               </label>
               <input
                 type="date"
-                value={data.signature_date || ""}
-                onChange={(e) => handleChange("signature_date", e.target.value)}
+                value={signatureDate}
+                onChange={(e) => setSignatureDate(e.target.value)}
                 className={inputClass}
               />
             </div>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={data.is_self_employed}
-                  onChange={(e) => handleChange("is_self_employed", e.target.checked)}
-                  className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
-                />
-                Self-employed
-              </label>
-            </div>
+          </div>
+
+          {/* Save */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+            {saveMsg && (
+              <span className="text-sm font-medium text-success">{saveMsg}</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Firm Information */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-bold text-tx">Firm Information</h3>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+      {/* Detail preview (read-only) */}
+      {detail && (
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h3 className="mb-4 text-sm font-bold text-tx">Preparer Details</h3>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                Firm Name
-              </label>
-              <input
-                type="text"
-                value={data.firm_name || ""}
-                onChange={(e) => handleChange("firm_name", e.target.value)}
-                className={inputClass}
-              />
+              <span className="text-tx-muted">Name:</span>{" "}
+              <span className="font-medium text-tx">{detail.name}</span>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                Firm EIN
-              </label>
-              <input
-                type="text"
-                value={data.firm_ein || ""}
-                onChange={(e) => handleChange("firm_ein", formatEIN(e.target.value))}
-                className={inputClass}
-                placeholder="XX-XXXXXXX"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-tx-secondary">
-              Firm Phone
-            </label>
-            <input
-              type="text"
-              value={data.firm_phone || ""}
-              onChange={(e) => handleChange("firm_phone", e.target.value)}
-              className={inputClass}
-              placeholder="XXX-XXX-XXXX"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-tx-secondary">
-              Firm Address
-            </label>
-            <input
-              type="text"
-              value={data.firm_address || ""}
-              onChange={(e) => handleChange("firm_address", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                City
-              </label>
-              <input
-                type="text"
-                value={data.firm_city || ""}
-                onChange={(e) => handleChange("firm_city", e.target.value)}
-                className={inputClass}
-              />
+              <span className="text-tx-muted">PTIN:</span>{" "}
+              <span className="font-mono text-tx">{detail.ptin || "—"}</span>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                State
-              </label>
-              <input
-                type="text"
-                value={data.firm_state || ""}
-                onChange={(e) => handleChange("firm_state", e.target.value)}
-                className={inputClass}
-                maxLength={2}
-              />
+              <span className="text-tx-muted">Self-Employed:</span>{" "}
+              <span className="text-tx">{detail.is_self_employed ? "Yes" : "No"}</span>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                ZIP Code
-              </label>
-              <input
-                type="text"
-                value={data.firm_zip || ""}
-                onChange={(e) => handleChange("firm_zip", e.target.value)}
-                className={inputClass}
-              />
+              <span className="text-tx-muted">Status:</span>{" "}
+              <span className={detail.is_active ? "text-primary font-medium" : "text-tx-muted"}>
+                {detail.is_active ? "Active" : "Inactive"}
+              </span>
             </div>
+            {detail.firm_name && (
+              <>
+                <div className="col-span-2 mt-2 border-t border-border-subtle pt-2">
+                  <span className="text-xs font-semibold text-tx-muted uppercase">Firm Information</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">Firm:</span>{" "}
+                  <span className="text-tx">{detail.firm_name}</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">EIN:</span>{" "}
+                  <span className="font-mono text-tx">{detail.firm_ein || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">Phone:</span>{" "}
+                  <span className="text-tx">{detail.firm_phone || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">Address:</span>{" "}
+                  <span className="text-tx">
+                    {[detail.firm_address, detail.firm_city, detail.firm_state, detail.firm_zip]
+                      .filter(Boolean)
+                      .join(", ") || "—"}
+                  </span>
+                </div>
+              </>
+            )}
+            {detail.designee_name && (
+              <>
+                <div className="col-span-2 mt-2 border-t border-border-subtle pt-2">
+                  <span className="text-xs font-semibold text-tx-muted uppercase">Third-Party Designee</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">Name:</span>{" "}
+                  <span className="text-tx">{detail.designee_name}</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">Phone:</span>{" "}
+                  <span className="text-tx">{detail.designee_phone || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-tx-muted">PIN:</span>{" "}
+                  <span className="font-mono text-tx">{detail.designee_pin || "—"}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Third-Party Designee */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-bold text-tx">Third-Party Designee</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-tx-secondary">
-              Designee Name
-            </label>
-            <input
-              type="text"
-              value={data.designee_name || ""}
-              onChange={(e) => handleChange("designee_name", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                Phone
-              </label>
-              <input
-                type="text"
-                value={data.designee_phone || ""}
-                onChange={(e) => handleChange("designee_phone", e.target.value)}
-                className={inputClass}
-                placeholder="XXX-XXX-XXXX"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                PIN
-              </label>
-              <input
-                type="text"
-                value={data.designee_pin || ""}
-                onChange={(e) => handleChange("designee_pin", e.target.value)}
-                className={inputClass}
-                maxLength={5}
-                placeholder="5-digit PIN"
-              />
-            </div>
-          </div>
+      {/* Empty state */}
+      {!selectedId && preparers.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm text-center">
+          <p className="text-sm text-tx-muted">No preparers have been created yet.</p>
+          <button
+            onClick={() => navigate("/admin/preparers")}
+            className="mt-2 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-success-hover"
+          >
+            Go to Preparer Manager
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* Save button */}
-      <div className="flex items-center gap-3">
+      {/* Link to manage */}
+      <div className="text-center">
         <button
-          onClick={savePreparer}
-          disabled={saving}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+          onClick={() => navigate("/admin/preparers")}
+          className="text-sm font-medium text-primary-text hover:underline"
         >
-          {saving ? "Saving..." : "Save Preparer Info"}
+          Manage Preparers
         </button>
-        {saveMsg && (
-          <span className="text-sm font-medium text-success">{saveMsg}</span>
-        )}
       </div>
     </div>
   );

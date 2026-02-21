@@ -180,6 +180,20 @@ class TaxReturn(models.Model):
         help_text="Business activity code (IRS line I).",
     )
 
+    # Preparer assignment (firm-level)
+    preparer = models.ForeignKey(
+        "firms.Preparer",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tax_returns",
+        help_text="Assigned preparer from the firm's preparer list.",
+    )
+    signature_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date the preparer signed the return.",
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

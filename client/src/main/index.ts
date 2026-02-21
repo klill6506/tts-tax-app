@@ -14,6 +14,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: "TTS Tax Prep",
+    icon: path.join(__dirname, "../../resources/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,

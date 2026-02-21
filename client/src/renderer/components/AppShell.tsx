@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation, useMatch } from "react-route
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 import { get } from "../lib/api";
+import AiHelpPanel from "./AiHelpPanel";
 import pkg from "../../../package.json";
 
 const CLIENT_VERSION = pkg.version;
@@ -54,9 +55,14 @@ const MENUS: MenuGroup[] = [
     label: "Returns",
     items: [
       { label: "All Returns", to: "/returns" },
-      { label: "In Progress", disabled: true },
-      { label: "Ready for Review", disabled: true },
-      { label: "Filed", disabled: true },
+      { divider: true, label: "" },
+      { label: "S-Corp Returns (1120-S)", to: "/returns?form=1120-S" },
+      { label: "Partnership Returns (1065)", to: "/returns?form=1065" },
+      { label: "C-Corp Returns (1120)", to: "/returns?form=1120" },
+      { divider: true, label: "" },
+      { label: "In Progress", to: "/returns?status=in_progress" },
+      { label: "Ready for Review", to: "/returns?status=in_review" },
+      { label: "Filed", to: "/returns?status=filed" },
       { divider: true, label: "" },
       { label: "Batch Operations...", disabled: true },
     ],
@@ -86,6 +92,8 @@ const MENUS: MenuGroup[] = [
   {
     label: "Admin",
     items: [
+      { label: "Preparer Manager", to: "/admin/preparers" },
+      { divider: true, label: "" },
       { label: "Firm Settings", to: "/admin/firm", disabled: true },
       { label: "User Management", to: "/admin/users", disabled: true },
       { label: "Roles & Permissions", disabled: true },
@@ -224,6 +232,40 @@ function DropdownMenu({
 // Main AppShell
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Background palette swatches (temporary dev tool for Ken to pick)
+// ---------------------------------------------------------------------------
+
+interface Palette {
+  name: string;
+  surface: string;
+  surfaceAlt: string;
+  zebra: string;
+  feel: string;
+}
+
+const BG_PALETTES: Palette[] = [
+  { name: "Slate (current)",  surface: "#e2e8f0", surfaceAlt: "#cbd5e1", zebra: "#f1f5f9", feel: "Cool gray" },
+  { name: "Soft Blue Mist",   surface: "#eef3fa", surfaceAlt: "#dce5f0", zebra: "#f5f8fc", feel: "Barely blue" },
+  { name: "Warm Stone",       surface: "#f5f4f1", surfaceAlt: "#e8e6e1", zebra: "#faf9f7", feel: "Paper-like" },
+  { name: "Sage Tint",        surface: "#f0f4f1", surfaceAlt: "#dfe6e0", zebra: "#f7faf7", feel: "Subtle green" },
+  { name: "Slate Blue",       surface: "#ebeef5", surfaceAlt: "#dde1ec", zebra: "#f3f5fa", feel: "Blue undertone" },
+];
+
+function applyPalette(p: Palette) {
+  const root = document.documentElement;
+  root.style.setProperty("--surface", p.surface);
+  root.style.setProperty("--surface-alt", p.surfaceAlt);
+  root.style.setProperty("--zebra", p.zebra);
+}
+
+function clearPaletteOverrides() {
+  const root = document.documentElement;
+  root.style.removeProperty("--surface");
+  root.style.removeProperty("--surface-alt");
+  root.style.removeProperty("--zebra");
+}
+
 export default function AppShell() {
   const { user, logout } = useAuth();
   const { mode, cycle } = useTheme();
@@ -233,6 +275,8 @@ export default function AppShell() {
   const [anyMenuWasOpened, setAnyMenuWasOpened] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
+  const [showPalettes, setShowPalettes] = useState(false);
+  const [activePalette, setActivePalette] = useState(0);
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
 
@@ -428,6 +472,9 @@ export default function AppShell() {
         </footer>
       </div>
 
+      {/* ── AI Help Panel ── */}
+      <AiHelpPanel />
+
       {/* ── About Dialog ── */}
       {showAbout && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setShowAbout(false)}>
@@ -476,6 +523,58 @@ export default function AppShell() {
           </div>
         </div>
       )}
+
+      {/* ── Background Palette Picker (Dev Tool — remove after Ken picks) ── */}
+      <div className="fixed bottom-10 right-20 z-[90]">
+        {showPalettes && (
+          <div className="mb-2 w-64 rounded-xl border border-border bg-card p-3 shadow-2xl">
+            <p className="mb-2 text-xs font-semibold text-tx-secondary">Background Palette</p>
+            <div className="space-y-1.5">
+              {BG_PALETTES.map((p, i) => (
+                <button
+                  key={p.name}
+                  onClick={() => {
+                    setActivePalette(i);
+                    if (i === 0) clearPaletteOverrides();
+                    else applyPalette(p);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition ${
+                    activePalette === i
+                      ? "ring-2 ring-primary bg-primary-subtle"
+                      : "hover:bg-surface"
+                  }`}
+                >
+                  {/* Color swatch */}
+                  <div
+                    className="h-8 w-8 shrink-0 rounded-md border border-border shadow-sm"
+                    style={{ background: `linear-gradient(135deg, ${p.surface} 50%, ${p.surfaceAlt} 50%)` }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-tx">{p.name}</p>
+                    <p className="text-[10px] text-tx-muted">{p.feel}</p>
+                  </div>
+                  {activePalette === i && (
+                    <svg className="ml-auto h-4 w-4 shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] text-tx-muted italic">Pick one and let me know — I'll apply it permanently and remove this picker.</p>
+          </div>
+        )}
+
+        <button
+          onClick={() => setShowPalettes(!showPalettes)}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:bg-primary-hover hover:shadow-xl"
+          title="Background palette picker"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

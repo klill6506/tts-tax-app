@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { get, del } from "../lib/api";
 
@@ -59,21 +59,29 @@ type SortDir = "asc" | "desc";
 export default function ReturnManager() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [returns, setReturns] = useState<TaxReturnRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filters — initialize from URL params (set by Returns menu shortcuts)
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [formFilter, setFormFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
+  const [formFilter, setFormFilter] = useState(searchParams.get("form") || "");
+  const [yearFilter, setYearFilter] = useState(searchParams.get("year") || "");
 
   // Sorting
   const [sortCol, setSortCol] = useState<SortColumn>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "Your firm";
+
+  // Sync filters when URL params change (e.g., user clicks a Returns menu shortcut)
+  useEffect(() => {
+    setFormFilter(searchParams.get("form") || "");
+    setStatusFilter(searchParams.get("status") || "");
+    setYearFilter(searchParams.get("year") || "");
+  }, [searchParams]);
 
   // ---- Load data ----
 

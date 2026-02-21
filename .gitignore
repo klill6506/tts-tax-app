@@ -36,5 +36,8 @@ Thumbs.db
 Official IRS Forms/
 Official IRS Instructions/
 
+# IRS instruction PDFs (downloaded via scripts/update_irs_forms.py, too large for git)
+resources/irs_forms/2025/i*.pdf
+
 # Electron client local env
 client/.env.local

@@ -58,3 +58,46 @@ class FirmMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.username} @ {self.firm.name} ({self.role})"
+
+
+class Preparer(models.Model):
+    """A preparer at the firm level — reusable across all returns."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="preparers",
+    )
+
+    # Preparer identity
+    name = models.CharField(max_length=255)
+    ptin = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="Preparer Tax Identification Number.",
+    )
+    is_self_employed = models.BooleanField(default=False)
+
+    # Firm info (for IRS signature block)
+    firm_name = models.CharField(max_length=255, blank=True, default="")
+    firm_ein = models.CharField(max_length=20, blank=True, default="")
+    firm_phone = models.CharField(max_length=20, blank=True, default="")
+    firm_address = models.CharField(max_length=255, blank=True, default="")
+    firm_city = models.CharField(max_length=100, blank=True, default="")
+    firm_state = models.CharField(max_length=2, blank=True, default="")
+    firm_zip = models.CharField(max_length=10, blank=True, default="")
+
+    # Third-party designee
+    designee_name = models.CharField(max_length=255, blank=True, default="")
+    designee_phone = models.CharField(max_length=20, blank=True, default="")
+    designee_pin = models.CharField(max_length=10, blank=True, default="")
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} (PTIN: {self.ptin or 'N/A'})"

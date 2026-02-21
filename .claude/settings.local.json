@@ -18,7 +18,16 @@
       "Bash(powershell.exe -Command \"cd D:\\\\dev\\\\tts-tax-app\\\\server; poetry run python -c ''from apps.returns.models import FormSection; [print\\(s.code, s.title\\) for s in FormSection.objects.filter\\(form__code=\"\"1120-S\"\"\\).order_by\\(\"\"sort_order\"\"\\)]''\")",
       "Bash(powershell.exe -Command \"cd D:\\\\dev\\\\tts-tax-app\\\\server; $env:DJANGO_SETTINGS_MODULE=''config.settings.dev''; poetry run python -c ''import django; django.setup\\(\\); from apps.returns.models import FormSection; [print\\(s.code, s.title\\) for s in FormSection.objects.filter\\(form__code=\"\"1120-S\"\"\\).order_by\\(\"\"sort_order\"\"\\)]''\")",
       "Bash(npx electron-vite:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(test -f:*)",
+      "Bash(node:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(poetry add:*)",
+      "Bash(poetry remove:*)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(python:*)"
     ]
   }
 }

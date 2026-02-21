@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 
 import "./index.css";
 import { AuthProvider, useAuth } from "./lib/auth";
+import { FormContextProvider } from "./lib/form-context";
 import { ThemeProvider } from "./lib/theme";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
@@ -14,6 +15,7 @@ import TrialBalance from "./pages/TrialBalance";
 import FormEditor from "./pages/FormEditor";
 import FormPreview from "./pages/FormPreview";
 import ReturnManager from "./pages/ReturnManager";
+import PreparerManager from "./pages/PreparerManager";
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -43,6 +45,9 @@ function AppRoutes() {
         {/* Entity Detail — tax years, TB, returns */}
         <Route path="/clients/:clientId/entities/:entityId" element={<EntityDetail />} />
 
+        {/* Admin */}
+        <Route path="/admin/preparers" element={<PreparerManager />} />
+
         {/* Trial Balance & Form Editor */}
         <Route path="/tax-years/:taxYearId/trial-balance" element={<TrialBalance />} />
         <Route path="/tax-returns/:taxReturnId/editor" element={<FormEditor />} />
@@ -57,7 +62,9 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <HashRouter>
         <AuthProvider>
-          <AppRoutes />
+          <FormContextProvider>
+            <AppRoutes />
+          </FormContextProvider>
         </AuthProvider>
       </HashRouter>
     </ThemeProvider>

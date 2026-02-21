@@ -73,6 +73,45 @@
       "local_path": "2025/f7206.pdf",
       "pages": 1,
       "notes": "Self-employed health insurance deduction, generated per >2% S-Corp shareholder"
+    },
+    {
+      "form_id": "i1120s",
+      "form_code": "1120-S",
+      "type": "instructions",
+      "title": "Instructions for Form 1120-S",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/i1120s.pdf",
+      "revision_date": "2024-12",
+      "sha256": "eab655cff9226dbc6d80213350bac050009ba90daf621c182d31c541bc62c3f2",
+      "local_path": "2025/i1120s.pdf",
+      "pages": null,
+      "notes": "Official IRS instructions for Form 1120-S (S Corporation)"
+    },
+    {
+      "form_id": "i1065",
+      "form_code": "1065",
+      "type": "instructions",
+      "title": "Instructions for Form 1065",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/i1065.pdf",
+      "revision_date": "2024-12",
+      "sha256": "f4a35a24c7abac486908d3610754397a66b2130f0eb425dda897d78a9d91b786",
+      "local_path": "2025/i1065.pdf",
+      "pages": null,
+      "notes": "Official IRS instructions for Form 1065 (Partnership)"
+    },
+    {
+      "form_id": "i1120",
+      "form_code": "1120",
+      "type": "instructions",
+      "title": "Instructions for Form 1120",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/i1120.pdf",
+      "revision_date": "2024-12",
+      "sha256": "49476a6f69a38a0fdb96fea1d66ddc936404e9b2eebb249da8e20830b0743358",
+      "local_path": "2025/i1120.pdf",
+      "pages": null,
+      "notes": "Official IRS instructions for Form 1120 (C Corporation)"
     }
   ]
 }
