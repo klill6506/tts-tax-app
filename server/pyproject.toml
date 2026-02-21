@@ -1,6 +1,6 @@
 [project]
 name = "tts-tax-server"
-version = "0.1.0"
+version = "0.2.0"  # Source of truth: ../VERSION
 description = "TTS Tax App - Django backend for professional tax preparation"
 requires-python = ">=3.13,<3.15"
 dependencies = [

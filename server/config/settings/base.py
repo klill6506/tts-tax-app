@@ -15,6 +15,12 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ["SECRET_KEY"]
 
+# ---------------------------------------------------------------------------
+# App version — single source of truth is the root VERSION file
+# ---------------------------------------------------------------------------
+_version_file = BASE_DIR.parent / "VERSION"
+APP_VERSION = _version_file.read_text().strip() if _version_file.exists() else "0.0.0"
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

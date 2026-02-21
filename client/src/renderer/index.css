@@ -70,55 +70,56 @@
 
 /* ---------------------------------------------------------------------------
  * Light theme (default)
- * Warm neutrals — stone-based, not cold slate
+ * Clean cool grays — blue-gray slate palette
  * --------------------------------------------------------------------------- */
 :root {
-  /* Surfaces */
-  --surface: #faf8f6;
-  --surface-alt: #f0ede8;
-  --card: #ffffff;
-  --card-hover: #f8f6f3;
+  /* Surfaces — clean cool grays, no cream/beige */
+  --surface: #e2e8f0;            /* Slate-200 — page background */
+  --surface-alt: #cbd5e1;        /* Slate-300 — section headers, highlighted areas */
+  --card: #ffffff;               /* Pure white cards */
+  --card-hover: #f1f5f9;         /* Slate-100 — hover state */
+  --zebra: #f1f5f9;              /* Slate-100 — alternating row stripe */
 
-  /* Navigation */
-  --nav: #1e293b;
-  --nav-active: #334155;
-  --nav-border: #334155;
+  /* Navigation — medium blue, not dark navy */
+  --nav: #1e40af;                /* Blue-800 — rich blue */
+  --nav-active: #2563eb;         /* Blue-600 — brighter active */
+  --nav-border: #1d4ed8;         /* Blue-700 — subtle border */
 
-  /* Borders */
-  --border: #d6d0c8;
-  --border-subtle: #e8e3dc;
+  /* Borders — cool slate, strong enough to define edges */
+  --border: #94a3b8;             /* Slate-400 — visible card borders */
+  --border-subtle: #cbd5e1;      /* Slate-300 — row dividers */
 
-  /* Form inputs */
-  --input: #ffffff;
-  --input-border: #c4bcb2;
+  /* Form inputs — clearly editable white with strong borders */
+  --input: #ffffff;              /* White */
+  --input-border: #64748b;       /* Slate-500 — strong border for inputs */
 
-  /* Text */
-  --tx: #1c1917;
-  --tx-secondary: #57534e;
-  --tx-muted: #a8a29e;
-  --tx-on-dark: #d6d3d1;
+  /* Text — boosted contrast for readability */
+  --tx: #0f172a;                 /* Slate-900 — darker for main text */
+  --tx-secondary: #334155;       /* Slate-700 — stronger labels */
+  --tx-muted: #64748b;           /* Slate-500 — still subtle, but legible */
+  --tx-on-dark: #f1f5f9;         /* Slate-100 — brighter on blue nav */
 
   /* Primary (blue) */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-subtle: #dbeafe;
-  --primary-text: #2563eb;
+  --primary: #2563eb;            /* Blue-600 */
+  --primary-hover: #1d4ed8;      /* Blue-700 */
+  --primary-subtle: #dbeafe;     /* Blue-100 */
+  --primary-text: #1d4ed8;       /* Blue-700 */
 
   /* Accent (amber) */
-  --accent: #d97706;
-  --accent-hover: #b45309;
+  --accent: #d97706;             /* Amber-600 */
+  --accent-hover: #b45309;       /* Amber-700 */
 
   /* Success (green) */
-  --success: #16a34a;
-  --success-hover: #15803d;
+  --success: #16a34a;            /* Green-600 */
+  --success-hover: #15803d;      /* Green-700 */
 
-  /* Danger (red) */
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --danger-subtle: #fef2f2;
+  /* Danger (red — errors only, use sparingly) */
+  --danger: #dc2626;             /* Red-600 */
+  --danger-hover: #b91c1c;       /* Red-700 */
+  --danger-subtle: #fef2f2;      /* Red-50 */
 
   /* Focus ring */
-  --focus-ring: #2563eb40;
+  --focus-ring: #2563eb40;       /* Blue-600 with 25% alpha */
 }
 
 /* ---------------------------------------------------------------------------
@@ -126,52 +127,53 @@
  * Not pitch black — slate-900 base, reduced contrast
  * --------------------------------------------------------------------------- */
 .dark {
-  /* Surfaces */
-  --surface: #0f172a;
-  --surface-alt: #1e293b;
-  --card: #1e293b;
-  --card-hover: #283548;
+  /* Surfaces — slate-based, not pitch black */
+  --surface: #0f172a;            /* Slate-950 */
+  --surface-alt: #1e293b;        /* Slate-800 */
+  --card: #1e293b;               /* Slate-800 */
+  --card-hover: #283548;         /* Slightly lighter */
+  --zebra: #162033;              /* Slightly lighter than card for stripes */
 
-  /* Navigation */
-  --nav: #0f172a;
-  --nav-active: #1e293b;
-  --nav-border: #1e293b;
+  /* Navigation — deeper blue */
+  --nav: #172554;                /* Blue-950 */
+  --nav-active: #1e3a8a;         /* Blue-900 */
+  --nav-border: #1e3a8a;         /* Blue-900 */
 
   /* Borders */
-  --border: #334155;
-  --border-subtle: #1e293b;
+  --border: #334155;             /* Slate-700 */
+  --border-subtle: #1e293b;      /* Slate-800 */
 
   /* Form inputs */
-  --input: #1e293b;
-  --input-border: #475569;
+  --input: #0f172a;              /* Slate-950 */
+  --input-border: #475569;       /* Slate-600 */
 
   /* Text */
-  --tx: #e7e5e4;
-  --tx-secondary: #a8a29e;
-  --tx-muted: #78716c;
-  --tx-on-dark: #d6d3d1;
+  --tx: #e2e8f0;                 /* Slate-200 */
+  --tx-secondary: #94a3b8;       /* Slate-400 */
+  --tx-muted: #64748b;           /* Slate-500 */
+  --tx-on-dark: #cbd5e1;         /* Slate-300 */
 
   /* Primary (blue — lighter for dark bg) */
-  --primary: #60a5fa;
-  --primary-hover: #93bbfd;
-  --primary-subtle: #1e3a5f;
-  --primary-text: #60a5fa;
+  --primary: #60a5fa;            /* Blue-400 */
+  --primary-hover: #93bbfd;      /* Blue-300 */
+  --primary-subtle: #1e3a5f;     /* Dark blue */
+  --primary-text: #60a5fa;       /* Blue-400 */
 
   /* Accent (amber — more saturated) */
-  --accent: #fbbf24;
-  --accent-hover: #f59e0b;
+  --accent: #fbbf24;             /* Amber-400 */
+  --accent-hover: #f59e0b;       /* Amber-500 */
 
   /* Success (green — lighter) */
-  --success: #4ade80;
-  --success-hover: #22c55e;
+  --success: #4ade80;            /* Green-400 */
+  --success-hover: #22c55e;      /* Green-500 */
 
   /* Danger (red — lighter) */
-  --danger: #f87171;
-  --danger-hover: #ef4444;
-  --danger-subtle: #3b1111;
+  --danger: #f87171;             /* Red-400 */
+  --danger-hover: #ef4444;       /* Red-500 */
+  --danger-subtle: #3b1111;      /* Dark red */
 
   /* Focus ring */
-  --focus-ring: #60a5fa40;
+  --focus-ring: #60a5fa40;       /* Blue-400 with 25% alpha */
 }
 
 /* ---------------------------------------------------------------------------
@@ -183,4 +185,58 @@ body {
   color: var(--tx);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------------------------
+ * Zebra striping for table rows and list rows
+ * Use on a parent <div> or <tbody> to auto-stripe children
+ * --------------------------------------------------------------------------- */
+.zebra-rows > *:nth-child(even) {
+  background-color: var(--zebra);
+}
+.zebra-rows > *:nth-child(odd) {
+  background-color: var(--card);
+}
+
+/* Table-specific zebra striping */
+table.zebra-table tbody tr:nth-child(even) {
+  background-color: var(--zebra);
+}
+table.zebra-table tbody tr:nth-child(odd) {
+  background-color: var(--card);
+}
+
+/* ---------------------------------------------------------------------------
+ * Input field styling — make inputs clearly look editable
+ * --------------------------------------------------------------------------- */
+input[type="text"],
+input[type="date"],
+input[type="number"],
+input[type="email"],
+input[type="tel"],
+select {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+input:read-only,
+input[readonly] {
+  box-shadow: none;
+  background-color: var(--surface-alt) !important;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------------------
+ * Table header styling — darker background for contrast
+ * --------------------------------------------------------------------------- */
+table.zebra-table thead th {
+  background-color: var(--surface);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * Card section header contrast boost
+ * --------------------------------------------------------------------------- */
+.section-header {
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
 }

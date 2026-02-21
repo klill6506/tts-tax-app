@@ -7,6 +7,7 @@ from .models import (
     FormSection,
     Officer,
     OtherDeduction,
+    PreparerInfo,
     RentalProperty,
     Shareholder,
     TaxReturn,
@@ -131,6 +132,31 @@ class RentalPropertySerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class PreparerInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PreparerInfo
+        fields = (
+            "id",
+            "preparer_name",
+            "ptin",
+            "signature_date",
+            "is_self_employed",
+            "firm_name",
+            "firm_ein",
+            "firm_phone",
+            "firm_address",
+            "firm_city",
+            "firm_state",
+            "firm_zip",
+            "designee_name",
+            "designee_phone",
+            "designee_pin",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
 class ShareholderSerializer(serializers.ModelSerializer):
     linked_client_name = serializers.CharField(
         source="linked_client.name", read_only=True, default=None
@@ -195,6 +221,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     officers = OfficerSerializer(many=True, read_only=True)
     shareholders = ShareholderSerializer(many=True, read_only=True)
     rental_properties = RentalPropertySerializer(many=True, read_only=True)
+    preparer_info = PreparerInfoSerializer(read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
     tax_year_id = serializers.UUIDField(source="tax_year.id", read_only=True)
     year = serializers.IntegerField(source="tax_year.year", read_only=True)
@@ -222,11 +249,23 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "accounting_method",
             "tax_year_start",
             "tax_year_end",
+            # Page 1 header flags
+            "is_initial_return",
+            "is_final_return",
+            "is_name_change",
+            "is_address_change",
+            "is_amended_return",
+            "s_election_date",
+            "number_of_shareholders",
+            "product_or_service",
+            "business_activity_code",
+            # Nested data
             "field_values",
             "other_deductions",
             "officers",
             "shareholders",
             "rental_properties",
+            "preparer_info",
             "created_at",
             "updated_at",
         )

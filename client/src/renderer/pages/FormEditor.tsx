@@ -87,6 +87,7 @@ interface EntityInfo {
   entity_type: string;
   legal_name: string;
   ein: string;
+  phone: string;
   address_line1: string;
   address_line2: string;
   city: string;
@@ -97,6 +98,24 @@ interface EntityInfo {
   business_activity: string;
   naics_code: string;
   client: string;
+}
+
+interface PreparerInfoData {
+  id: string;
+  preparer_name: string;
+  ptin: string;
+  signature_date: string | null;
+  is_self_employed: boolean;
+  firm_name: string;
+  firm_ein: string;
+  firm_phone: string;
+  firm_address: string;
+  firm_city: string;
+  firm_state: string;
+  firm_zip: string;
+  designee_name: string;
+  designee_phone: string;
+  designee_pin: string;
 }
 
 interface TaxReturnData {
@@ -111,11 +130,21 @@ interface TaxReturnData {
   accounting_method: string;
   tax_year_start: string | null;
   tax_year_end: string | null;
+  is_initial_return: boolean;
+  is_final_return: boolean;
+  is_name_change: boolean;
+  is_address_change: boolean;
+  is_amended_return: boolean;
+  s_election_date: string | null;
+  number_of_shareholders: number | null;
+  product_or_service: string;
+  business_activity_code: string;
   field_values: FieldValue[];
   other_deductions: OtherDeductionRow[];
   officers: OfficerRow[];
   shareholders: ShareholderRow[];
   rental_properties: RentalPropertyRow[];
+  preparer_info: PreparerInfoData | null;
   created_at: string;
   updated_at: string;
 }
@@ -206,11 +235,12 @@ function computeFields(fieldValues: FieldValue[]): FieldValue[] {
 /** Each tab can show one or more section codes. */
 const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "info", label: "Info", sections: [] },
+  { id: "preparer", label: "Preparer", sections: [] },
   { id: "shareholders", label: "Shareholders", sections: [] },
-  { id: "page1", label: "Income & Deductions", sections: ["page1_income", "sched_a", "page1_deductions", "page1_tax"] },
+  { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions", "page1_tax"] },
   { id: "rental", label: "Rental (8825)", sections: [] },
-  { id: "sched_b", label: "Schedule B", sections: ["sched_b"] },
-  { id: "sched_k", label: "Schedule K", sections: ["sched_k"] },
+  { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
+  { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
   { id: "balance_sheets", label: "Balance Sheets", sections: ["sched_l", "sched_m1", "sched_m2"] },
 ];
 
@@ -447,7 +477,7 @@ export default function FormEditor() {
       </div>
 
       {/* Tab bar */}
-      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border">
+      <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
         {SECTION_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -491,6 +521,12 @@ export default function FormEditor() {
           fieldsBySection={fieldsBySection}
           onChange={handleFieldChange}
         />
+      ) : activeTab === "preparer" ? (
+        <PreparerSection
+          taxReturnId={taxReturnId!}
+          initialData={returnData.preparer_info}
+          onRefresh={refreshReturn}
+        />
       ) : (
         <StandardSection
           sections={activeTabDef?.sections ?? []}
@@ -528,6 +564,17 @@ function InfoSection({
   const [taxYearEnd, setTaxYearEnd] = useState(
     returnData.tax_year_end || ""
   );
+  const [isInitialReturn, setIsInitialReturn] = useState(returnData.is_initial_return ?? false);
+  const [isFinalReturn, setIsFinalReturn] = useState(returnData.is_final_return ?? false);
+  const [isNameChange, setIsNameChange] = useState(returnData.is_name_change ?? false);
+  const [isAddressChange, setIsAddressChange] = useState(returnData.is_address_change ?? false);
+  const [isAmendedReturn, setIsAmendedReturn] = useState(returnData.is_amended_return ?? false);
+  const [sElectionDate, setSElectionDate] = useState(returnData.s_election_date || "");
+  const [numberOfShareholders, setNumberOfShareholders] = useState(
+    returnData.number_of_shareholders != null ? String(returnData.number_of_shareholders) : ""
+  );
+  const [productOrService, setProductOrService] = useState(returnData.product_or_service || "");
+  const [businessActivityCode, setBusinessActivityCode] = useState(returnData.business_activity_code || "");
 
   // Officers
   const [officers, setOfficers] = useState<OfficerRow[]>(
@@ -535,6 +582,7 @@ function InfoSection({
   );
   const [editingOfficer, setEditingOfficer] = useState<Partial<OfficerRow> | null>(null);
   const [officerSaving, setOfficerSaving] = useState(false);
+  const [alsoCreateShareholder, setAlsoCreateShareholder] = useState(false);
 
   useEffect(() => {
     if (!returnData.entity_id) {
@@ -552,6 +600,17 @@ function InfoSection({
     setAccountingMethod(returnData.accounting_method || "cash");
     setTaxYearStart(returnData.tax_year_start || "");
     setTaxYearEnd(returnData.tax_year_end || "");
+    setIsInitialReturn(returnData.is_initial_return ?? false);
+    setIsFinalReturn(returnData.is_final_return ?? false);
+    setIsNameChange(returnData.is_name_change ?? false);
+    setIsAddressChange(returnData.is_address_change ?? false);
+    setIsAmendedReturn(returnData.is_amended_return ?? false);
+    setSElectionDate(returnData.s_election_date || "");
+    setNumberOfShareholders(
+      returnData.number_of_shareholders != null ? String(returnData.number_of_shareholders) : ""
+    );
+    setProductOrService(returnData.product_or_service || "");
+    setBusinessActivityCode(returnData.business_activity_code || "");
     setOfficers(returnData.officers || []);
   }, [returnData]);
 
@@ -583,6 +642,7 @@ function InfoSection({
     const res = await patch(`/entities/${entity.id}/`, {
       legal_name: entity.legal_name,
       ein: entity.ein,
+      phone: entity.phone,
       address_line1: entity.address_line1,
       address_line2: entity.address_line2,
       city: entity.city,
@@ -610,6 +670,15 @@ function InfoSection({
       accounting_method: accountingMethod,
       tax_year_start: taxYearStart || null,
       tax_year_end: taxYearEnd || null,
+      is_initial_return: isInitialReturn,
+      is_final_return: isFinalReturn,
+      is_name_change: isNameChange,
+      is_address_change: isAddressChange,
+      is_amended_return: isAmendedReturn,
+      s_election_date: sElectionDate || null,
+      number_of_shareholders: numberOfShareholders ? parseInt(numberOfShareholders) : null,
+      product_or_service: productOrService,
+      business_activity_code: businessActivityCode,
     });
     setSaving(false);
     if (res.ok) {
@@ -651,8 +720,17 @@ function InfoSection({
         compensation: editingOfficer.compensation || "0",
       });
       if (res.ok) {
+        // Also create matching shareholder if checkbox was checked
+        if (alsoCreateShareholder) {
+          await post(`/tax-returns/${returnData.id}/shareholders/`, {
+            name: editingOfficer.name || "",
+            ssn: editingOfficer.ssn || "",
+            ownership_percentage: editingOfficer.percent_ownership || "0",
+          });
+        }
         await onRefresh();
         setEditingOfficer(null);
+        setAlsoCreateShareholder(false);
       }
     }
     setOfficerSaving(false);
@@ -703,6 +781,18 @@ function InfoSection({
                   onChange={(e) => handleEntityChange("ein", e.target.value)}
                   className={inputClass}
                   placeholder="XX-XXXXXXX"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                  Phone
+                </label>
+                <input
+                  type="text"
+                  value={entity.phone || ""}
+                  onChange={(e) => handleEntityChange("phone", e.target.value)}
+                  className={inputClass}
+                  placeholder="XXX-XXX-XXXX"
                 />
               </div>
               <div>
@@ -871,6 +961,117 @@ function InfoSection({
                 className={inputClass}
               />
             </div>
+
+            {/* S-Corp specific fields */}
+            {returnData.form_code === "1120-S" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                      S Election Date
+                    </label>
+                    <input
+                      type="date"
+                      value={sElectionDate}
+                      onChange={(e) => setSElectionDate(e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                      Number of Shareholders
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={numberOfShareholders}
+                      onChange={(e) => setNumberOfShareholders(e.target.value.replace(/[^0-9]/g, ""))}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Product or Service
+              </label>
+              <input
+                type="text"
+                value={productOrService}
+                onChange={(e) => setProductOrService(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. Tax Preparation Services"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Business Activity Code
+              </label>
+              <input
+                type="text"
+                value={businessActivityCode}
+                onChange={(e) => setBusinessActivityCode(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. 541211"
+              />
+            </div>
+
+            {/* Return flags */}
+            <div>
+              <label className="mb-2 block text-xs font-medium text-tx-secondary">
+                Return Flags
+              </label>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isInitialReturn}
+                    onChange={(e) => setIsInitialReturn(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Initial return
+                </label>
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFinalReturn}
+                    onChange={(e) => setIsFinalReturn(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Final return
+                </label>
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isNameChange}
+                    onChange={(e) => setIsNameChange(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Name change
+                </label>
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isAddressChange}
+                    onChange={(e) => setIsAddressChange(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Address change
+                </label>
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isAmendedReturn}
+                    onChange={(e) => setIsAmendedReturn(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Amended return
+                </label>
+              </div>
+            </div>
+
             <div className="pt-1">
               <p className="text-xs text-tx-muted">
                 Form: {returnData.form_code} | Year: {returnData.year} | Status:{" "}
@@ -919,7 +1120,7 @@ function InfoSection({
 
         {officers.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm zebra-table">
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="pb-2 pr-4 font-semibold text-tx-secondary">Name</th>
@@ -934,7 +1135,7 @@ function InfoSection({
                   <th className="pb-2 font-semibold text-tx-secondary">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-subtle">
+              <tbody className="divide-y divide-border-subtle zebra-rows">
                 {officers.map((o) => (
                   <tr key={o.id}>
                     <td className="py-2 pr-4 text-tx">{o.name}</td>
@@ -1054,6 +1255,20 @@ function InfoSection({
                 />
               </div>
             </div>
+            {/* Cross-link checkbox — only show for new officers */}
+            {!editingOfficer.id && (
+              <div className="mt-3">
+                <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={alsoCreateShareholder}
+                    onChange={(e) => setAlsoCreateShareholder(e.target.checked)}
+                    className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                  />
+                  Also add as shareholder
+                </label>
+              </div>
+            )}
             <div className="mt-3 flex gap-2">
               <button
                 onClick={saveOfficer}
@@ -1063,13 +1278,303 @@ function InfoSection({
                 {officerSaving ? "Saving..." : "Save"}
               </button>
               <button
-                onClick={() => setEditingOfficer(null)}
+                onClick={() => { setEditingOfficer(null); setAlsoCreateShareholder(false); }}
                 className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs font-semibold text-tx shadow-sm transition hover:bg-border"
               >
                 Cancel
               </button>
             </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Preparer Section — Preparer, Firm, and Third-Party Designee
+// ---------------------------------------------------------------------------
+
+function PreparerSection({
+  taxReturnId,
+  initialData,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  initialData: PreparerInfoData | null;
+  onRefresh: () => Promise<void>;
+}) {
+  const [data, setData] = useState<PreparerInfoData | null>(initialData);
+  const [loading, setLoading] = useState(!initialData);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Fetch preparer info (get-or-create)
+  useEffect(() => {
+    if (initialData) {
+      setData(initialData);
+      setLoading(false);
+      return;
+    }
+    get(`/tax-returns/${taxReturnId}/preparer/`).then((res) => {
+      if (res.ok) setData(res.data as PreparerInfoData);
+      setLoading(false);
+    });
+  }, [taxReturnId, initialData]);
+
+  function handleChange(field: keyof PreparerInfoData, value: string | boolean) {
+    if (!data) return;
+    setData({ ...data, [field]: value });
+  }
+
+  function formatEIN(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 9);
+    if (digits.length > 2) return digits.slice(0, 2) + "-" + digits.slice(2);
+    return digits;
+  }
+
+  async function savePreparer() {
+    if (!data) return;
+    setSaving(true);
+    setSaveMsg(null);
+    const res = await patch(`/tax-returns/${taxReturnId}/preparer/`, {
+      preparer_name: data.preparer_name,
+      ptin: data.ptin,
+      signature_date: data.signature_date || null,
+      is_self_employed: data.is_self_employed,
+      firm_name: data.firm_name,
+      firm_ein: data.firm_ein,
+      firm_phone: data.firm_phone,
+      firm_address: data.firm_address,
+      firm_city: data.firm_city,
+      firm_state: data.firm_state,
+      firm_zip: data.firm_zip,
+      designee_name: data.designee_name,
+      designee_phone: data.designee_phone,
+      designee_pin: data.designee_pin,
+    });
+    setSaving(false);
+    if (res.ok) {
+      setData(res.data as PreparerInfoData);
+      await onRefresh();
+      setSaveMsg("Preparer info saved.");
+      setTimeout(() => setSaveMsg(null), 3000);
+    } else {
+      setSaveMsg("Save failed.");
+    }
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  if (loading) return <p className="text-sm text-tx-secondary">Loading preparer info...</p>;
+  if (!data) return <p className="text-sm text-tx-muted">Unable to load preparer info.</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* Paid Preparer */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-bold text-tx">Paid Preparer</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Preparer Name
+              </label>
+              <input
+                type="text"
+                value={data.preparer_name || ""}
+                onChange={(e) => handleChange("preparer_name", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                PTIN
+              </label>
+              <input
+                type="text"
+                value={data.ptin || ""}
+                onChange={(e) => handleChange("ptin", e.target.value)}
+                className={inputClass}
+                placeholder="P00000000"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Signature Date
+              </label>
+              <input
+                type="date"
+                value={data.signature_date || ""}
+                onChange={(e) => handleChange("signature_date", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.is_self_employed}
+                  onChange={(e) => handleChange("is_self_employed", e.target.checked)}
+                  className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                />
+                Self-employed
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Firm Information */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-bold text-tx">Firm Information</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Firm Name
+              </label>
+              <input
+                type="text"
+                value={data.firm_name || ""}
+                onChange={(e) => handleChange("firm_name", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Firm EIN
+              </label>
+              <input
+                type="text"
+                value={data.firm_ein || ""}
+                onChange={(e) => handleChange("firm_ein", formatEIN(e.target.value))}
+                className={inputClass}
+                placeholder="XX-XXXXXXX"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-tx-secondary">
+              Firm Phone
+            </label>
+            <input
+              type="text"
+              value={data.firm_phone || ""}
+              onChange={(e) => handleChange("firm_phone", e.target.value)}
+              className={inputClass}
+              placeholder="XXX-XXX-XXXX"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-tx-secondary">
+              Firm Address
+            </label>
+            <input
+              type="text"
+              value={data.firm_address || ""}
+              onChange={(e) => handleChange("firm_address", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                City
+              </label>
+              <input
+                type="text"
+                value={data.firm_city || ""}
+                onChange={(e) => handleChange("firm_city", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                State
+              </label>
+              <input
+                type="text"
+                value={data.firm_state || ""}
+                onChange={(e) => handleChange("firm_state", e.target.value)}
+                className={inputClass}
+                maxLength={2}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                ZIP Code
+              </label>
+              <input
+                type="text"
+                value={data.firm_zip || ""}
+                onChange={(e) => handleChange("firm_zip", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Third-Party Designee */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-bold text-tx">Third-Party Designee</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-tx-secondary">
+              Designee Name
+            </label>
+            <input
+              type="text"
+              value={data.designee_name || ""}
+              onChange={(e) => handleChange("designee_name", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Phone
+              </label>
+              <input
+                type="text"
+                value={data.designee_phone || ""}
+                onChange={(e) => handleChange("designee_phone", e.target.value)}
+                className={inputClass}
+                placeholder="XXX-XXX-XXXX"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                PIN
+              </label>
+              <input
+                type="text"
+                value={data.designee_pin || ""}
+                onChange={(e) => handleChange("designee_pin", e.target.value)}
+                className={inputClass}
+                maxLength={5}
+                placeholder="5-digit PIN"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Save button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={savePreparer}
+          disabled={saving}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Preparer Info"}
+        </button>
+        {saveMsg && (
+          <span className="text-sm font-medium text-success">{saveMsg}</span>
         )}
       </div>
     </div>
@@ -1193,7 +1698,7 @@ function IncomeDeductionsSection({
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
           <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
         </div>
-        <div className="divide-y divide-border-subtle">
+        <div className="divide-y divide-border-subtle zebra-rows">
           {incomeFields.map((fv) => (
             <FieldRow key={fv.id} field={fv} onChange={onChange} />
           ))}
@@ -1206,7 +1711,7 @@ function IncomeDeductionsSection({
           <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
             Cost of Goods Sold
           </div>
-          <div className="divide-y divide-border-subtle">
+          <div className="divide-y divide-border-subtle zebra-rows">
             {cogsFields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} />
             ))}
@@ -1232,7 +1737,7 @@ function IncomeDeductionsSection({
           <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
           <div className="w-16 shrink-0" />
         </div>
-        <div className="divide-y divide-border-subtle">
+        <div className="divide-y divide-border-subtle zebra-rows">
           {mergedDeductions.map((item, idx) => {
             if (item.type === "form_line") {
               return (
@@ -1304,7 +1809,7 @@ function IncomeDeductionsSection({
           <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
             Tax and Payments
           </div>
-          <div className="divide-y divide-border-subtle">
+          <div className="divide-y divide-border-subtle zebra-rows">
             {taxFields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} />
             ))}
@@ -1428,7 +1933,7 @@ function OtherDeductionsSection({
             </div>
           </div>
 
-          <div className="divide-y divide-border-subtle">
+          <div className="divide-y divide-border-subtle zebra-rows">
             {localRows.map((row) => (
               <div key={row.id} className="flex items-center gap-3 px-4 py-2.5">
                 {/* Description — combobox style (dropdown of categories + freetext) */}
@@ -1529,6 +2034,7 @@ function ShareholdersSection({
 }) {
   const [editing, setEditing] = useState<Partial<ShareholderRow> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [alsoCreateOfficer, setAlsoCreateOfficer] = useState(false);
 
   function formatSSN(raw: string): string {
     const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -1559,10 +2065,21 @@ function ShareholdersSection({
     if (editing.id) {
       await patch(`/tax-returns/${taxReturnId}/shareholders/${editing.id}/`, payload);
     } else {
-      await post(`/tax-returns/${taxReturnId}/shareholders/`, payload);
+      const res = await post(`/tax-returns/${taxReturnId}/shareholders/`, payload);
+      // Also create matching officer if checkbox was checked
+      if (res.ok && alsoCreateOfficer) {
+        await post(`/tax-returns/${taxReturnId}/officers/`, {
+          name: editing.name || "",
+          ssn: editing.ssn || "",
+          percent_ownership: editing.ownership_percentage || "0",
+          title: "",
+          compensation: "0",
+        });
+      }
     }
     await onRefresh();
     setEditing(null);
+    setAlsoCreateOfficer(false);
     setSaving(false);
   }
 
@@ -1644,7 +2161,7 @@ function ShareholdersSection({
 
       {shareholders.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm zebra-table">
             <thead>
               <tr className="border-b border-border text-left">
                 <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">Name</th>
@@ -1656,7 +2173,7 @@ function ShareholdersSection({
                 <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-subtle">
+            <tbody className="divide-y divide-border-subtle zebra-rows">
               {shareholders.map((s) => (
                 <tr key={s.id}>
                   <td className="px-4 py-2 text-tx">
@@ -1807,11 +2324,25 @@ function ShareholdersSection({
               <CurrencyInput value={editing.health_insurance_premium || "0"} onValueChange={(v) => setEditing({ ...editing, health_insurance_premium: v })} />
             </div>
           </div>
+          {/* Cross-link checkbox — only show for new shareholders */}
+          {!editing.id && (
+            <div className="mt-3">
+              <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alsoCreateOfficer}
+                  onChange={(e) => setAlsoCreateOfficer(e.target.checked)}
+                  className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
+                />
+                Also add as officer
+              </label>
+            </div>
+          )}
           <div className="mt-3 flex gap-2">
             <button onClick={saveShareholder} disabled={saving} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50">
               {saving ? "Saving..." : "Save"}
             </button>
-            <button onClick={() => setEditing(null)} className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs font-semibold text-tx shadow-sm transition hover:bg-border">
+            <button onClick={() => { setEditing(null); setAlsoCreateOfficer(false); }} className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs font-semibold text-tx shadow-sm transition hover:bg-border">
               Cancel
             </button>
           </div>
@@ -1865,8 +2396,9 @@ function RentalPropertiesSection({
 
   async function addProperty() {
     setSaving(true);
+    const propNum = properties.length + 1;
     const res = await post(`/tax-returns/${taxReturnId}/rental-properties/`, {
-      description: "",
+      description: `Property ${propNum}`,
       property_type: "6",
       rents_received: "0",
     });
@@ -1922,7 +2454,7 @@ function RentalPropertiesSection({
       )}
 
       {properties.length > 0 && (
-        <div className="divide-y divide-border-subtle">
+        <div className="divide-y divide-border-subtle zebra-rows">
           {properties.map((prop) => {
             const isExpanded = expandedId === prop.id;
             return (
@@ -2093,7 +2625,7 @@ function BalanceSheetsSection({
           <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
             Schedule M-1 — Reconciliation of Income (Loss)
           </div>
-          <div className="divide-y divide-border-subtle">
+          <div className="divide-y divide-border-subtle zebra-rows">
             {m1Fields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} />
             ))}
@@ -2105,7 +2637,7 @@ function BalanceSheetsSection({
           <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
             Schedule M-2 — Analysis of AAA, OAA, and STPI
           </div>
-          <div className="divide-y divide-border-subtle">
+          <div className="divide-y divide-border-subtle zebra-rows">
             {m2Fields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} />
             ))}
@@ -2164,7 +2696,7 @@ function StandardSection({
                 </div>
               </div>
             )}
-            <div className="divide-y divide-border-subtle">
+            <div className="divide-y divide-border-subtle zebra-rows">
               {fields.map((fv) => (
                 <FieldRow key={fv.id} field={fv} onChange={onChange} />
               ))}
@@ -2245,7 +2777,7 @@ function ScheduleLSection({
         </div>
       </div>
 
-      <div className="divide-y divide-border-subtle">
+      <div className="divide-y divide-border-subtle zebra-rows">
         {groups.map((g, i) => {
           const lineNum = g.boy?.line_number?.replace(/[a-b]$/, "") ||
             g.eoy?.line_number?.replace(/[d-e]$/, "") || "";

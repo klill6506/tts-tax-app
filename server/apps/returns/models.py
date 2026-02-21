@@ -156,6 +156,30 @@ class TaxReturn(models.Model):
     )
     tax_year_start = models.DateField(null=True, blank=True)
     tax_year_end = models.DateField(null=True, blank=True)
+
+    # Page 1 header checkboxes
+    is_initial_return = models.BooleanField(default=False)
+    is_final_return = models.BooleanField(default=False)
+    is_name_change = models.BooleanField(default=False)
+    is_address_change = models.BooleanField(default=False)
+    is_amended_return = models.BooleanField(default=False)
+    s_election_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date S-Corp election was effective.",
+    )
+    number_of_shareholders = models.IntegerField(
+        null=True, blank=True,
+        help_text="Number of shareholders during any part of the tax year.",
+    )
+    product_or_service = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Principal product or service (IRS line F).",
+    )
+    business_activity_code = models.CharField(
+        max_length=10, blank=True, default="",
+        help_text="Business activity code (IRS line I).",
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -387,6 +411,8 @@ class RentalProperty(models.Model):
     # Property info
     description = models.CharField(
         max_length=255,
+        blank=True,
+        default="",
         help_text="Property address or description.",
     )
     property_type = models.CharField(
@@ -440,3 +466,48 @@ class RentalProperty(models.Model):
 
     def __str__(self):
         return f"{self.description} (net: {self.net_rent})"
+
+
+# ---------------------------------------------------------------------------
+# Preparer Info (per return)
+# ---------------------------------------------------------------------------
+
+
+class PreparerInfo(models.Model):
+    """Paid preparer information for a tax return (page 5 / signature block)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.OneToOneField(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="preparer_info",
+    )
+
+    # Preparer
+    preparer_name = models.CharField(max_length=255, blank=True, default="")
+    ptin = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="Preparer Tax Identification Number.",
+    )
+    signature_date = models.DateField(null=True, blank=True)
+    is_self_employed = models.BooleanField(default=False)
+
+    # Firm
+    firm_name = models.CharField(max_length=255, blank=True, default="")
+    firm_ein = models.CharField(max_length=20, blank=True, default="")
+    firm_phone = models.CharField(max_length=20, blank=True, default="")
+    firm_address = models.CharField(max_length=255, blank=True, default="")
+    firm_city = models.CharField(max_length=100, blank=True, default="")
+    firm_state = models.CharField(max_length=2, blank=True, default="")
+    firm_zip = models.CharField(max_length=10, blank=True, default="")
+
+    # Third-party designee
+    designee_name = models.CharField(max_length=255, blank=True, default="")
+    designee_phone = models.CharField(max_length=20, blank=True, default="")
+    designee_pin = models.CharField(max_length=10, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Preparer: {self.preparer_name or '(blank)'}"

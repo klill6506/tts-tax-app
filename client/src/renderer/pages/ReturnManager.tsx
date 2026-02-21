@@ -227,7 +227,7 @@ export default function ReturnManager() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border zebra-table">
             <thead className="bg-surface-alt">
               <tr>
                 <SortableHeader col="client_name" label="Client" onSort={handleSort} indicator={<SortIndicator col="client_name" />} />
@@ -241,8 +241,8 @@ export default function ReturnManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {sorted.map((r, idx) => (
-                <tr key={r.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface-alt/50" : ""}`}>
+              {sorted.map((r) => (
+                <tr key={r.id} className="transition hover:bg-primary-subtle">
                   <td className="px-4 py-3">
                     <Link to={`/clients/${r.client_id}`} className="text-sm font-medium text-primary-text hover:underline">
                       {r.client_name}

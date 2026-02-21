@@ -340,24 +340,101 @@ def _build_header_data(tax_return) -> dict[str, str]:
     """Extract header/entity info from a TaxReturn for the form header."""
     tax_year = tax_return.tax_year
     entity = tax_year.entity
-    client = entity.client
 
-    # Build entity name: use entity name or fall back to client name
-    entity_name = entity.name or client.name
+    # Build entity name: use legal_name, fall back to name
+    entity_name = entity.legal_name or entity.name
 
-    header = {
+    header: dict[str, str] = {
         "entity_name": entity_name,
     }
 
-    # Add address fields if available on the entity/client model
-    for attr in ("address_street", "address_city_state_zip", "ein"):
-        val = getattr(entity, attr, None) or getattr(client, attr, None)
-        if val:
-            header[attr] = str(val)
+    # Address fields from entity
+    if entity.address_line1:
+        header["address_street"] = entity.address_line1
+    city_state_zip = ", ".join(p for p in [entity.city, entity.state] if p)
+    if entity.zip_code:
+        city_state_zip += f" {entity.zip_code}"
+    if city_state_zip:
+        header["address_city_state_zip"] = city_state_zip
+
+    if entity.ein:
+        header["ein"] = entity.ein
+    if entity.date_incorporated:
+        header["date_incorporated"] = entity.date_incorporated.strftime("%m/%d/%Y")
+    if entity.state_incorporated:
+        header["state_incorporated"] = entity.state_incorporated
 
     # Tax year dates
-    header["tax_year_begin"] = f"01/01/{tax_year.year}"
-    header["tax_year_end"] = f"12/31/{tax_year.year}"
+    if tax_return.tax_year_start:
+        header["tax_year_begin"] = tax_return.tax_year_start.strftime("%m/%d/%Y")
+    else:
+        header["tax_year_begin"] = f"01/01/{tax_year.year}"
+    if tax_return.tax_year_end:
+        header["tax_year_end"] = tax_return.tax_year_end.strftime("%m/%d/%Y")
+    else:
+        header["tax_year_end"] = f"12/31/{tax_year.year}"
+
+    # Phone
+    if getattr(entity, "phone", ""):
+        header["phone"] = entity.phone
+
+    # Page 1 header checkboxes (render "X" if True)
+    if tax_return.is_initial_return:
+        header["chk_initial_return"] = "X"
+    if tax_return.is_final_return:
+        header["chk_final_return"] = "X"
+    if tax_return.is_name_change:
+        header["chk_name_change"] = "X"
+    if tax_return.is_address_change:
+        header["chk_address_change"] = "X"
+    if tax_return.is_amended_return:
+        header["chk_amended_return"] = "X"
+
+    # S election date
+    if tax_return.s_election_date:
+        header["s_election_date"] = tax_return.s_election_date.strftime("%m/%d/%Y")
+
+    # Number of shareholders
+    if tax_return.number_of_shareholders:
+        header["number_of_shareholders"] = str(tax_return.number_of_shareholders)
+
+    # Product or service
+    if tax_return.product_or_service:
+        header["product_or_service"] = tax_return.product_or_service
+
+    # Business activity code
+    if tax_return.business_activity_code:
+        header["business_activity_code"] = tax_return.business_activity_code
+
+    # Preparer info (if exists)
+    try:
+        prep = tax_return.preparer_info
+        if prep.preparer_name:
+            header["preparer_name"] = prep.preparer_name
+        if prep.ptin:
+            header["preparer_ptin"] = prep.ptin
+        if prep.signature_date:
+            header["preparer_date"] = prep.signature_date.strftime("%m/%d/%Y")
+        if prep.is_self_employed:
+            header["preparer_self_employed"] = "X"
+        if prep.firm_name:
+            header["firm_name"] = prep.firm_name
+        if prep.firm_ein:
+            header["firm_ein"] = prep.firm_ein
+        if prep.firm_phone:
+            header["firm_phone"] = prep.firm_phone
+        # Combine firm address
+        firm_addr_parts = [prep.firm_address]
+        firm_csz = ", ".join(p for p in [prep.firm_city, prep.firm_state] if p)
+        if prep.firm_zip:
+            firm_csz += f" {prep.firm_zip}"
+        if firm_csz:
+            firm_addr_parts.append(firm_csz)
+        firm_full = ", ".join(p for p in firm_addr_parts if p)
+        if firm_full:
+            header["firm_address"] = firm_full
+    except Exception:
+        pass  # No preparer info yet
 
     return header
 

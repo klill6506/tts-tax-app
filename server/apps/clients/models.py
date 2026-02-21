@@ -85,6 +85,11 @@ class Entity(models.Model):
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=2, blank=True, default="")
     zip_code = models.CharField(max_length=10, blank=True, default="")
+    # Contact
+    phone = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="Business phone number.",
+    )
     # Business info
     date_incorporated = models.DateField(null=True, blank=True)
     state_incorporated = models.CharField(max_length=2, blank=True, default="")

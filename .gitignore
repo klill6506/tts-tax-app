@@ -31,3 +31,10 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Reference PDFs (large binaries, not tracked)
+Official IRS Forms/
+Official IRS Instructions/
+
+# Electron client local env
+client/.env.local

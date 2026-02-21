@@ -156,7 +156,7 @@ export default function TrialBalance() {
 
           {/* Table */}
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border zebra-table">
               <thead className="bg-surface">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">

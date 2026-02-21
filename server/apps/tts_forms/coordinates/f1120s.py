@@ -65,12 +65,78 @@ HEADER_FIELDS: dict[str, FieldCoord] = {
     "date_incorporated": FieldCoord(
         page=0, x=464, y=652, width=120, alignment="left"
     ),
+    # F — State of incorporation
+    "state_incorporated": FieldCoord(
+        page=0, x=464, y=632, width=120, alignment="left"
+    ),
     # Tax year beginning / ending (in the header banner)
     "tax_year_begin": FieldCoord(
         page=0, x=185, y=697, width=80, alignment="left", font_size=8
     ),
     "tax_year_end": FieldCoord(
         page=0, x=365, y=697, width=80, alignment="left", font_size=8
+    ),
+    # G — Checkboxes: Initial return, Final return, Name change,
+    #     Address change, Amended return, S election date
+    "chk_initial_return": FieldCoord(
+        page=0, x=65, y=610, width=10, alignment="left", font_size=9
+    ),
+    "chk_final_return": FieldCoord(
+        page=0, x=132, y=610, width=10, alignment="left", font_size=9
+    ),
+    "chk_name_change": FieldCoord(
+        page=0, x=198, y=610, width=10, alignment="left", font_size=9
+    ),
+    "chk_address_change": FieldCoord(
+        page=0, x=275, y=610, width=10, alignment="left", font_size=9
+    ),
+    "chk_amended_return": FieldCoord(
+        page=0, x=362, y=610, width=10, alignment="left", font_size=9
+    ),
+    "s_election_date": FieldCoord(
+        page=0, x=490, y=610, width=90, alignment="left", font_size=8
+    ),
+    # H — Number of shareholders
+    "number_of_shareholders": FieldCoord(
+        page=0, x=140, y=596, width=50, alignment="left", font_size=9
+    ),
+    # I — Business activity code
+    "business_activity_code": FieldCoord(
+        page=0, x=464, y=596, width=90, alignment="left", font_size=9
+    ),
+    # Product or service
+    "product_or_service": FieldCoord(
+        page=0, x=132, y=583, width=220, alignment="left", font_size=8
+    ),
+    # Phone number
+    "phone": FieldCoord(
+        page=0, x=400, y=583, width=120, alignment="left", font_size=8
+    ),
+
+    # ----- Page 4: Paid Preparer Use Only (bottom of last page) -----
+    "preparer_name": FieldCoord(
+        page=4, x=104, y=322, width=170, alignment="left", font_size=8
+    ),
+    "preparer_date": FieldCoord(
+        page=4, x=320, y=322, width=70, alignment="left", font_size=8
+    ),
+    "preparer_ptin": FieldCoord(
+        page=4, x=480, y=322, width=100, alignment="left", font_size=8
+    ),
+    "preparer_self_employed": FieldCoord(
+        page=4, x=416, y=322, width=10, alignment="left", font_size=9
+    ),
+    "firm_name": FieldCoord(
+        page=4, x=104, y=305, width=310, alignment="left", font_size=8
+    ),
+    "firm_ein": FieldCoord(
+        page=4, x=480, y=305, width=100, alignment="left", font_size=8
+    ),
+    "firm_address": FieldCoord(
+        page=4, x=104, y=288, width=310, alignment="left", font_size=8
+    ),
+    "firm_phone": FieldCoord(
+        page=4, x=480, y=288, width=100, alignment="left", font_size=8
     ),
 }
 

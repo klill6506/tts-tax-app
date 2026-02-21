@@ -255,7 +255,7 @@ export default function ClientDetail() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border zebra-table">
             <thead className="bg-surface-alt">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Entity</th>
@@ -266,11 +266,11 @@ export default function ClientDetail() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {filtered.map((entity, idx) => {
+              {filtered.map((entity) => {
                 const tys = taxYearCounts[entity.id] || [];
                 const latestTy = tys.length > 0 ? tys[0] : null; // already sorted -year from server
                 return (
-                  <tr key={entity.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface/70" : ""}`}>
+                  <tr key={entity.id} className="transition hover:bg-primary-subtle">
                     <td className="px-4 py-3">
                       <Link
                         to={`/clients/${clientId}/entities/${entity.id}`}

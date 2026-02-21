@@ -26,6 +26,7 @@ class EntitySerializer(serializers.ModelSerializer):
             "entity_type",
             "legal_name",
             "ein",
+            "phone",
             "address_line1",
             "address_line2",
             "city",
@@ -50,7 +51,7 @@ class EntityCreateSerializer(serializers.ModelSerializer):
         model = Entity
         fields = (
             "id", "client", "name", "entity_type",
-            "legal_name", "ein",
+            "legal_name", "ein", "phone",
             "address_line1", "address_line2", "city", "state", "zip_code",
             "date_incorporated", "state_incorporated",
             "business_activity", "naics_code",

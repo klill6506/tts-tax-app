@@ -249,7 +249,7 @@ export default function EntityDetail() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border zebra-table">
             <thead className="bg-surface-alt">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Tax Year</th>
@@ -259,8 +259,8 @@ export default function EntityDetail() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {taxYears.map((ty, idx) => (
-                <tr key={ty.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface/70" : ""}`}>
+              {taxYears.map((ty) => (
+                <tr key={ty.id} className="transition hover:bg-primary-subtle">
                   <td className="px-4 py-3">
                     <span className="text-sm font-semibold text-tx">
                       {ty.year}

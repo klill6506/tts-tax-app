@@ -349,7 +349,7 @@ export default function Clients() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border zebra-table">
             <thead className="bg-surface-alt">
               <tr>
                 <SortableHeader field="name" label="Client" current={sortField} dir={sortDir} onSort={toggleSort} />

@@ -176,7 +176,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border zebra-table">
             <thead className="bg-surface-alt">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Client</th>
@@ -187,8 +187,8 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {filtered.map((r, idx) => (
-                <tr key={r.id} className={`transition hover:bg-primary-subtle ${idx % 2 === 1 ? "bg-surface-alt/50" : ""}`}>
+              {filtered.map((r) => (
+                <tr key={r.id} className="transition hover:bg-primary-subtle">
                   <td className="px-4 py-3">
                     <Link to={`/clients/${r.id}`} className="text-sm font-semibold text-primary-text hover:underline">
                       {r.name}

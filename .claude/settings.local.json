@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build)",
+      "Bash(curl:*)",
+      "Bash(poetry run python:*)",
+      "Bash(set:*)",
+      "Bash(pushd:*)",
+      "Bash(poetry run pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRedesign UI: menu bar, Client/Entity Manager, dark toolbar, auto-save\n\n- Replace nav bar with full menu bar \\(File, Clients, Returns, Tools, Reports, Admin, Help\\)\n- Add dark toolbar with back navigation, tax year selector, user avatar, status bar\n- Dashboard becomes Client Manager \\(home page\\) with search, entity counts, CRUD\n- ClientDetail becomes Entity Manager with table view, search, create/delete entities\n- New EntityDetail page for tax years, trial balance, and return management per entity\n- Clients page gets sortable columns, return status filter, enriched row data\n- Enable all entity types \\(partnership, ccorp, trust, individual\\) with migration\n- FormEditor: add 10-second auto-save interval, remove manual Save All button\n- Add Start TTS Tax App.bat launcher script for one-click dev startup\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(D:)",
+      "Bash(powershell.exe -Command \"cd D:\\\\dev\\\\tts-tax-app\\\\server; poetry run python -c ''from apps.returns.models import FormSection; [print\\(s.code, s.title\\) for s in FormSection.objects.filter\\(form__code=\"\"1120-S\"\"\\).order_by\\(\"\"sort_order\"\"\\)]''\")",
+      "Bash(powershell.exe -Command \"cd D:\\\\dev\\\\tts-tax-app\\\\server; $env:DJANGO_SETTINGS_MODULE=''config.settings.dev''; poetry run python -c ''import django; django.setup\\(\\); from apps.returns.models import FormSection; [print\\(s.code, s.title\\) for s in FormSection.objects.filter\\(form__code=\"\"1120-S\"\"\\).order_by\\(\"\"sort_order\"\"\\)]''\")",
+      "Bash(npx electron-vite:*)",
+      "Bash(git status:*)"
+    ]
+  }
+}

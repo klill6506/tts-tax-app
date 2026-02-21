@@ -6,6 +6,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "jsx": "react-jsx",
     "outDir": "dist/renderer",
     "rootDir": "src/renderer",
@@ -14,5 +15,5 @@
       "@/*": ["src/renderer/*"]
     }
   },
-  "include": ["src/renderer/**/*"]
+  "include": ["src/renderer/**/*", "../../package.json"]
 }

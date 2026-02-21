@@ -21,6 +21,7 @@ from .models import (
     FormLine,
     Officer,
     OtherDeduction,
+    PreparerInfo,
     RentalProperty,
     Shareholder,
     TaxReturn,
@@ -31,6 +32,7 @@ from .serializers import (
     FormDefinitionSerializer,
     OfficerSerializer,
     OtherDeductionSerializer,
+    PreparerInfoSerializer,
     RentalPropertySerializer,
     ShareholderSerializer,
     TaxReturnListSerializer,
@@ -175,6 +177,7 @@ class TaxReturnViewSet(
             "officers",
             "shareholders",
             "rental_properties",
+            "preparer_info",
         )
         # Filter by tax year UUID (existing)
         tax_year_id = self.request.query_params.get("tax_year")
@@ -285,11 +288,22 @@ class TaxReturnViewSet(
     def update_info(self, request, pk=None):
         """Update return-level header fields."""
         tax_return = self.get_object()
-        allowed = {"accounting_method", "tax_year_start", "tax_year_end", "status"}
+        allowed = {
+            "accounting_method", "tax_year_start", "tax_year_end", "status",
+            # Page 1 header flags
+            "is_initial_return", "is_final_return", "is_name_change",
+            "is_address_change", "is_amended_return",
+            "s_election_date", "number_of_shareholders",
+            "product_or_service", "business_activity_code",
+        }
         updated = 0
         for field in allowed:
             if field in request.data:
-                setattr(tax_return, field, request.data[field])
+                val = request.data[field]
+                # Handle null/blank for nullable fields
+                if val == "" and field in ("s_election_date", "number_of_shareholders"):
+                    val = None
+                setattr(tax_return, field, val)
                 updated += 1
         if updated:
             tax_return.save()
@@ -592,6 +606,30 @@ class TaxReturnViewSet(
             pass
 
         compute_return(tax_return)
+
+    # ------------------------------------------------------------------
+    # Preparer Info (get-or-create + patch)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "patch"], url_path="preparer")
+    def preparer(self, request, pk=None):
+        """Get or update preparer info for a return."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            info, _ = PreparerInfo.objects.get_or_create(
+                tax_return=tax_return,
+            )
+            return Response(PreparerInfoSerializer(info).data)
+
+        # PATCH
+        info, _ = PreparerInfo.objects.get_or_create(
+            tax_return=tax_return,
+        )
+        ser = PreparerInfoSerializer(info, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
 
     # ------------------------------------------------------------------
     # Standard deduction categories (static list)

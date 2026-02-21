@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, useMatch } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
+import { get } from "../lib/api";
+import pkg from "../../../package.json";
+
+const CLIENT_VERSION = pkg.version;
 
 // ---------------------------------------------------------------------------
 // Menu definitions — placeholder items get functionality later
@@ -10,6 +14,7 @@ import { useTheme } from "../lib/theme";
 interface MenuItem {
   label: string;
   to?: string;          // client-side route
+  action?: string;      // named action (e.g. "about")
   shortcut?: string;    // keyboard hint (display only)
   divider?: boolean;    // separator line
   disabled?: boolean;   // grayed out placeholder
@@ -96,7 +101,7 @@ const MENUS: MenuGroup[] = [
       { label: "Keyboard Shortcuts", disabled: true },
       { label: "IRS Reference", disabled: true },
       { divider: true, label: "" },
-      { label: "About TTS Tax Prep", disabled: true },
+      { label: "About TTS Tax Prep", action: "about" },
     ],
   },
 ];
@@ -144,12 +149,14 @@ function DropdownMenu({
   onToggle,
   onClose,
   onHover,
+  onAction,
 }: {
   group: MenuGroup;
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
   onHover: () => void;
+  onAction?: (action: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -189,7 +196,8 @@ function DropdownMenu({
                 disabled={item.disabled}
                 onClick={() => {
                   onClose();
-                  if (item.to) navigate(item.to);
+                  if (item.action && onAction) onAction(item.action);
+                  else if (item.to) navigate(item.to);
                 }}
                 className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm ${
                   item.disabled
@@ -223,8 +231,23 @@ export default function AppShell() {
   const location = useLocation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [anyMenuWasOpened, setAnyMenuWasOpened] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
+
+  // Fetch server version when About dialog opens
+  useEffect(() => {
+    if (!showAbout) return;
+    get("/version/").then((res) => {
+      if (res.ok) setServerVersion((res.data as { version: string }).version);
+      else setServerVersion("unavailable");
+    });
+  }, [showAbout]);
+
+  function handleMenuAction(action: string) {
+    if (action === "about") setShowAbout(true);
+  }
 
   // Determine "parent" route for hierarchical back navigation
   const isHome = location.pathname === "/";
@@ -281,15 +304,16 @@ export default function AppShell() {
             onToggle={() => handleToggle(group.label)}
             onClose={handleClose}
             onHover={() => handleHover(group.label)}
+            onAction={handleMenuAction}
           />
         ))}
       </div>
 
       {/* ── Primary Toolbar ── */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-nav-border bg-nav px-4">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-nav-border bg-nav px-4">
         {/* Left: Brand + Nav + Back */}
         <div className="flex items-center gap-4">
-          <span className="text-base font-bold tracking-tight text-primary">
+          <span className="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
             TTS Tax Prep
           </span>
 
@@ -391,7 +415,7 @@ export default function AppShell() {
         {/* Status bar */}
         <footer className="flex h-6 shrink-0 items-center justify-between border-t border-nav-border bg-nav px-4 text-xs text-tx-muted">
           <div className="flex items-center gap-4">
-            <span>TTS Tax Prep v0.1.0</span>
+            <span>TTS Tax Prep v{CLIENT_VERSION}</span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
               Server connected
@@ -403,6 +427,55 @@ export default function AppShell() {
           </div>
         </footer>
       </div>
+
+      {/* ── About Dialog ── */}
+      {showAbout && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setShowAbout(false)}>
+          <div className="w-[380px] rounded-xl border border-border bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 text-center">
+              <h2 className="text-xl font-bold text-primary">TTS Tax Prep</h2>
+              <p className="mt-1 text-sm text-tx-secondary">Professional Tax Preparation Software</p>
+            </div>
+
+            <div className="space-y-2 rounded-lg bg-surface p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-tx-secondary">Client version</span>
+                <span className="font-semibold text-tx">v{CLIENT_VERSION}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-tx-secondary">Server version</span>
+                <span className="font-semibold text-tx">
+                  {serverVersion === null ? (
+                    <span className="text-tx-muted">loading...</span>
+                  ) : serverVersion === "unavailable" ? (
+                    <span className="text-tx-muted">unavailable</span>
+                  ) : (
+                    `v${serverVersion}`
+                  )}
+                </span>
+              </div>
+              {serverVersion && serverVersion !== "unavailable" && serverVersion !== CLIENT_VERSION && (
+                <div className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  Version mismatch detected
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-xs text-tx-muted">The Tax Shelter</p>
+            </div>
+
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setShowAbout(false)}
+                className="rounded-lg bg-primary px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
