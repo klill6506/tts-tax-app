@@ -12,6 +12,21 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class ClientListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for the paginated client list.
+
+    Includes entity_count from the annotated queryset so the Dashboard
+    doesn't need N+1 queries to fetch entities per client.
+    """
+
+    entity_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Client
+        fields = ("id", "name", "status", "entity_count", "created_at")
+        read_only_fields = fields
+
+
 class EntitySerializer(serializers.ModelSerializer):
     client_id = serializers.UUIDField(source="client.id", read_only=True)
     client_name = serializers.CharField(source="client.name", read_only=True)

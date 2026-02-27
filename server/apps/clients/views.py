@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
+from rest_framework.pagination import PageNumberPagination
 
 from apps.audit.mixins import AuditViewSetMixin
 from apps.firms.permissions import IsFirmMember
@@ -7,6 +8,7 @@ from .models import Client, ClientEntityLink, Entity, TaxYear
 from .serializers import (
     ClientEntityLinkCreateSerializer,
     ClientEntityLinkSerializer,
+    ClientListSerializer,
     ClientSerializer,
     EntityCreateSerializer,
     EntitySerializer,
@@ -15,14 +17,40 @@ from .serializers import (
 )
 
 
+class ClientPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
 class ClientViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     """CRUD for clients, scoped to the requesting user's firm."""
 
     permission_classes = [IsFirmMember]
-    serializer_class = ClientSerializer
+    pagination_class = ClientPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name", "status", "created_at"]
+    ordering = ["name"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ClientListSerializer
+        return ClientSerializer
 
     def get_queryset(self):
-        return Client.objects.filter(firm=self.request.firm)
+        from django.db.models import Count
+        from django.db.models.functions import Coalesce
+
+        qs = Client.objects.filter(firm=self.request.firm)
+
+        # Annotate entity_count so the list view doesn't need N+1 queries
+        if self.action == "list":
+            qs = qs.annotate(
+                entity_count=Coalesce(Count("entities", distinct=True), 0),
+            )
+
+        return qs
 
     def perform_create(self, serializer):
         instance = serializer.save(firm=self.request.firm)
