@@ -24,6 +24,7 @@ from .models import (
     PreparerInfo,
     RentalProperty,
     Shareholder,
+    ShareholderLoan,
     TaxReturn,
 )
 from .serializers import (
@@ -34,6 +35,7 @@ from .serializers import (
     OtherDeductionSerializer,
     PreparerInfoSerializer,
     RentalPropertySerializer,
+    ShareholderLoanSerializer,
     ShareholderSerializer,
     TaxReturnListSerializer,
     TaxReturnSerializer,
@@ -502,6 +504,59 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         ser.save()
         self._rollup_distributions(tax_return)
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Shareholder Loans CRUD (Form 7203 Part II)
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="shareholders/(?P<sh_id>[^/.]+)/loans",
+    )
+    def shareholder_loans(self, request, pk=None, sh_id=None):
+        """List or create loans for a shareholder."""
+        tax_return = self.get_object()
+        try:
+            sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
+        except Shareholder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "GET":
+            qs = ShareholderLoan.objects.filter(shareholder=sh)
+            return Response(ShareholderLoanSerializer(qs, many=True).data)
+
+        ser = ShareholderLoanSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(shareholder=sh)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="shareholders/(?P<sh_id>[^/.]+)/loans/(?P<loan_id>[^/.]+)",
+    )
+    def shareholder_loan_detail(self, request, pk=None, sh_id=None, loan_id=None):
+        """Update or delete a shareholder loan."""
+        tax_return = self.get_object()
+        try:
+            sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
+        except Shareholder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            loan = ShareholderLoan.objects.get(id=loan_id, shareholder=sh)
+        except ShareholderLoan.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            loan.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = ShareholderLoanSerializer(loan, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
         return Response(ser.data)
 
     # ------------------------------------------------------------------

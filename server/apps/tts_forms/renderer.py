@@ -37,6 +37,8 @@ from .coordinates.f7206 import FIELD_MAP as F7206_FIELD_MAP
 from .coordinates.f7206 import HEADER_FIELDS as F7206_HEADER_FIELDS
 from .coordinates.f1125a import FIELD_MAP as F1125A_FIELD_MAP
 from .coordinates.f1125a import HEADER_FIELDS as F1125A_HEADER_FIELDS
+from .coordinates.f7203 import FIELD_MAP as F7203_FIELD_MAP
+from .coordinates.f7203 import HEADER_FIELDS as F7203_HEADER_FIELDS
 from .coordinates.f8825 import (
     FIELD_MAP as F8825_FIELD_MAP,
     HEADER_FIELDS as F8825_HEADER_FIELDS,
@@ -63,6 +65,7 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f7206": F7206_FIELD_MAP,
     "f1125a": F1125A_FIELD_MAP,
     "f8825": F8825_FIELD_MAP,
+    "f7203": F7203_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
@@ -73,6 +76,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f7206": F7206_HEADER_FIELDS,
     "f1125a": F1125A_HEADER_FIELDS,
     "f8825": F8825_HEADER_FIELDS,
+    "f7203": F7203_HEADER_FIELDS,
 }
 
 # Font settings
@@ -839,3 +843,78 @@ def render_8825(tax_return) -> bytes:
     output = io.BytesIO()
     writer.write(output)
     return output.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Form 7203 rendering (per shareholder)
+# ---------------------------------------------------------------------------
+
+ZERO = Decimal("0")
+
+
+def render_7203(tax_return, shareholder) -> bytes:
+    """
+    Render Form 7203 (S Corp Shareholder Stock and Debt Basis Limitations)
+    for a single shareholder.
+
+    Computes all 7203 values from:
+    - Shareholder model fields (stock_basis_boy, capital_contributions, etc.)
+    - K-1 data (auto from FormFieldValues x ownership_percentage)
+    - ShareholderLoan records (Part II)
+    - Prior suspended losses (Part III carry-forward)
+    """
+    from .compute_7203 import compute_7203 as do_compute
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    # Compute all field values
+    computed = do_compute(tax_return, shareholder)
+
+    # Build header
+    header_data = {
+        "taxpayer_name": shareholder.name,
+        "taxpayer_ssn": shareholder.ssn or "",
+        "entity_name": entity.legal_name or entity.name,
+        "entity_ein": entity.ein or "",
+    }
+
+    # Convert computed dict to field_values format
+    field_values: dict[str, tuple[str, str]] = {}
+    for line_key, amount in computed.items():
+        if amount and amount != ZERO:
+            # Part II line 25 is a ratio, not currency
+            if line_key.startswith("25"):
+                field_values[line_key] = (str(amount), "text")
+            else:
+                field_values[line_key] = (str(amount), "currency")
+
+    return render(
+        form_id="f7203",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+def render_all_7203s(tax_return) -> bytes:
+    """Render all 7203s for a return, concatenated into a single PDF."""
+    from apps.returns.models import Shareholder
+
+    shareholders = Shareholder.objects.filter(
+        tax_return=tax_return, is_active=True
+    ).order_by("sort_order", "name")
+
+    if not shareholders.exists():
+        raise ValueError("No active shareholders found for this return.")
+
+    writer = PdfWriter()
+    for sh in shareholders:
+        pdf_bytes = render_7203(tax_return, sh)
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        for page in reader.pages:
+            writer.add_page(page)
+
+    output_buf = io.BytesIO()
+    writer.write(output_buf)
+    return output_buf.getvalue()

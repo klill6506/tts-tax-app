@@ -10,6 +10,7 @@ from .models import (
     PreparerInfo,
     RentalProperty,
     Shareholder,
+    ShareholderLoan,
     TaxReturn,
 )
 
@@ -157,10 +158,40 @@ class PreparerInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class ShareholderLoanSerializer(serializers.ModelSerializer):
+    loan_balance_before_repayment = serializers.SerializerMethodField()
+    loan_balance_eoy = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ShareholderLoan
+        fields = (
+            "id",
+            "description",
+            "loan_balance_boy",
+            "additional_loans",
+            "loan_balance_before_repayment",
+            "loan_repayments",
+            "loan_balance_eoy",
+            "debt_basis_boy",
+            "new_loans_increasing_basis",
+            "sort_order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def get_loan_balance_before_repayment(self, obj):
+        return str(obj.loan_balance_boy + obj.additional_loans)
+
+    def get_loan_balance_eoy(self, obj):
+        return str(obj.loan_balance_boy + obj.additional_loans - obj.loan_repayments)
+
+
 class ShareholderSerializer(serializers.ModelSerializer):
     linked_client_name = serializers.CharField(
         source="linked_client.name", read_only=True, default=None
     )
+    loans = ShareholderLoanSerializer(many=True, read_only=True)
 
     class Meta:
         model = Shareholder
@@ -178,6 +209,19 @@ class ShareholderSerializer(serializers.ModelSerializer):
             "ending_shares",
             "distributions",
             "health_insurance_premium",
+            # Form 7203 basis fields
+            "stock_basis_boy",
+            "capital_contributions",
+            "depletion",
+            "suspended_ordinary_loss",
+            "suspended_rental_re_loss",
+            "suspended_other_rental_loss",
+            "suspended_st_capital_loss",
+            "suspended_lt_capital_loss",
+            "suspended_1231_loss",
+            "suspended_other_loss",
+            "loans",
+            # Links & metadata
             "linked_client",
             "linked_client_name",
             "is_active",

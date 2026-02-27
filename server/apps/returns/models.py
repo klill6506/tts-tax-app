@@ -371,6 +371,50 @@ class Shareholder(models.Model):
         help_text="Health insurance premiums paid by S-Corp for >2%% shareholder. Drives Form 7206.",
     )
 
+    # Form 7203 — Stock Basis (Part I)
+    stock_basis_boy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 1: Stock basis at beginning of tax year.",
+    )
+    capital_contributions = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 2: Stock purchases and capital contributions during year.",
+    )
+    depletion = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 10: Depletion (entered by preparer).",
+    )
+
+    # Form 7203 — Prior Year Suspended Losses (Part III carry-forward)
+    suspended_ordinary_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended ordinary business loss.",
+    )
+    suspended_rental_re_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended net rental real estate loss.",
+    )
+    suspended_other_rental_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended other net rental loss.",
+    )
+    suspended_st_capital_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended net short-term capital loss.",
+    )
+    suspended_lt_capital_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended net long-term capital loss.",
+    )
+    suspended_1231_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended net section 1231 loss.",
+    )
+    suspended_other_loss = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Prior year suspended other loss/deduction items.",
+    )
+
     # Client linking (shared entity support)
     linked_client = models.ForeignKey(
         "clients.Client",
@@ -396,6 +440,64 @@ class Shareholder(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.ownership_percentage}%)"
+
+
+# ---------------------------------------------------------------------------
+# Shareholder Loan — Form 7203 Part II (per shareholder, per loan)
+# ---------------------------------------------------------------------------
+
+
+class ShareholderLoan(models.Model):
+    """A loan from a shareholder to the S-Corp, tracked for Form 7203 Part II."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shareholder = models.ForeignKey(
+        Shareholder,
+        on_delete=models.CASCADE,
+        related_name="loans",
+    )
+
+    description = models.CharField(
+        max_length=255,
+        help_text="Description of the loan (e.g., 'Operating line of credit').",
+    )
+
+    # Section A: Loan Balance
+    loan_balance_boy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 16: Beginning of year loan balance.",
+    )
+    additional_loans = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 17: Additional loans made during year.",
+    )
+    # Line 18 = 16 + 17 (computed)
+    loan_repayments = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 19: Loan repayments during year.",
+    )
+    # Line 20 = 18 - 19 (computed)
+
+    # Section B: Debt Basis
+    debt_basis_boy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 21: Debt basis at beginning of year.",
+    )
+    new_loans_increasing_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Line 22: Portion of new loans that increase debt basis.",
+    )
+    # Lines 23-25 are computed at render time
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "description"]
+
+    def __str__(self):
+        return f"{self.description} ({self.shareholder.name})"
 
 
 # ---------------------------------------------------------------------------

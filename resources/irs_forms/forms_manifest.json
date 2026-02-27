@@ -99,6 +99,18 @@
       "notes": "Rental real estate - per-property income and expenses, attached to 1120-S or 1065"
     },
     {
+      "form_id": "f7203",
+      "form_code": "7203",
+      "title": "S Corporation Shareholder Stock and Debt Basis Limitations",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f7203.pdf",
+      "revision_date": "2024-12",
+      "sha256": "e138560a8c5d591f1619544cbf189658e6d4540e13e9b3726b6fcd653cb2ad1d",
+      "local_path": "2025/f7203.pdf",
+      "pages": 2,
+      "notes": "Per-shareholder stock and debt basis tracking - attached to Schedule K-1 (1120-S)"
+    },
+    {
       "form_id": "i1120s",
       "form_code": "1120-S",
       "type": "instructions",

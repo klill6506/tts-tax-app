@@ -57,6 +57,10 @@ from apps.tts_forms.coordinates.f1125a import (
     FIELD_MAP as F1125A_FIELD_MAP,
     HEADER_FIELDS as F1125A_HEADER_FIELDS,
 )
+from apps.tts_forms.coordinates.f7203 import (
+    FIELD_MAP as F7203_FIELD_MAP,
+    HEADER_FIELDS as F7203_HEADER_FIELDS,
+)
 from apps.tts_forms.coordinates.f8825 import (
     FIELD_MAP as F8825_FIELD_MAP,
     HEADER_FIELDS as F8825_HEADER_FIELDS,
@@ -71,8 +75,10 @@ from apps.tts_forms.renderer import (
     _format_value,
     render,
     render_1125a,
+    render_7203,
     render_7206,
     render_8825,
+    render_all_7203s,
     render_all_k1s,
     render_k1,
 )
@@ -851,7 +857,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 11  # 8 form templates + 3 instruction PDFs
+        assert len(data["forms"]) == 12  # 9 form templates + 3 instruction PDFs
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (
@@ -1511,3 +1517,162 @@ class TestForm8825Endpoint:
             content_type="application/json",
         )
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Form 7203 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates7203:
+    def test_f7203_field_map_has_entries(self):
+        assert len(F7203_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f7203(self):
+        assert "f7203" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f7203(self):
+        assert "f7203" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F7203_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"7203: {key} is not a FieldCoord"
+
+    def test_header_has_required_fields(self):
+        assert "taxpayer_name" in F7203_HEADER_FIELDS
+        assert "taxpayer_ssn" in F7203_HEADER_FIELDS
+        assert "entity_name" in F7203_HEADER_FIELDS
+        assert "entity_ein" in F7203_HEADER_FIELDS
+
+    def test_part_i_lines_mapped(self):
+        """Part I stock basis lines 1-15 should be in the field map."""
+        for ln in ["1", "2", "4", "5", "6", "7", "12", "13", "14", "15"]:
+            assert ln in F7203_FIELD_MAP, f"Part I line {ln} missing"
+
+    def test_part_i_sub_lines_mapped(self):
+        """Part I sub-lines (3a-3m income, 8a-8c nondeductible) should be mapped."""
+        for ln in ["3a", "3b", "3d", "3e", "3f", "3g", "3h", "3i", "3j", "3k"]:
+            assert ln in F7203_FIELD_MAP, f"Part I sub-line {ln} missing"
+        for ln in ["8a", "8b", "8c"]:
+            assert ln in F7203_FIELD_MAP, f"Part I sub-line {ln} missing"
+
+    def test_part_ii_debt_columns(self):
+        """Part II has per-debt columns (a/b/c/d) for key lines."""
+        for suffix in ["a", "b", "c", "d"]:
+            assert f"16{suffix}" in F7203_FIELD_MAP, f"Line 16{suffix} missing"
+            assert f"17{suffix}" in F7203_FIELD_MAP, f"Line 17{suffix} missing"
+            assert f"18{suffix}" in F7203_FIELD_MAP, f"Line 18{suffix} missing"
+
+    def test_part_iii_loss_columns(self):
+        """Part III has 5 columns (a-e) for loss limitation lines."""
+        for suffix in ["a", "b", "c", "d", "e"]:
+            assert f"35{suffix}" in F7203_FIELD_MAP, f"Line 35{suffix} missing"
+            assert f"47{suffix}" in F7203_FIELD_MAP, f"Line 47{suffix} missing"
+
+
+# ---------------------------------------------------------------------------
+# Form 7203 rendering tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def shareholder_with_basis(tax_return_with_k_data):
+    """Create a shareholder with stock basis data for 7203 rendering."""
+    return Shareholder.objects.create(
+        tax_return=tax_return_with_k_data,
+        name="Carol Basis",
+        ssn="777-88-9999",
+        ownership_percentage=Decimal("50.0000"),
+        beginning_shares=500,
+        ending_shares=500,
+        city="Atlanta",
+        state="GA",
+        zip_code="30301",
+        distributions=Decimal("5000.00"),
+        stock_basis_boy=Decimal("100000.00"),
+        capital_contributions=Decimal("10000.00"),
+    )
+
+
+@pytest.mark.django_db
+class TestRender7203:
+    def test_render_7203_produces_valid_pdf(
+        self, tax_return_with_k_data, shareholder_with_basis, test_template_pdf
+    ):
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_7203(tax_return_with_k_data, shareholder_with_basis)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+    def test_render_all_7203s_concatenates(
+        self, tax_return_with_k_data, shareholder_with_basis, shareholder_alice, test_template_pdf
+    ):
+        # Set basis on alice too
+        shareholder_alice.stock_basis_boy = Decimal("50000.00")
+        shareholder_alice.save()
+
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_all_7203s(tax_return_with_k_data)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        # Two shareholders × at least 1 page each
+        assert len(reader.pages) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Form 7203 API endpoint tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestForm7203Endpoint:
+    def test_render_7203_endpoint(
+        self, user_and_http, tax_return_with_k_data, shareholder_with_basis, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7203/{shareholder_with_basis.id}/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        assert "7203" in resp["Content-Disposition"]
+
+    def test_render_7203s_endpoint(
+        self, user_and_http, tax_return_with_k_data, shareholder_with_basis, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7203s/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        assert "7203s" in resp["Content-Disposition"]
+
+    def test_render_7203_404_for_wrong_shareholder(
+        self, user_and_http, tax_return_with_k_data
+    ):
+        _, http = user_and_http
+        resp = http.post(
+            f"/api/v1/tax-returns/{tax_return_with_k_data.id}/render-7203/{uuid.uuid4()}/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 404

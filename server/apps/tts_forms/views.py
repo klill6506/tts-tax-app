@@ -31,7 +31,13 @@ from rest_framework.response import Response
 from apps.firms.permissions import IsFirmMember
 from apps.returns.models import Shareholder, TaxReturn
 
-from .renderer import render_1125a, render_8825, render_all_k1s, render_k1, render_tax_return
+from .renderer import (
+    render_1125a,
+    render_8825,
+    render_all_k1s,
+    render_k1,
+    render_tax_return,
+)
 
 
 class PDFRenderMixin:
@@ -242,6 +248,71 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         filename = f"8825_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 7203 rendering (Shareholder Stock and Debt Basis Limitations)
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="render-7203/(?P<sh_id>[^/.]+)",
+    )
+    def render_7203(self, request, pk=None, sh_id=None):
+        """Generate Form 7203 for one shareholder."""
+        tax_return = self.get_object()
+        try:
+            sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
+        except Shareholder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            from .renderer import render_7203 as do_render_7203
+            pdf_bytes = do_render_7203(tax_return, sh)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        sh_name = sh.name.replace(" ", "_").replace("/", "-")
+        year = tax_return.tax_year.year
+        filename = f"7203_{sh_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="render-7203s")
+    def render_7203s(self, request, pk=None):
+        """Generate all Form 7203s for this return, concatenated."""
+        tax_return = self.get_object()
+
+        form_code = tax_return.form_definition.code
+        if form_code not in ("1120-S",):
+            return Response(
+                {"error": f"7203 generation not supported for {form_code}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .renderer import render_all_7203s
+            pdf_bytes = render_all_7203s(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"7203s_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
