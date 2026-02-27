@@ -1,0 +1,34 @@
+# render.yaml — Render Infrastructure as Code
+# Deploys Django + React SPA as a single web service
+services:
+  - type: web
+    name: tts-tax-app
+    runtime: python
+    region: virginia  # us-east-1, same region as Supabase
+    plan: starter
+    buildCommand: |
+      cd client && npm install && npx vite build --config vite.config.web.ts &&
+      cd ../server && pip install poetry && poetry install --only main &&
+      poetry run python manage.py collectstatic --noinput
+    startCommand: cd server && poetry run gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false  # Set manually in Render dashboard
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        value: aws-1-us-east-1.pooler.supabase.com
+      - key: DB_PORT
+        value: "5432"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.13.2"
+      - key: NODE_VERSION
+        value: "20"

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
+import { renderPdf } from "../lib/api";
 
 export default function FormPreview() {
   const { taxReturnId } = useParams<{ taxReturnId: string }>();
@@ -11,7 +12,7 @@ export default function FormPreview() {
   useEffect(() => {
     if (!taxReturnId) return;
 
-    window.api.renderPdf(taxReturnId).then((res) => {
+    renderPdf(taxReturnId).then((res) => {
       if (res.ok && res.pdfBase64) {
         // Decode base64 → binary → Blob → object URL
         const binary = atob(res.pdfBase64);

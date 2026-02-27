@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
-import { post, get } from "./api";
+import { post, get, clearSession } from "./api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await post("/auth/logout/");
-    await window.api.clearSession();
+    await clearSession();
     setUser(null);
   }, []);
 

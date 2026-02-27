@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { get, patch, post, del } from "../lib/api";
+import { get, patch, post, del, renderK1s, renderK1, render7206 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
 
@@ -2082,21 +2082,12 @@ function ShareholdersSection({
             <button
               onClick={async () => {
                 try {
-                  const res = await post(`/tax-returns/${taxReturnId}/render-k1s/`, {});
-                  if (res.ok) {
-                    const blob = new Blob([Uint8Array.from(atob((res.data as any).pdf || ""), c => c.charCodeAt(0))], { type: "application/pdf" });
+                  const r = await renderK1s(taxReturnId);
+                  if (r?.pdfBase64) {
+                    const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
                     window.open(URL.createObjectURL(blob), "_blank");
                   } else {
-                    // Try IPC bridge for Electron
-                    if (window.api?.renderK1s) {
-                      const r = await window.api.renderK1s(taxReturnId);
-                      if (r?.pdfBase64) {
-                        const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                        window.open(URL.createObjectURL(blob), "_blank");
-                      } else {
-                        alert(r?.error || "Failed to generate K-1s.");
-                      }
-                    }
+                    alert(r?.error || "Failed to generate K-1s.");
                   }
                 } catch {
                   alert("Failed to generate K-1s.");
@@ -2178,13 +2169,11 @@ function ShareholdersSection({
                       </button>
                       <button
                         onClick={async () => {
-                          if (window.api?.renderK1) {
-                            const r = await window.api.renderK1(taxReturnId, s.id);
-                            if (r?.pdfBase64) {
-                              const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                              window.open(URL.createObjectURL(blob), "_blank");
-                            } else alert(r?.error || "Failed to generate K-1.");
-                          }
+                          const r = await renderK1(taxReturnId, s.id);
+                          if (r?.pdfBase64) {
+                            const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                            window.open(URL.createObjectURL(blob), "_blank");
+                          } else alert(r?.error || "Failed to generate K-1.");
                         }}
                         className="text-xs font-medium text-primary-text hover:underline"
                       >
@@ -2193,13 +2182,11 @@ function ShareholdersSection({
                       {parseFloat(s.health_insurance_premium || "0") > 0 && (
                         <button
                           onClick={async () => {
-                            if (window.api?.render7206) {
-                              const r = await window.api.render7206(taxReturnId, s.id);
-                              if (r?.pdfBase64) {
-                                const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                                window.open(URL.createObjectURL(blob), "_blank");
-                              } else alert(r?.error || "Failed to generate Form 7206.");
-                            }
+                            const r = await render7206(taxReturnId, s.id);
+                            if (r?.pdfBase64) {
+                              const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                              window.open(URL.createObjectURL(blob), "_blank");
+                            } else alert(r?.error || "Failed to generate Form 7206.");
                           }}
                           className="text-xs font-medium text-primary-text hover:underline"
                         >

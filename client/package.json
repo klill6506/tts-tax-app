@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "build:web": "vite build --config vite.config.web.ts"
   },
   "dependencies": {
     "react": "^19.1.0",

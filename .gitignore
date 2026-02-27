@@ -17,9 +17,10 @@ media/
 # Poetry
 # (poetry.lock IS committed — it ensures reproducible installs)
 
-# Node / Electron (later)
+# Node / Electron
 node_modules/
 dist/
+dist-web/
 out/
 
 # Docker

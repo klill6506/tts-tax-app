@@ -1,5 +1,19 @@
+import os
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.http import FileResponse, HttpResponseNotFound
+from django.urls import include, path, re_path
+
+
+def _serve_spa(request):
+    """Serve the React SPA index.html for any non-API route (production only)."""
+    index = Path(getattr(settings, "SPA_DIR", "")) / "index.html"
+    if index.exists():
+        return FileResponse(open(index, "rb"), content_type="text/html")
+    return HttpResponseNotFound("SPA not built. Run: cd client && npm run build:web")
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -14,3 +28,8 @@ urlpatterns = [
     path("api/v1/", include("apps.firms.urls")),
     path("api/v1/", include("apps.ai_help.urls")),
 ]
+
+# In production, serve the SPA for any non-API route (HashRouter only needs /)
+if os.getenv("DJANGO_SETTINGS_MODULE") == "config.settings.prod":
+    urlpatterns.append(re_path(r"^$", _serve_spa))  # root /
+    urlpatterns.append(re_path(r"^(?!api/|admin|static).*$", _serve_spa))  # fallback
