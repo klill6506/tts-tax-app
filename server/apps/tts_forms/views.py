@@ -13,6 +13,12 @@ Endpoints:
 
     POST /api/v1/tax-returns/{id}/render-7206/{sh_id}/
         Generate Form 7206 for one shareholder.
+
+    POST /api/v1/tax-returns/{id}/render-1125a/
+        Generate Form 1125-A (Cost of Goods Sold).
+
+    POST /api/v1/tax-returns/{id}/render-8825/
+        Generate Form 8825 (Rental Real Estate).
 """
 
 import io
@@ -25,7 +31,7 @@ from rest_framework.response import Response
 from apps.firms.permissions import IsFirmMember
 from apps.returns.models import Shareholder, TaxReturn
 
-from .renderer import render_all_k1s, render_k1, render_tax_return
+from .renderer import render_1125a, render_8825, render_all_k1s, render_k1, render_tax_return
 
 
 class PDFRenderMixin:
@@ -180,6 +186,62 @@ class PDFRenderMixin:
         sh_name = sh.name.replace(" ", "_").replace("/", "-")
         year = tax_return.tax_year.year
         filename = f"7206_{sh_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 1125-A rendering (Cost of Goods Sold)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-1125a")
+    def render_1125a(self, request, pk=None):
+        """Generate Form 1125-A (Cost of Goods Sold) for this tax return."""
+        tax_return = self.get_object()
+
+        try:
+            pdf_bytes = render_1125a(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"1125-A_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 8825 rendering (Rental Real Estate)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-8825")
+    def render_8825(self, request, pk=None):
+        """Generate Form 8825 (Rental Real Estate) for this tax return."""
+        tax_return = self.get_object()
+
+        try:
+            pdf_bytes = render_8825(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"8825_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

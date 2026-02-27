@@ -32,6 +32,7 @@ from apps.returns.models import (
     FormDefinition,
     FormFieldValue,
     FormLine,
+    RentalProperty,
     Shareholder,
     TaxReturn,
 )
@@ -52,6 +53,15 @@ from apps.tts_forms.coordinates.f7206 import (
     FIELD_MAP as F7206_FIELD_MAP,
     HEADER_FIELDS as F7206_HEADER_FIELDS,
 )
+from apps.tts_forms.coordinates.f1125a import (
+    FIELD_MAP as F1125A_FIELD_MAP,
+    HEADER_FIELDS as F1125A_HEADER_FIELDS,
+)
+from apps.tts_forms.coordinates.f8825 import (
+    FIELD_MAP as F8825_FIELD_MAP,
+    HEADER_FIELDS as F8825_HEADER_FIELDS,
+    PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
+)
 from apps.tts_forms.renderer import (
     COORDINATE_REGISTRY,
     HEADER_REGISTRY,
@@ -60,7 +70,9 @@ from apps.tts_forms.renderer import (
     _format_currency,
     _format_value,
     render,
+    render_1125a,
     render_7206,
+    render_8825,
     render_all_k1s,
     render_k1,
 )
@@ -347,6 +359,15 @@ class TestCoordinates:
         assert "entity_name" in HEADER_FIELDS
         assert "ein" in HEADER_FIELDS
 
+    def test_preparer_fields_mapped(self):
+        preparer_keys = [
+            "preparer_name", "preparer_date", "preparer_ptin",
+            "preparer_self_employed", "firm_name", "firm_ein",
+            "firm_address", "firm_phone",
+        ]
+        for key in preparer_keys:
+            assert key in HEADER_FIELDS, f"1120-S: preparer field {key} missing"
+
     def test_income_lines_mapped(self):
         for ln in ["1a", "1b", "1c", "2", "3", "6"]:
             assert ln in FIELD_MAP, f"Income line {ln} missing from FIELD_MAP"
@@ -418,6 +439,15 @@ class TestCoordinates1065:
         for ln in ["M2_1", "M2_9"]:
             assert ln in F1065_FIELD_MAP, f"1065 Schedule M-2 line {ln} missing"
 
+    def test_preparer_fields_mapped(self):
+        preparer_keys = [
+            "preparer_name", "preparer_date", "preparer_ptin",
+            "preparer_self_employed", "firm_name", "firm_ein",
+            "firm_address", "firm_phone",
+        ]
+        for key in preparer_keys:
+            assert key in F1065_HEADER_FIELDS, f"1065: preparer field {key} missing"
+
 
 # ---------------------------------------------------------------------------
 # Form 1120 coordinate tests
@@ -488,6 +518,15 @@ class TestCoordinates1120:
     def test_schedule_m2_lines_mapped(self):
         for ln in ["M2_1", "M2_8"]:
             assert ln in F1120_FIELD_MAP, f"1120 Schedule M-2 line {ln} missing"
+
+    def test_preparer_fields_mapped(self):
+        preparer_keys = [
+            "preparer_name", "preparer_date", "preparer_ptin",
+            "preparer_self_employed", "firm_name", "firm_ein",
+            "firm_address", "firm_phone",
+        ]
+        for key in preparer_keys:
+            assert key in F1120_HEADER_FIELDS, f"1120: preparer field {key} missing"
 
 
 # ---------------------------------------------------------------------------
@@ -812,7 +851,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 9  # 6 form templates + 3 instruction PDFs
+        assert len(data["forms"]) == 11  # 8 form templates + 3 instruction PDFs
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (
@@ -1122,3 +1161,353 @@ class TestForm7206Endpoint:
             content_type="application/json",
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Form 1125-A coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates1125A:
+    def test_f1125a_field_map_has_entries(self):
+        assert len(F1125A_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f1125a(self):
+        assert "f1125a" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f1125a(self):
+        assert "f1125a" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F1125A_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"1125-A: {key} is not a FieldCoord"
+
+    def test_all_pages_are_valid(self):
+        for key, coord in F1125A_FIELD_MAP.items():
+            assert coord.page == 0, f"1125-A: {key} should be on page 0"
+
+    def test_all_positions_are_positive(self):
+        for key, coord in F1125A_FIELD_MAP.items():
+            assert coord.x >= 0, f"1125-A: {key} has negative x"
+            assert coord.y >= 0, f"1125-A: {key} has negative y"
+            assert coord.width > 0, f"1125-A: {key} has non-positive width"
+
+    def test_header_fields_exist(self):
+        assert "entity_name" in F1125A_HEADER_FIELDS
+        assert "ein" in F1125A_HEADER_FIELDS
+
+    def test_cogs_lines_mapped(self):
+        for ln in ["1", "2", "3", "4", "5", "6", "7", "8"]:
+            assert ln in F1125A_FIELD_MAP, f"1125-A line {ln} missing"
+
+    def test_checkbox_fields_exist(self):
+        assert "9a_cost" in F1125A_FIELD_MAP
+        assert "9a_lcm" in F1125A_FIELD_MAP
+        assert "9a_other" in F1125A_FIELD_MAP
+
+
+class TestRender1125A:
+    def test_render_1125a_produces_valid_pdf(self, test_template_pdf):
+        field_values = {
+            "1": ("50000", "currency"),
+            "2": ("200000", "currency"),
+            "3": ("80000", "currency"),
+            "6": ("330000", "currency"),
+            "7": ("60000", "currency"),
+            "8": ("270000", "currency"),
+        }
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f1125a",
+                tax_year=2025,
+                field_values=field_values,
+                header_data={"entity_name": "Test Mfg Corp", "ein": "99-1234567"},
+            )
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Form 8825 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates8825:
+    def test_f8825_field_map_has_entries(self):
+        assert len(F8825_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f8825(self):
+        assert "f8825" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f8825(self):
+        assert "f8825" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F8825_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"8825: {key} is not a FieldCoord"
+
+    def test_all_pages_are_valid(self):
+        for key, coord in F8825_FIELD_MAP.items():
+            assert 0 <= coord.page <= 1, f"8825: {key} has invalid page {coord.page}"
+
+    def test_all_positions_are_positive(self):
+        for key, coord in F8825_FIELD_MAP.items():
+            assert coord.x >= 0, f"8825: {key} has negative x"
+            assert coord.y >= 0, f"8825: {key} has negative y"
+            assert coord.width > 0, f"8825: {key} has non-positive width"
+
+    def test_header_fields_exist(self):
+        assert "entity_name" in F8825_HEADER_FIELDS
+        assert "ein" in F8825_HEADER_FIELDS
+
+    def test_property_columns_exist(self):
+        """Each property column A-D should have expense lines on page 0."""
+        for col in "ABCD":
+            assert f"p0_{col}_2a" in F8825_FIELD_MAP, f"8825: p0_{col}_2a missing"
+            assert f"p0_{col}_3" in F8825_FIELD_MAP, f"8825: p0_{col}_3 missing"
+            assert f"p0_{col}_14" in F8825_FIELD_MAP, f"8825: p0_{col}_14 missing"
+            assert f"p0_{col}_18" in F8825_FIELD_MAP, f"8825: p0_{col}_18 missing"
+
+    def test_page1_columns_exist(self):
+        """Page 1 should also have property columns."""
+        for col in "ABCD":
+            assert f"p1_{col}_2a" in F8825_FIELD_MAP, f"8825: p1_{col}_2a missing"
+            assert f"p1_{col}_18" in F8825_FIELD_MAP, f"8825: p1_{col}_18 missing"
+
+    def test_summary_lines_exist(self):
+        assert "20a" in F8825_FIELD_MAP
+        assert "20b" in F8825_FIELD_MAP
+        assert "21" in F8825_FIELD_MAP
+
+    def test_property_fields_exist(self):
+        """Property description fields for each slot."""
+        for col in "ABCD":
+            assert f"p0_{col}_addr" in F8825_PROPERTY_FIELDS
+            assert f"p0_{col}_type" in F8825_PROPERTY_FIELDS
+            assert f"p0_{col}_fair_days" in F8825_PROPERTY_FIELDS
+
+
+class TestRender8825:
+    def test_render_8825_produces_valid_pdf(self, test_template_pdf):
+        """Render 8825 with basic field values."""
+        field_values = {
+            "p0_A_2a": ("24000", "currency"),
+            "p0_A_7": ("3600", "currency"),
+            "p0_A_14": ("5000", "currency"),
+            "p0_A_18": ("8600", "currency"),
+            "p0_A_19": ("15400", "currency"),
+            "20a": ("24000", "currency"),
+            "20b": ("8600", "currency"),
+            "21": ("15400", "currency"),
+        }
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render(
+                form_id="f8825",
+                tax_year=2025,
+                field_values=field_values,
+                header_data={"entity_name": "Rental LLC", "ein": "88-7654321"},
+            )
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Form 1125-A render function tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestRender1125AFunction:
+    def test_render_1125a_from_tax_return(
+        self, tax_return_with_data, test_template_pdf
+    ):
+        """render_1125a should produce a valid PDF from schedule A field values."""
+        # The tax_return_with_data fixture uses 1120-S which has schedule A lines
+        # Add some Schedule A values
+        from apps.returns.models import FormFieldValue, FormLine
+
+        tr = tax_return_with_data
+        # Check if A1-A8 lines exist (they may not if seed doesn't include them)
+        a_lines = FormLine.objects.filter(
+            section__form=tr.form_definition,
+            line_number__startswith="A",
+        )
+        if a_lines.exists():
+            for line in a_lines:
+                fv, _ = FormFieldValue.objects.get_or_create(
+                    tax_return=tr, form_line=line, defaults={"value": ""}
+                )
+                if line.line_number == "A1":
+                    fv.value = "50000"
+                elif line.line_number == "A2":
+                    fv.value = "200000"
+                elif line.line_number == "A8":
+                    fv.value = "180000"
+                fv.save()
+
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_1125a(tr)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Form 8825 render function tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tax_return_with_rentals(seeded, tax_year, user_and_http):
+    """Create a tax return with rental properties."""
+    user, _ = user_and_http
+    tr = TaxReturn.objects.create(
+        tax_year=tax_year,
+        form_definition=seeded,
+        created_by=user,
+    )
+    # Create 3 rental properties
+    RentalProperty.objects.create(
+        tax_return=tr,
+        description="123 Main St, Athens GA",
+        property_type="1",
+        fair_rental_days=365,
+        personal_use_days=0,
+        rents_received=Decimal("24000"),
+        insurance=Decimal("1200"),
+        interest_mortgage=Decimal("8000"),
+        taxes=Decimal("3000"),
+        repairs=Decimal("500"),
+        depreciation=Decimal("5000"),
+        sort_order=0,
+    )
+    RentalProperty.objects.create(
+        tax_return=tr,
+        description="456 Oak Ave, Atlanta GA",
+        property_type="2",
+        fair_rental_days=365,
+        personal_use_days=0,
+        rents_received=Decimal("36000"),
+        insurance=Decimal("2400"),
+        interest_mortgage=Decimal("12000"),
+        taxes=Decimal("4500"),
+        depreciation=Decimal("8000"),
+        sort_order=1,
+    )
+    RentalProperty.objects.create(
+        tax_return=tr,
+        description="789 Pine Rd, Savannah GA",
+        property_type="4",
+        fair_rental_days=180,
+        personal_use_days=30,
+        rents_received=Decimal("18000"),
+        advertising=Decimal("500"),
+        cleaning_and_maintenance=Decimal("2000"),
+        utilities=Decimal("3600"),
+        depreciation=Decimal("4000"),
+        other_expenses=Decimal("800"),
+        sort_order=2,
+    )
+    return tr
+
+
+@pytest.mark.django_db
+class TestRender8825Function:
+    def test_render_8825_produces_valid_pdf(
+        self, tax_return_with_rentals, test_template_pdf
+    ):
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_8825(tax_return_with_rentals)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+    def test_render_8825_no_properties_raises(
+        self, tax_return_with_data, test_template_pdf
+    ):
+        """render_8825 should raise ValueError if no rental properties."""
+        with pytest.raises(ValueError, match="No rental properties"):
+            render_8825(tax_return_with_data)
+
+    def test_render_8825_multiple_properties(
+        self, tax_return_with_rentals, test_template_pdf
+    ):
+        """3 properties should fit on one page (columns A, B, C)."""
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_8825(tax_return_with_rentals)
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Form 1125-A and 8825 API endpoint tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestForm1125AEndpoint:
+    def test_render_1125a_endpoint(
+        self, user_and_http, tax_return_with_data, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_data.id}/render-1125a/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        assert "1125-A" in resp["Content-Disposition"]
+
+
+@pytest.mark.django_db
+class TestForm8825Endpoint:
+    def test_render_8825_endpoint(
+        self, user_and_http, tax_return_with_rentals, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_rentals.id}/render-8825/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        assert "8825" in resp["Content-Disposition"]
+
+    def test_render_8825_no_properties_returns_400(
+        self, user_and_http, tax_return_with_data
+    ):
+        """Return with no rental properties should get 400."""
+        _, http = user_and_http
+        resp = http.post(
+            f"/api/v1/tax-returns/{tax_return_with_data.id}/render-8825/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 400

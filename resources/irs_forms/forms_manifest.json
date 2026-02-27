@@ -75,6 +75,30 @@
       "notes": "Self-employed health insurance deduction, generated per >2% S-Corp shareholder"
     },
     {
+      "form_id": "f1125a",
+      "form_code": "1125-A",
+      "title": "Cost of Goods Sold",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1125a.pdf",
+      "revision_date": "2024-12",
+      "sha256": "447270f7a058c5b8e3f3e31853bf2bf97470ccc0f5f07359fbcd5ec6a23be5c2",
+      "local_path": "2025/f1125a.pdf",
+      "pages": 1,
+      "notes": "Cost of Goods Sold - attachment to 1120-S, 1065, or 1120"
+    },
+    {
+      "form_id": "f8825",
+      "form_code": "8825",
+      "title": "Rental Real Estate Income and Expenses of a Partnership or an S Corporation",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f8825.pdf",
+      "revision_date": "2024-12",
+      "sha256": "cfe6a4afa0d52bd6ba695299c4f63992443ac2117e68d7409bab171f934f5be8",
+      "local_path": "2025/f8825.pdf",
+      "pages": 2,
+      "notes": "Rental real estate - per-property income and expenses, attached to 1120-S or 1065"
+    },
+    {
       "form_id": "i1120s",
       "form_code": "1120-S",
       "type": "instructions",

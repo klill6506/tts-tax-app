@@ -35,6 +35,13 @@ from .coordinates.f1120sk1 import K1_FIELD_MAP as F1120SK1_FIELD_MAP
 from .coordinates.f1120sk1 import K1_HEADER as F1120SK1_HEADER
 from .coordinates.f7206 import FIELD_MAP as F7206_FIELD_MAP
 from .coordinates.f7206 import HEADER_FIELDS as F7206_HEADER_FIELDS
+from .coordinates.f1125a import FIELD_MAP as F1125A_FIELD_MAP
+from .coordinates.f1125a import HEADER_FIELDS as F1125A_HEADER_FIELDS
+from .coordinates.f8825 import (
+    FIELD_MAP as F8825_FIELD_MAP,
+    HEADER_FIELDS as F8825_HEADER_FIELDS,
+    PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
+)
 from .statements import render_statement_pages
 
 # ---------------------------------------------------------------------------
@@ -54,6 +61,8 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120": F1120_FIELD_MAP,
     "f1120sk1": F1120SK1_FIELD_MAP,
     "f7206": F7206_FIELD_MAP,
+    "f1125a": F1125A_FIELD_MAP,
+    "f8825": F8825_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
@@ -62,6 +71,8 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1120": F1120_HEADER_FIELDS,
     "f1120sk1": F1120SK1_HEADER,
     "f7206": F7206_HEADER_FIELDS,
+    "f1125a": F1125A_HEADER_FIELDS,
+    "f8825": F8825_HEADER_FIELDS,
 }
 
 # Font settings
@@ -635,3 +646,196 @@ def render_7206(tax_return, shareholder) -> bytes:
         field_values=field_values,
         header_data=header_data,
     )
+
+
+# ---------------------------------------------------------------------------
+# Form 1125-A rendering (Cost of Goods Sold)
+# ---------------------------------------------------------------------------
+
+
+def render_1125a(tax_return) -> bytes:
+    """
+    Render Form 1125-A (Cost of Goods Sold) for a tax return.
+
+    Reads Schedule A field values (lines A1-A8) from FormFieldValue
+    and renders them onto the official 1125-A template.
+    """
+    from apps.returns.models import FormFieldValue
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    # Load Schedule A field values (line numbers A1-A8)
+    fvs = (
+        FormFieldValue.objects.filter(tax_return=tax_return)
+        .select_related("form_line")
+    )
+
+    field_values: dict[str, tuple[str, str]] = {}
+    for fv in fvs:
+        ln = fv.form_line.line_number
+        if ln.startswith("A") and len(ln) >= 2:
+            # Map A1 -> 1, A2 -> 2, etc.
+            form_line = ln[1:]
+            if form_line.isdigit() and fv.value:
+                field_values[form_line] = (fv.value, "currency")
+
+    return render(
+        form_id="f1125a",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Form 8825 rendering (Rental Real Estate)
+# ---------------------------------------------------------------------------
+
+# Maps RentalProperty model fields to Form 8825 expense line numbers
+_RENTAL_EXPENSE_LINES: list[tuple[str, str]] = [
+    ("rents_received", "2a"),
+    ("advertising", "3"),
+    ("auto_and_travel", "4"),
+    ("cleaning_and_maintenance", "5"),
+    ("commissions", "6"),
+    ("insurance", "7"),
+    ("interest_mortgage", "8"),
+    ("legal_and_professional", "9"),
+    ("taxes", "10"),
+    ("repairs", "11"),
+    ("utilities", "12"),
+    ("depreciation", "14"),
+    ("other_expenses", "17"),
+]
+
+
+def render_8825(tax_return) -> bytes:
+    """
+    Render Form 8825 (Rental Real Estate) for a tax return.
+
+    Iterates RentalProperty instances, places each property's data into
+    the appropriate column (A-D) on the correct page. Up to 4 properties
+    per page (page 0 has A-D, page 1 has E-H which map to A-D columns).
+
+    Lines 20a/20b/21 are computed as totals across all properties.
+    """
+    from apps.returns.models import RentalProperty
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    properties = RentalProperty.objects.filter(
+        tax_return=tax_return
+    ).order_by("sort_order", "description")
+
+    if not properties.exists():
+        raise ValueError("No rental properties found for this return.")
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    # Build field_values for all properties
+    field_values: dict[str, tuple[str, str]] = {}
+    columns = "ABCD"
+    total_income = Decimal("0")
+    total_expenses = Decimal("0")
+
+    for idx, prop in enumerate(properties[:8]):  # max 8 properties (2 pages)
+        page_idx = idx // 4
+        col = columns[idx % 4]
+        prefix = f"p{page_idx}_{col}"
+
+        # Property description fields
+        addr_key = f"{prefix}_addr"
+        if addr_key in F8825_PROPERTY_FIELDS:
+            field_values[addr_key] = (prop.description, "text")
+        type_key = f"{prefix}_type"
+        if type_key in F8825_PROPERTY_FIELDS:
+            field_values[type_key] = (prop.property_type, "text")
+        days_key = f"{prefix}_fair_days"
+        if days_key in F8825_PROPERTY_FIELDS:
+            field_values[days_key] = (str(prop.fair_rental_days), "text")
+        pdays_key = f"{prefix}_personal_days"
+        if pdays_key in F8825_PROPERTY_FIELDS:
+            field_values[pdays_key] = (str(prop.personal_use_days), "text")
+
+        # Expense lines
+        for model_field, line_num in _RENTAL_EXPENSE_LINES:
+            amount = getattr(prop, model_field, Decimal("0"))
+            if amount and amount != 0:
+                key = f"{prefix}_{line_num}"
+                field_values[key] = (str(amount), "currency")
+
+        # Computed lines
+        prop_total_exp = prop.total_expenses
+        prop_income = prop.rents_received
+        prop_net = prop.net_rent
+
+        # Line 2c: total rental income (same as 2a for us, 2b is usually 0)
+        if prop_income != 0:
+            field_values[f"{prefix}_2c"] = (str(prop_income), "currency")
+
+        # Line 18: total expenses
+        if prop_total_exp != 0:
+            field_values[f"{prefix}_18"] = (str(prop_total_exp), "currency")
+
+        # Line 19: net income (loss) per property
+        if prop_net != 0:
+            field_values[f"{prefix}_19"] = (str(prop_net), "currency")
+
+        total_income += prop_income
+        total_expenses += prop_total_exp
+
+    # Summary lines (totals across all properties)
+    total_net = total_income - total_expenses
+    if total_income != 0:
+        field_values["20a"] = (str(total_income), "currency")
+    if total_expenses != 0:
+        field_values["20b"] = (str(total_expenses), "currency")
+    if total_net != 0:
+        field_values["21"] = (str(total_net), "currency")
+
+    # Merge property description fields into the coordinate map
+    # so _create_overlay can find them
+    combined_map = dict(F8825_FIELD_MAP)
+    combined_map.update(F8825_PROPERTY_FIELDS)
+
+    template_path = _get_template_path("f8825", tax_year_applicable)
+    if not template_path.exists():
+        raise FileNotFoundError(
+            f"IRS PDF template not found at {template_path}. "
+            f"Run scripts/update_irs_forms.py to download."
+        )
+
+    header_map = HEADER_REGISTRY.get("f8825")
+    template_reader = PdfReader(str(template_path))
+    page_count = len(template_reader.pages)
+
+    overlay_buf = _create_overlay(
+        field_values=field_values,
+        field_map=combined_map,
+        header_data=header_data,
+        header_map=header_map,
+        page_count=page_count,
+    )
+    overlay_reader = PdfReader(overlay_buf)
+
+    writer = PdfWriter()
+    for i in range(page_count):
+        template_page = template_reader.pages[i]
+        if i < len(overlay_reader.pages):
+            overlay_page = overlay_reader.pages[i]
+            template_page.merge_page(overlay_page)
+        writer.add_page(template_page)
+
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()

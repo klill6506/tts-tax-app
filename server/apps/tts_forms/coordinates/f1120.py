@@ -40,6 +40,31 @@ HEADER_FIELDS: dict[str, FieldCoord] = {
     "tax_year_end": FieldCoord(
         page=0, x=310, y=737, width=80, alignment="left", font_size=8
     ),
+    # ----- Page 0: Paid Preparer Use Only (bottom of first page) -----
+    "preparer_name": FieldCoord(
+        page=0, x=90, y=64, width=150, alignment="left", font_size=8
+    ),
+    "preparer_date": FieldCoord(
+        page=0, x=393, y=64, width=60, alignment="left", font_size=8
+    ),
+    "preparer_ptin": FieldCoord(
+        page=0, x=525, y=64, width=50, alignment="left", font_size=8
+    ),
+    "preparer_self_employed": FieldCoord(
+        page=0, x=514, y=59, width=10, alignment="left", font_size=9
+    ),
+    "firm_name": FieldCoord(
+        page=0, x=132, y=44, width=310, alignment="left", font_size=8
+    ),
+    "firm_ein": FieldCoord(
+        page=0, x=490, y=44, width=85, alignment="left", font_size=8
+    ),
+    "firm_address": FieldCoord(
+        page=0, x=140, y=32, width=310, alignment="left", font_size=8
+    ),
+    "firm_phone": FieldCoord(
+        page=0, x=500, y=32, width=75, alignment="left", font_size=8
+    ),
 }
 
 # ---------------------------------------------------------------------------
