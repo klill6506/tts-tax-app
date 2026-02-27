@@ -158,6 +158,31 @@ class ClientEntityLinkCreateSerializer(serializers.ModelSerializer):
             )
 
 
+class ClientReturnSerializer(serializers.Serializer):
+    """Flat serializer for the client returns endpoint.
+
+    Combines entity, tax year, and return data into a single row.
+    """
+
+    # Entity info
+    entity_id = serializers.UUIDField()
+    entity_name = serializers.CharField()
+    entity_type = serializers.CharField()
+    # Tax year info
+    tax_year_id = serializers.UUIDField(allow_null=True)
+    year = serializers.IntegerField(allow_null=True)
+    tax_year_status = serializers.CharField(allow_null=True)
+    # Return info
+    return_id = serializers.UUIDField(allow_null=True)
+    form_code = serializers.CharField(allow_null=True)
+    return_status = serializers.CharField(allow_null=True)
+    # Relationship info
+    relationship = serializers.CharField()  # "direct" or "shareholder" / "partner" etc.
+    ownership_percentage = serializers.DecimalField(
+        max_digits=7, decimal_places=4, allow_null=True,
+    )
+
+
 class TaxYearSerializer(serializers.ModelSerializer):
     entity_id = serializers.UUIDField(source="entity.id", read_only=True)
     entity_name = serializers.CharField(source="entity.name", read_only=True)

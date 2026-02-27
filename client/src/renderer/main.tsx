@@ -9,7 +9,7 @@ import { ThemeProvider } from "./lib/theme";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import ClientDetail from "./pages/ClientDetail";
+import ClientReturns from "./pages/ClientReturns";
 import EntityDetail from "./pages/EntityDetail";
 import TrialBalance from "./pages/TrialBalance";
 import FormEditor from "./pages/FormEditor";
@@ -39,8 +39,8 @@ function AppRoutes() {
         {/* Return Manager */}
         <Route path="/returns" element={<ReturnManager />} />
 
-        {/* Entity Manager for a client */}
-        <Route path="/clients/:clientId" element={<ClientDetail />} />
+        {/* Client Returns — all returns for an individual */}
+        <Route path="/clients/:clientId" element={<ClientReturns />} />
 
         {/* Entity Detail — tax years, TB, returns */}
         <Route path="/clients/:clientId/entities/:entityId" element={<EntityDetail />} />

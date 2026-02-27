@@ -11,7 +11,6 @@ interface ClientRow {
   id: string;
   name: string;
   status: string;
-  entity_count: number;
 }
 
 interface PaginatedResponse {
@@ -186,7 +185,6 @@ export default function Dashboard() {
             <thead className="bg-surface-alt">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Client</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Entities</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Actions</th>
               </tr>
@@ -199,7 +197,6 @@ export default function Dashboard() {
                       {r.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm tabular-nums text-tx">{r.entity_count}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${r.status === "active" ? "bg-primary-subtle text-primary-text" : "bg-surface-alt text-tx-secondary"}`}>
                       {r.status}

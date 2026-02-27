@@ -408,7 +408,8 @@ class TestFullFlow:
 
         # Verify the full chain exists
         assert Client.objects.count() == 1
-        assert Entity.objects.count() == 1
+        # 2 entities: auto-created individual + the S-Corp we created
+        assert Entity.objects.count() == 2
         assert TaxYear.objects.count() == 1
         ty = TaxYear.objects.first()
         assert ty.entity.client.name == "Flow Test Client"

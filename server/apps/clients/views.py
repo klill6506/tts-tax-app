@@ -1,14 +1,24 @@
 from rest_framework import filters, viewsets
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from apps.audit.mixins import AuditViewSetMixin
 from apps.firms.permissions import IsFirmMember
 
-from .models import Client, ClientEntityLink, Entity, TaxYear
+from .models import (
+    Client,
+    ClientEntityLink,
+    Entity,
+    EntityType,
+    LinkRole,
+    TaxYear,
+)
 from .serializers import (
     ClientEntityLinkCreateSerializer,
     ClientEntityLinkSerializer,
     ClientListSerializer,
+    ClientReturnSerializer,
     ClientSerializer,
     EntityCreateSerializer,
     EntitySerializer,
@@ -54,10 +64,108 @@ class ClientViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(firm=self.request.firm)
+
+        # Auto-create an Individual entity + taxpayer link for new clients
+        entity = Entity.objects.create(
+            client=instance,
+            name=instance.name,
+            entity_type=EntityType.INDIVIDUAL,
+            legal_name=instance.name,
+        )
+        ClientEntityLink.objects.create(
+            client=instance,
+            entity=entity,
+            role=LinkRole.TAXPAYER,
+            is_primary=True,
+        )
+
         from apps.audit.service import log_create
 
         log_create(self.request, instance)
         return instance
+
+    @action(detail=True, methods=["get"], url_path="returns")
+    def client_returns(self, request, pk=None):
+        """Return all tax returns/years for a client across all entities."""
+        client = self.get_object()
+
+        # 1. Direct entities (Entity.client = this client)
+        direct_entity_ids = set(
+            Entity.objects.filter(client=client).values_list("id", flat=True)
+        )
+
+        # 2. Linked entities (via ClientEntityLink)
+        links = ClientEntityLink.objects.filter(
+            client=client,
+        ).exclude(
+            entity_id__in=direct_entity_ids,  # avoid duplicates
+        ).select_related("entity")
+
+        linked_map = {}  # entity_id → (role, ownership_percentage)
+        for link in links:
+            linked_map[link.entity_id] = (
+                link.role,
+                link.ownership_percentage,
+            )
+
+        all_entity_ids = direct_entity_ids | set(linked_map.keys())
+
+        # Fetch entities with their tax years + returns
+        entities = Entity.objects.filter(
+            id__in=all_entity_ids,
+        ).prefetch_related(
+            "tax_years__tax_return__form_definition",
+        ).order_by("name")
+
+        rows = []
+        for entity in entities:
+            is_direct = entity.id in direct_entity_ids
+            relationship = "direct"
+            ownership = None
+            if not is_direct and entity.id in linked_map:
+                relationship = linked_map[entity.id][0]  # role name
+                ownership = linked_map[entity.id][1]
+
+            tax_years = entity.tax_years.all()
+            if tax_years:
+                for ty in tax_years:
+                    tax_return = getattr(ty, "tax_return", None)
+                    rows.append({
+                        "entity_id": entity.id,
+                        "entity_name": entity.name,
+                        "entity_type": entity.entity_type,
+                        "tax_year_id": ty.id,
+                        "year": ty.year,
+                        "tax_year_status": ty.status,
+                        "return_id": tax_return.id if tax_return else None,
+                        "form_code": (
+                            tax_return.form_definition.code
+                            if tax_return else None
+                        ),
+                        "return_status": (
+                            tax_return.status if tax_return else None
+                        ),
+                        "relationship": relationship,
+                        "ownership_percentage": ownership,
+                    })
+            else:
+                # Entity with no tax years yet — still show it
+                rows.append({
+                    "entity_id": entity.id,
+                    "entity_name": entity.name,
+                    "entity_type": entity.entity_type,
+                    "tax_year_id": None,
+                    "year": None,
+                    "tax_year_status": None,
+                    "return_id": None,
+                    "form_code": None,
+                    "return_status": None,
+                    "relationship": relationship,
+                    "ownership_percentage": ownership,
+                })
+
+        serializer = ClientReturnSerializer(rows, many=True)
+        return Response(serializer.data)
 
 
 class EntityViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
