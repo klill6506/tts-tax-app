@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Client, Entity, TaxYear
+from .models import Client, ClientEntityLink, Entity, TaxYear
 
 
 class EntityInline(admin.TabularInline):
@@ -10,12 +10,19 @@ class EntityInline(admin.TabularInline):
     readonly_fields = ("created_at",)
 
 
+class ClientEntityLinkInline(admin.TabularInline):
+    model = ClientEntityLink
+    fk_name = "client"
+    extra = 0
+    fields = ("entity", "role", "ownership_percentage", "is_primary")
+
+
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
     list_display = ("name", "firm", "status", "entity_count", "created_at")
     list_filter = ("status", "firm")
     search_fields = ("name",)
-    inlines = [EntityInline]
+    inlines = [EntityInline, ClientEntityLinkInline]
 
     @admin.display(description="Entities")
     def entity_count(self, obj):

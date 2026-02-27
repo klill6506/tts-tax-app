@@ -3,8 +3,10 @@ from rest_framework import viewsets
 from apps.audit.mixins import AuditViewSetMixin
 from apps.firms.permissions import IsFirmMember
 
-from .models import Client, Entity, TaxYear
+from .models import Client, ClientEntityLink, Entity, TaxYear
 from .serializers import (
+    ClientEntityLinkCreateSerializer,
+    ClientEntityLinkSerializer,
     ClientSerializer,
     EntityCreateSerializer,
     EntitySerializer,
@@ -54,6 +56,30 @@ class EntityViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update"):
             return EntityCreateSerializer
         return EntitySerializer
+
+
+class ClientEntityLinkViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    """CRUD for client↔entity associations, scoped to the requesting user's firm."""
+
+    permission_classes = [IsFirmMember]
+
+    def get_queryset(self):
+        qs = ClientEntityLink.objects.filter(
+            client__firm=self.request.firm
+        ).select_related("client", "entity")
+        # Filter by client or entity
+        client_id = self.request.query_params.get("client")
+        if client_id:
+            qs = qs.filter(client_id=client_id)
+        entity_id = self.request.query_params.get("entity")
+        if entity_id:
+            qs = qs.filter(entity_id=entity_id)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return ClientEntityLinkCreateSerializer
+        return ClientEntityLinkSerializer
 
 
 class TaxYearViewSet(AuditViewSetMixin, viewsets.ModelViewSet):

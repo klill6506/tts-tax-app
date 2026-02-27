@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.returns.models import TaxReturn
 
-from .models import Client, Entity, TaxYear
+from .models import Client, ClientEntityLink, Entity, TaxYear
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -90,6 +90,57 @@ class EntityCreateSerializer(serializers.ModelSerializer):
                     f"'{entity_type}' already exists for this client."
                 )
         return attrs
+
+
+class ClientEntityLinkSerializer(serializers.ModelSerializer):
+    """Read serializer — returns denormalized names for display."""
+
+    client_name = serializers.CharField(source="client.name", read_only=True)
+    entity_name = serializers.CharField(source="entity.name", read_only=True)
+    entity_type = serializers.CharField(source="entity.entity_type", read_only=True)
+
+    class Meta:
+        model = ClientEntityLink
+        fields = (
+            "id",
+            "client",
+            "client_name",
+            "entity",
+            "entity_name",
+            "entity_type",
+            "role",
+            "ownership_percentage",
+            "is_primary",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class ClientEntityLinkCreateSerializer(serializers.ModelSerializer):
+    """Write serializer — accepts client/entity as UUIDs, scoped to firm."""
+
+    client = serializers.PrimaryKeyRelatedField(queryset=Client.objects.none())
+    entity = serializers.PrimaryKeyRelatedField(queryset=Entity.objects.none())
+
+    class Meta:
+        model = ClientEntityLink
+        fields = (
+            "id", "client", "entity", "role",
+            "ownership_percentage", "is_primary",
+        )
+        read_only_fields = ("id",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and hasattr(request, "firm") and request.firm:
+            self.fields["client"].queryset = Client.objects.filter(
+                firm=request.firm
+            )
+            self.fields["entity"].queryset = Entity.objects.filter(
+                client__firm=request.firm
+            )
 
 
 class TaxYearSerializer(serializers.ModelSerializer):

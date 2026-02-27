@@ -21,6 +21,13 @@ class EntityType(models.TextChoices):
     INDIVIDUAL = "individual", "Individual (1040)"
 
 
+class LinkRole(models.TextChoices):
+    TAXPAYER = "taxpayer", "Taxpayer"
+    SHAREHOLDER = "shareholder", "Shareholder"
+    PARTNER = "partner", "Partner"
+    OFFICER = "officer", "Officer"
+
+
 class ReturnStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     IN_PROGRESS = "in_progress", "In Progress"
@@ -90,6 +97,14 @@ class Entity(models.Model):
         max_length=20, blank=True, default="",
         help_text="Business phone number.",
     )
+    email = models.EmailField(blank=True, default="")
+    # Spouse (individual returns)
+    spouse_first_name = models.CharField(max_length=255, blank=True, default="")
+    spouse_last_name = models.CharField(max_length=255, blank=True, default="")
+    spouse_ssn = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="Spouse SSN in XXX-XX-XXXX format",
+    )
     # Business info
     date_incorporated = models.DateField(null=True, blank=True)
     state_incorporated = models.CharField(max_length=2, blank=True, default="")
@@ -111,6 +126,54 @@ class Entity(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_entity_type_display()})"
+
+
+class ClientEntityLink(models.Model):
+    """Links a client to an entity they are associated with.
+
+    For individuals: role=taxpayer links them to their own 1040 entity.
+    For business owners: role=shareholder/partner/officer links them to
+    the business entity they have an interest in.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="entity_links",
+    )
+    entity = models.ForeignKey(
+        Entity,
+        on_delete=models.CASCADE,
+        related_name="client_links",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=LinkRole.choices,
+        default=LinkRole.TAXPAYER,
+    )
+    ownership_percentage = models.DecimalField(
+        max_digits=7, decimal_places=4, null=True, blank=True,
+        help_text="Ownership percentage (e.g. 60.0000 for 60%)",
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Primary owner/taxpayer for this entity.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_primary", "client__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["client", "entity", "role"],
+                name="unique_client_entity_role",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.client.name} -> {self.entity.name} ({self.get_role_display()})"
 
 
 class TaxYear(models.Model):

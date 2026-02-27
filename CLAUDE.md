@@ -1,22 +1,28 @@
 # TTS Tax App — Project Instructions
 
-## Product Vision
-Professional tax preparation software for small/mid firms (~3,000 returns, ~9 preparers).
-- **Phase 1 target**: 1120S (S-Corp) returns
-- **Windows-first** desktop app for preparers
-- Replaces legacy tax software with modern, maintainable architecture
+## Owner
+Ken — CPA, The Tax Shelter, Athens, Georgia. ~3,000 clients/year, ~9 preparers.
+Building a unified tax practice platform (Sherpa) to replace fragmented SaaS tools
+and potentially sell to other firms by ~2027.
 
-## Stack
+## This Repo
+`tts-tax-app` — The income tax preparation module. This is the **primary
+development focus** of the entire Sherpa platform.
+
+Local path: `D:\dev\tts-tax-app`
+
+## Current Stack (What Actually Exists — Do Not Change Without Discussion)
 | Layer | Technology |
 |-------|-----------|
 | Server | Django 5.2 LTS + Django REST Framework |
-| Database | PostgreSQL 16 (multi-user, shared) |
-| Desktop Client | Electron (Windows first) |
-| UI | Tailwind UI / Tailwind Plus |
+| Database | PostgreSQL 16 (local Docker for dev) |
+| Desktop Client | Electron 40 + Vite + React + TypeScript |
+| Styling | Tailwind UI / Tailwind Plus |
 | Dev DB | Postgres in Docker Compose |
-| Dependency Mgmt | Poetry |
+| Dependency Mgmt | Poetry (Python 3.13) |
 | Remote Access | Firm's existing VPN (no custom remote) |
-| AI | Help/Q&A layer (separate module, internet OK) |
+| AI Help | Gemini (IRS-grounded RAG + broad search) |
+| PDF Rendering | ReportLab + pypdf over official IRS templates |
 
 ## Project Rules (enforced)
 - **No real PII in dev** — use synthetic/fake data only
@@ -31,6 +37,7 @@ Professional tax preparation software for small/mid firms (~3,000 returns, ~9 pr
 - Docker Desktop (for Postgres)
 - Python 3.13+
 - Poetry
+- Node.js (for Electron client)
 
 ### Start Postgres
 ```powershell
@@ -45,6 +52,13 @@ poetry install
 poetry run python manage.py migrate
 poetry run python manage.py runserver
 # Or use: .\scripts\run_dev.ps1
+```
+
+### Start Electron client
+```powershell
+cd D:\dev\tts-tax-app\client
+npm install
+npm run dev
 ```
 
 ### Run tests
@@ -68,7 +82,6 @@ tts-tax-app/
 ├── CLAUDE.md                   # This file (project-wide)
 ├── .claude/rules/              # Claude Code rules (auto-loaded)
 │   └── irs_form_rendering.md   # IRS form rendering skill
-├── docs/                       # PROJECT_CHARTER, ADRs, DEVLOG
 ├── resources/irs_forms/        # Official IRS PDF templates
 │   ├── forms_manifest.json     # Template registry (URL + SHA256)
 │   └── 2025/                   # Templates by tax year
@@ -76,14 +89,24 @@ tts-tax-app/
 │   └── update_irs_forms.py     # Download + verify IRS PDFs
 ├── server/                     # Django backend
 │   ├── config/settings/        # base.py + dev.py (+ prod.py later)
-│   ├── apps/                   # Django apps (core, firms, accounts, etc.)
-│   │   └── tts_forms/          # IRS form PDF rendering subsystem
-│   │       ├── renderer.py     # Core PDF renderer
-│   │       ├── statements.py   # Supporting statement pages
-│   │       └── coordinates/    # Field position mappings per form
+│   ├── apps/                   # Django apps
+│   │   ├── accounts/           # User authentication
+│   │   ├── ai_help/            # Gemini-powered IRS help
+│   │   ├── audit/              # Audit logging
+│   │   ├── clients/            # Client/Entity management
+│   │   ├── core/               # Shared utilities
+│   │   ├── diagnostics/        # Return validation (planned)
+│   │   ├── firms/              # Multi-firm support
+│   │   ├── imports/            # Trial balance upload
+│   │   ├── mappings/           # TB → form line mappings
+│   │   ├── returns/            # Tax return models & logic
+│   │   └── tts_forms/          # IRS form PDF rendering
 │   ├── tests/                  # pytest test files
 │   └── scripts/                # Dev scripts (run_dev.ps1)
-└── client/                     # Electron app (future)
+└── client/                     # Electron + React app
+    ├── src/main/               # Electron main process
+    ├── src/preload/            # IPC bridge
+    └── src/renderer/           # React UI
 ```
 
 ## Definition of Done (per ticket)
@@ -91,35 +114,50 @@ tts-tax-app/
 - [ ] Migrations created and applied
 - [ ] Tests written and passing
 - [ ] No secrets or PII in committed code
-- [ ] Code reviewed by Architect/QA supervisor prompt
-- [ ] Code reviewed by Security supervisor prompt
 
 ## UI/Design Standards
+- **Professional, not sterile.** Think TaxWise/Lacerte aesthetic, not startup.
+- **Light mode default.** Blue = primary, Green = create, Red = errors only.
+- **Font**: Inter (Google Fonts) with Arial/Tahoma/Segoe UI fallbacks.
+- **Colors**: Blue-800 nav, white cards, soft tinted page background.
+- **Density**: Practitioners expect efficiency — avoid excessive whitespace.
 
-### General Principles
-- **Professional, not sterile.** We're a CPA firm, not a hospital. Warm neutrals > cold grays.
-- **Generous whitespace.** Don't cram. Let elements breathe.
-- **Subtle depth.** Use soft shadows (shadow-sm, shadow-md) to create layers.
-- **Consistent spacing.** Pick a scale (4, 8, 16, 24, 32px) and stick to it.
+## Sherpa Platform Vision (PLANNED — Not Yet Implemented)
 
-### Colors
-- Primary: Blue (trust, professionalism) — not too bright
-- Accent: Warm gold or amber for CTAs and highlights
-- Backgrounds: Off-white or very light warm gray (not pure white, not cold gray)
-- Text: Near-black (gray-900), not pure black
+Sherpa is a unified tax practice management platform. The long-term goal is for all
+modules to share **one central Postgres database** so clients are entered once and
+exist everywhere. Modules can be sold individually or as a suite.
 
-### Typography
-- Headings: Semi-bold, slightly larger than you think
-- Body: Regular weight, good line-height (1.5-1.6)
-- Don't be afraid of font-medium for emphasis
+### Modules
+| Module | Status | Stack | Database |
+|---|---|---|---|
+| **Tax Prep** (this repo) | Active dev | Django + Electron | Local Docker Postgres |
+| **1099 E-Filing** | Production | FastAPI(?) | Supabase Postgres |
+| **Client Check-In** | Working | Flask | In-memory (no DB yet) |
+| **Client Portal** | Planned (summer) | TBD | — |
+| **Scheduling** | Planned (summer) | TBD | — |
+| **Invoicing** | Planned (summer) | TBD | — |
 
-### Components
-- Buttons: Rounded corners (rounded-lg), padding (px-4 py-2 minimum), hover states
-- Cards: Subtle border OR shadow, not both. Rounded corners.
-- Forms: Labels above inputs, clear focus states, adequate spacing between fields
-- Tables: Alternating row colors optional, but always clear headers
+### Database Consolidation Plan (Next Step)
+- Migrate the tax app from local Docker Postgres → **Supabase Postgres** (the 1099 app is already there)
+- Create a shared `clients` table as the backbone across all modules
+- Add `firm_id` to all tables for multi-tenant support
+- Each module only shows clients who have data in that module (e.g., 1099 app shows only the ~30 clients with 1099 records, not all 3,000)
+- Clients have an `is_active` flag to hide former clients across all modules
+- Keep Docker Postgres available for local/offline development
 
-### Dark Mode (if applicable)
-- Not pitch black — use gray-900 or slate-900
-- Reduce contrast slightly (gray-100 text, not white)
-- Accent colors may need to be lighter/more saturated
+### QuickBooks Integration (Planned)
+QBO stays — we don't rebuild the general ledger. Invoices and payments push to QBO via API.
+
+## Competitive Context
+No commercial Python-based tax preparation software exists. Every major competitor
+(Lacerte, TaxWise, Drake, UltraTax CS, ProSeries) runs on legacy Microsoft stacks.
+An AI-native, modern-stack tax platform for professional preparers is an open field.
+
+## Development Rules
+- ✅ Can create and modify files freely
+- ❌ Ask before deleting files, bulk renames, or changes outside this repo
+- ❌ Don't invent new ports or services without asking
+- Push to GitHub regularly — that's the backup strategy
+- Keep code readable — Ken is a CPA learning to code, not a career engineer
+- **Do NOT change the tech stack** (Django, React, Electron) without explicit discussion
