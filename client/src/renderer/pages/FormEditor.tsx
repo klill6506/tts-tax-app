@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { get, patch, post, del, renderK1s, renderK1, render7206 } from "../lib/api";
+import {
+  get, patch, post, del,
+  renderPdf, renderK1s, renderK1, render7206,
+  render1125a, render8825, render7203, render7203s, render7004,
+} from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
 
@@ -269,6 +273,7 @@ export default function FormEditor() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("info");
+  const [primaryTab, setPrimaryTab] = useState<"input" | "forms" | "diagnostics">("input");
 
   // Prior year data
   const [priorYear, setPriorYear] = useState<PriorYearData | null>(null);
@@ -483,7 +488,7 @@ export default function FormEditor() {
       </div>
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-tx">
             Form {returnData.form_code}
@@ -500,12 +505,6 @@ export default function FormEditor() {
             </span>
           )}
           <SaveStatusIndicator status={saveStatus} />
-          <Link
-            to={`/tax-returns/${taxReturnId}/preview`}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-          >
-            Preview
-          </Link>
           <button
             onClick={handleImportTB}
             disabled={importing}
@@ -516,73 +515,110 @@ export default function FormEditor() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-        {SECTION_TABS.map((tab) => (
+      {/* Primary tab bar — Input / Forms / Diagnostics */}
+      <div className="mb-4 flex items-center gap-0 border-b-2 border-border">
+        {(["input", "forms", "diagnostics"] as const).map((tab) => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition ${
-              activeTab === tab.id
-                ? "border-b-2 border-primary text-primary-text"
+            key={tab}
+            onClick={() => setPrimaryTab(tab)}
+            className={`px-5 py-2.5 text-sm font-semibold uppercase tracking-wide transition ${
+              primaryTab === tab
+                ? "border-b-2 border-primary text-primary-text -mb-[2px]"
                 : "text-tx-secondary hover:text-tx"
             }`}
           >
-            {tab.label}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* Active section content */}
-      {activeTab === "info" ? (
-        <InfoSection returnData={returnData} onRefresh={refreshReturn} />
-      ) : activeTab === "shareholders" ? (
-        <ShareholdersSection
-          taxReturnId={taxReturnId!}
-          shareholders={returnData.shareholders || []}
-          onRefresh={refreshReturn}
-        />
-      ) : activeTab === "page1" ? (
-        <IncomeDeductionsSection
-          taxReturnId={taxReturnId!}
-          fieldsBySection={fieldsBySection}
-          otherDeductions={returnData.other_deductions || []}
-          onChange={handleFieldChange}
-          onRefresh={refreshReturn}
-          priorYear={priorYear}
-        />
-      ) : activeTab === "rental" ? (
-        <RentalPropertiesSection
-          taxReturnId={taxReturnId!}
-          properties={returnData.rental_properties || []}
-          onRefresh={refreshReturn}
-        />
-      ) : activeTab === "balance_sheets" ? (
-        <BalanceSheetsSection
-          taxReturnId={taxReturnId!}
-          fieldsBySection={fieldsBySection}
-          onChange={handleFieldChange}
-          onRefresh={refreshReturn}
-          priorYear={priorYear}
-        />
-      ) : activeTab === "preparer" ? (
-        <PreparerSection
+      {/* PRIMARY TAB: INPUT */}
+      {primaryTab === "input" && (
+        <>
+          {/* Section tab bar */}
+          <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
+            {SECTION_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition ${
+                  activeTab === tab.id
+                    ? "border-b-2 border-primary text-primary-text"
+                    : "text-tx-secondary hover:text-tx"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Active section content */}
+          {activeTab === "info" ? (
+            <InfoSection returnData={returnData} onRefresh={refreshReturn} />
+          ) : activeTab === "shareholders" ? (
+            <ShareholdersSection
+              taxReturnId={taxReturnId!}
+              shareholders={returnData.shareholders || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "page1" ? (
+            <IncomeDeductionsSection
+              taxReturnId={taxReturnId!}
+              fieldsBySection={fieldsBySection}
+              otherDeductions={returnData.other_deductions || []}
+              onChange={handleFieldChange}
+              onRefresh={refreshReturn}
+              priorYear={priorYear}
+            />
+          ) : activeTab === "rental" ? (
+            <RentalPropertiesSection
+              taxReturnId={taxReturnId!}
+              properties={returnData.rental_properties || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "balance_sheets" ? (
+            <BalanceSheetsSection
+              taxReturnId={taxReturnId!}
+              fieldsBySection={fieldsBySection}
+              onChange={handleFieldChange}
+              onRefresh={refreshReturn}
+              priorYear={priorYear}
+            />
+          ) : activeTab === "preparer" ? (
+            <PreparerSection
+              taxReturnId={taxReturnId!}
+              returnData={returnData}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "sched_b" ? (
+            <ScheduleBSection
+              fields={fieldsBySection["sched_b"] || []}
+              returnData={returnData}
+              onChange={handleFieldChange}
+            />
+          ) : (
+            <StandardSection
+              sections={activeTabDef?.sections ?? []}
+              fieldsBySection={fieldsBySection}
+              onChange={handleFieldChange}
+              pyLookup={pyLookup}
+            />
+          )}
+        </>
+      )}
+
+      {/* PRIMARY TAB: FORMS */}
+      {primaryTab === "forms" && (
+        <FormsTab
           taxReturnId={taxReturnId!}
           returnData={returnData}
-          onRefresh={refreshReturn}
         />
-      ) : activeTab === "sched_b" ? (
-        <ScheduleBSection
-          fields={fieldsBySection["sched_b"] || []}
-          returnData={returnData}
-          onChange={handleFieldChange}
-        />
-      ) : (
-        <StandardSection
-          sections={activeTabDef?.sections ?? []}
-          fieldsBySection={fieldsBySection}
-          onChange={handleFieldChange}
-          pyLookup={pyLookup}
+      )}
+
+      {/* PRIMARY TAB: DIAGNOSTICS */}
+      {primaryTab === "diagnostics" && (
+        <DiagnosticsTab
+          taxYearId={returnData.tax_year_id}
         />
       )}
     </div>
@@ -3273,6 +3309,373 @@ function ReturnStatusPill({ status }: { status: string }) {
     </span>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Forms Tab — gallery of all renderable IRS form PDFs
+// ---------------------------------------------------------------------------
+
+/** Open a PDF blob in a new browser tab. */
+function openPdfBlob(base64: string, filename: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank");
+  // Revoke after a delay so the browser has time to load
+  if (w) setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+interface FormEntry {
+  key: string;
+  label: string;
+  description: string;
+  renderFn: () => Promise<{ ok: boolean; pdfBase64?: string; error?: string }>;
+  condition?: boolean; // false = hide this entry
+}
+
+function FormsTab({
+  taxReturnId,
+  returnData,
+}: {
+  taxReturnId: string;
+  returnData: TaxReturnData;
+}) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const formCode = returnData.form_code;
+  const shareholders = returnData.shareholders || [];
+  const hasRentals = (returnData.rental_properties || []).length > 0;
+  const hasCOGS = (returnData.field_values || []).some(
+    (fv) => fv.section_code === "sched_a" && parseFloat(fv.value) !== 0,
+  );
+
+  // Build list of available forms
+  const forms: FormEntry[] = useMemo(() => {
+    const list: FormEntry[] = [
+      {
+        key: "main",
+        label: `Form ${formCode}`,
+        description: `Main return (Pages 1–5)`,
+        renderFn: () => renderPdf(taxReturnId),
+      },
+      {
+        key: "7004",
+        label: "Form 7004",
+        description: "Application for Automatic Extension of Time",
+        renderFn: () => render7004(taxReturnId),
+      },
+    ];
+
+    // COGS
+    if (hasCOGS) {
+      list.push({
+        key: "1125a",
+        label: "Form 1125-A",
+        description: "Cost of Goods Sold",
+        renderFn: () => render1125a(taxReturnId),
+      });
+    }
+
+    // Rental
+    if (hasRentals) {
+      list.push({
+        key: "8825",
+        label: "Form 8825",
+        description: "Rental Real Estate Income and Expenses",
+        renderFn: () => render8825(taxReturnId),
+      });
+    }
+
+    // Shareholder-level forms (1120-S only)
+    if (formCode === "1120-S" && shareholders.length > 0) {
+      // All K-1s combined
+      list.push({
+        key: "k1s-all",
+        label: "Schedule K-1 (All)",
+        description: `All ${shareholders.length} Schedule K-1s combined`,
+        renderFn: () => renderK1s(taxReturnId),
+      });
+
+      // Individual K-1s
+      for (const sh of shareholders) {
+        list.push({
+          key: `k1-${sh.id}`,
+          label: `K-1: ${sh.name}`,
+          description: `${sh.ownership_percentage}% ownership`,
+          renderFn: () => renderK1(taxReturnId, sh.id),
+        });
+      }
+
+      // All 7203s combined
+      list.push({
+        key: "7203s-all",
+        label: "Form 7203 (All)",
+        description: "All shareholder basis limitation forms",
+        renderFn: () => render7203s(taxReturnId),
+      });
+
+      // Individual 7203s
+      for (const sh of shareholders) {
+        list.push({
+          key: `7203-${sh.id}`,
+          label: `7203: ${sh.name}`,
+          description: "Stock and Debt Basis Limitations",
+          renderFn: () => render7203(taxReturnId, sh.id),
+        });
+      }
+
+      // 7206 for shareholders with health insurance
+      for (const sh of shareholders) {
+        const premium = parseFloat(sh.health_insurance_premium || "0");
+        if (premium > 0) {
+          list.push({
+            key: `7206-${sh.id}`,
+            label: `7206: ${sh.name}`,
+            description: "Self-Employed Health Insurance Deduction",
+            renderFn: () => render7206(taxReturnId, sh.id),
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [taxReturnId, formCode, shareholders, hasRentals, hasCOGS]);
+
+  async function handleView(entry: FormEntry) {
+    setLoading(entry.key);
+    setError(null);
+    const res = await entry.renderFn();
+    setLoading(null);
+    if (res.ok && res.pdfBase64) {
+      openPdfBlob(res.pdfBase64, `${entry.label}.pdf`);
+    } else {
+      setError(res.error || "Failed to generate PDF.");
+    }
+  }
+
+  // Group forms for display
+  const mainForms = forms.filter((f) => !f.key.includes("-") || f.key === "1125a" || f.key === "k1s-all" || f.key === "7203s-all");
+  const k1Forms = forms.filter((f) => f.key.startsWith("k1-"));
+  const basisForms = forms.filter((f) => f.key.startsWith("7203-"));
+  const healthForms = forms.filter((f) => f.key.startsWith("7206-"));
+
+  function FormRow({ entry }: { entry: FormEntry }) {
+    const isLoading = loading === entry.key;
+    return (
+      <div className="flex items-center justify-between px-5 py-3 hover:bg-surface-alt/50 transition">
+        <div>
+          <span className="text-sm font-semibold text-tx">{entry.label}</span>
+          <span className="ml-3 text-sm text-tx-secondary">{entry.description}</span>
+        </div>
+        <button
+          onClick={() => handleView(entry)}
+          disabled={!!loading}
+          className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+        >
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+              </svg>
+              Generating...
+            </span>
+          ) : "View PDF"}
+        </button>
+      </div>
+    );
+  }
+
+  function FormGroup({ title, entries }: { title: string; entries: FormEntry[] }) {
+    if (entries.length === 0) return null;
+    return (
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+          {title}
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {entries.map((e) => <FormRow key={e.key} entry={e} />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger">{error}</div>
+      )}
+      <FormGroup title="Tax Return & Schedules" entries={mainForms} />
+      {k1Forms.length > 0 && <FormGroup title="Schedule K-1 — Individual" entries={k1Forms} />}
+      {basisForms.length > 0 && <FormGroup title="Form 7203 — Shareholder Basis" entries={basisForms} />}
+      {healthForms.length > 0 && <FormGroup title="Form 7206 — Health Insurance" entries={healthForms} />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics Tab — validation findings
+// ---------------------------------------------------------------------------
+
+interface DiagnosticFinding {
+  id: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  details: Record<string, unknown> | null;
+  is_resolved: boolean;
+  rule_name: string;
+}
+
+interface DiagnosticRunData {
+  id: string;
+  status: string;
+  finding_count: number;
+  started_at: string;
+  completed_at: string | null;
+  findings: DiagnosticFinding[];
+}
+
+function DiagnosticsTab({ taxYearId }: { taxYearId: string }) {
+  const [runs, setRuns] = useState<DiagnosticRunData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchRuns() {
+    const res = await get(`/diagnostic-runs/?tax_year=${taxYearId}`);
+    if (res.ok) {
+      setRuns((res.data as { results?: DiagnosticRunData[] }).results || (res.data as DiagnosticRunData[]));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchRuns();
+  }, [taxYearId]);
+
+  async function handleRun() {
+    setRunning(true);
+    setError(null);
+    const res = await post("/diagnostic-runs/run/", { tax_year: taxYearId });
+    setRunning(false);
+    if (res.ok) {
+      fetchRuns();
+    } else {
+      const err = res.data as { error?: string };
+      setError(err.error || "Failed to run diagnostics.");
+    }
+  }
+
+  const latestRun = runs.length > 0 ? runs[0] : null;
+  const findings = latestRun?.findings || [];
+  const errors = findings.filter((f) => f.severity === "error");
+  const warnings = findings.filter((f) => f.severity === "warning");
+  const infos = findings.filter((f) => f.severity === "info");
+
+  const SEVERITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    error: { bg: "bg-danger/10", text: "text-danger", label: "Error" },
+    warning: { bg: "bg-warning/10", text: "text-warning-dark", label: "Warning" },
+    info: { bg: "bg-primary/10", text: "text-primary-text", label: "Info" },
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-tx">Return Diagnostics</h3>
+          {latestRun && (
+            <p className="text-sm text-tx-secondary">
+              Last run: {new Date(latestRun.started_at).toLocaleString()}
+              {" — "}
+              {latestRun.finding_count} finding{latestRun.finding_count !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={handleRun}
+          disabled={running}
+          className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
+        >
+          {running ? "Running..." : "Run Diagnostics"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger">{error}</div>
+      )}
+
+      {loading && <p className="text-sm text-tx-secondary">Loading...</p>}
+
+      {!loading && !latestRun && (
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm text-tx-secondary">No diagnostics have been run yet.</p>
+          <p className="mt-1 text-sm text-tx-secondary">Click "Run Diagnostics" to check this return for issues.</p>
+        </div>
+      )}
+
+      {/* Summary pills */}
+      {latestRun && findings.length > 0 && (
+        <div className="flex gap-3">
+          {errors.length > 0 && (
+            <span className="rounded-full bg-danger/10 px-3 py-1 text-sm font-semibold text-danger">
+              {errors.length} Error{errors.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {warnings.length > 0 && (
+            <span className="rounded-full bg-warning/10 px-3 py-1 text-sm font-semibold text-warning-dark">
+              {warnings.length} Warning{warnings.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {infos.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary-text">
+              {infos.length} Info
+            </span>
+          )}
+        </div>
+      )}
+
+      {latestRun && findings.length === 0 && (
+        <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center shadow-sm">
+          <svg className="mx-auto mb-2 h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm font-semibold text-success">No issues found</p>
+        </div>
+      )}
+
+      {/* Findings list */}
+      {findings.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm divide-y divide-border-subtle">
+          {[...errors, ...warnings, ...infos].map((f) => {
+            const style = SEVERITY_STYLES[f.severity] || SEVERITY_STYLES.info;
+            return (
+              <div key={f.id} className="flex items-start gap-3 px-5 py-3">
+                <span className={`mt-0.5 shrink-0 rounded px-2 py-0.5 text-xs font-bold uppercase ${style.bg} ${style.text}`}>
+                  {style.label}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-tx">{f.message}</p>
+                  {f.details && Object.keys(f.details).length > 0 && (
+                    <p className="mt-1 text-xs text-tx-secondary">
+                      {JSON.stringify(f.details)}
+                    </p>
+                  )}
+                </div>
+                <span className="text-xs text-tx-muted">{f.rule_name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Save Status Indicator
+// ---------------------------------------------------------------------------
 
 function SaveStatusIndicator({
   status,

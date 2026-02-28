@@ -190,6 +190,31 @@ export async function render7206(
   );
 }
 
+export async function render1125a(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-1125a/`);
+}
+
+export async function render8825(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-8825/`);
+}
+
+export async function render7203(
+  taxReturnId: string,
+  shareholderId: string
+): Promise<PdfResponse> {
+  return fetchPdf(
+    `/tax-returns/${taxReturnId}/render-7203/${shareholderId}/`
+  );
+}
+
+export async function render7203s(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-7203s/`);
+}
+
+export async function render7004(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-7004/`);
+}
+
 // ---------------------------------------------------------------------------
 // Session management
 // ---------------------------------------------------------------------------
