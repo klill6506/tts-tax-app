@@ -701,7 +701,7 @@ function InfoSection({
     setOfficers(returnData.officers || []);
   }, [returnData]);
 
-  // Format helpers — auto-insert dashes for EIN (XX-XXXXXXX) and SSN (XXX-XX-XXXX)
+  // Format helpers — auto-insert dashes for EIN, SSN, and phone
   function formatEIN(raw: string): string {
     const digits = raw.replace(/\D/g, "").slice(0, 9);
     if (digits.length > 2) return digits.slice(0, 2) + "-" + digits.slice(2);
@@ -715,10 +715,18 @@ function InfoSection({
     return digits;
   }
 
+  function formatPhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length > 6) return digits.slice(0, 3) + "-" + digits.slice(3, 6) + "-" + digits.slice(6);
+    if (digits.length > 3) return digits.slice(0, 3) + "-" + digits.slice(3);
+    return digits;
+  }
+
   // Entity field changes
   function handleEntityChange(field: keyof EntityInfo, value: string) {
     if (!entity) return;
     if (field === "ein") value = formatEIN(value);
+    if (field === "phone") value = formatPhone(value);
     setEntity({ ...entity, [field]: value });
   }
 

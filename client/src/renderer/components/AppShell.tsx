@@ -234,34 +234,69 @@ function DropdownMenu({
 // Background palette swatches (temporary dev tool for Ken to pick)
 // ---------------------------------------------------------------------------
 
-interface Palette {
+interface BgPalette {
   name: string;
   surface: string;
   surfaceAlt: string;
   zebra: string;
-  feel: string;
 }
 
-const BG_PALETTES: Palette[] = [
-  { name: "Slate (current)",  surface: "#e2e8f0", surfaceAlt: "#cbd5e1", zebra: "#f1f5f9", feel: "Cool gray" },
-  { name: "Soft Blue Mist",   surface: "#eef3fa", surfaceAlt: "#dce5f0", zebra: "#f5f8fc", feel: "Barely blue" },
-  { name: "Warm Stone",       surface: "#f5f4f1", surfaceAlt: "#e8e6e1", zebra: "#faf9f7", feel: "Paper-like" },
-  { name: "Sage Tint",        surface: "#f0f4f1", surfaceAlt: "#dfe6e0", zebra: "#f7faf7", feel: "Subtle green" },
-  { name: "Slate Blue",       surface: "#ebeef5", surfaceAlt: "#dde1ec", zebra: "#f3f5fa", feel: "Blue undertone" },
+interface AccentPalette {
+  name: string;
+  primary: string;
+  primaryHover: string;
+  primarySubtle: string;
+  primaryText: string;
+  nav: string;
+  navActive: string;
+  navBorder: string;
+  swatch: string; // preview color for the button
+}
+
+const BG_PALETTES: BgPalette[] = [
+  { name: "Slate",       surface: "#e2e8f0", surfaceAlt: "#cbd5e1", zebra: "#f1f5f9" },
+  { name: "Blue Mist",   surface: "#eef3fa", surfaceAlt: "#dce5f0", zebra: "#f5f8fc" },
+  { name: "Warm Stone",  surface: "#f5f4f1", surfaceAlt: "#e8e6e1", zebra: "#faf9f7" },
+  { name: "Sage",        surface: "#f0f4f1", surfaceAlt: "#dfe6e0", zebra: "#f7faf7" },
+  { name: "Slate Blue",  surface: "#ebeef5", surfaceAlt: "#dde1ec", zebra: "#f3f5fa" },
 ];
 
-function applyPalette(p: Palette) {
+const ACCENT_PALETTES: AccentPalette[] = [
+  { name: "Blue",    swatch: "#2563eb", primary: "#2563eb", primaryHover: "#1d4ed8", primarySubtle: "#dbeafe", primaryText: "#1d4ed8", nav: "#1e3a5f", navActive: "#1e40af", navBorder: "#1d4ed8" },
+  { name: "Indigo",  swatch: "#4f46e5", primary: "#4f46e5", primaryHover: "#4338ca", primarySubtle: "#e0e7ff", primaryText: "#4338ca", nav: "#312e81", navActive: "#3730a3", navBorder: "#4338ca" },
+  { name: "Teal",    swatch: "#0d9488", primary: "#0d9488", primaryHover: "#0f766e", primarySubtle: "#ccfbf1", primaryText: "#0f766e", nav: "#134e4a", navActive: "#115e59", navBorder: "#0f766e" },
+  { name: "Violet",  swatch: "#7c3aed", primary: "#7c3aed", primaryHover: "#6d28d9", primarySubtle: "#ede9fe", primaryText: "#6d28d9", nav: "#4c1d95", navActive: "#5b21b6", navBorder: "#6d28d9" },
+  { name: "Rose",    swatch: "#e11d48", primary: "#e11d48", primaryHover: "#be123c", primarySubtle: "#ffe4e6", primaryText: "#be123c", nav: "#881337", navActive: "#9f1239", navBorder: "#be123c" },
+];
+
+function applyBgPalette(p: BgPalette) {
   const root = document.documentElement;
   root.style.setProperty("--surface", p.surface);
   root.style.setProperty("--surface-alt", p.surfaceAlt);
   root.style.setProperty("--zebra", p.zebra);
 }
 
-function clearPaletteOverrides() {
+function clearBgPalette() {
   const root = document.documentElement;
   root.style.removeProperty("--surface");
   root.style.removeProperty("--surface-alt");
   root.style.removeProperty("--zebra");
+}
+
+function applyAccentPalette(p: AccentPalette) {
+  const root = document.documentElement;
+  root.style.setProperty("--primary", p.primary);
+  root.style.setProperty("--primary-hover", p.primaryHover);
+  root.style.setProperty("--primary-subtle", p.primarySubtle);
+  root.style.setProperty("--primary-text", p.primaryText);
+  root.style.setProperty("--nav", p.nav);
+  root.style.setProperty("--nav-active", p.navActive);
+  root.style.setProperty("--nav-border", p.navBorder);
+}
+
+function clearAccentPalette() {
+  const root = document.documentElement;
+  ["--primary", "--primary-hover", "--primary-subtle", "--primary-text", "--nav", "--nav-active", "--nav-border"].forEach(v => root.style.removeProperty(v));
 }
 
 export default function AppShell() {
@@ -274,7 +309,15 @@ export default function AppShell() {
   const [showAbout, setShowAbout] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [showPalettes, setShowPalettes] = useState(false);
-  const [activePalette, setActivePalette] = useState(0);
+  const [activeBg, setActiveBg] = useState(() => {
+    const saved = localStorage.getItem("sherpa-bg-palette");
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+  const [activeAccent, setActiveAccent] = useState(() => {
+    const saved = localStorage.getItem("sherpa-accent-palette");
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+  const paletteRef = useRef<HTMLDivElement>(null);
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
 
@@ -286,6 +329,24 @@ export default function AppShell() {
       else setServerVersion("unavailable");
     });
   }, [showAbout]);
+
+  // Restore saved palettes on mount
+  useEffect(() => {
+    if (activeBg > 0 && activeBg < BG_PALETTES.length) applyBgPalette(BG_PALETTES[activeBg]);
+    if (activeAccent > 0 && activeAccent < ACCENT_PALETTES.length) applyAccentPalette(ACCENT_PALETTES[activeAccent]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close palette dropdown on outside click
+  useEffect(() => {
+    if (!showPalettes) return;
+    function handleClick(e: MouseEvent) {
+      if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) {
+        setShowPalettes(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showPalettes]);
 
   function handleMenuAction(action: string) {
     if (action === "about") setShowAbout(true);
@@ -414,6 +475,73 @@ export default function AppShell() {
             {mode === "system" && <MonitorIcon />}
           </button>
 
+          {/* Palette picker */}
+          <div className="relative" ref={paletteRef}>
+            <button
+              onClick={() => setShowPalettes(!showPalettes)}
+              title="Color palette"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-tx-on-dark transition hover:bg-nav-active hover:text-white"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
+              </svg>
+            </button>
+
+            {showPalettes && (
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-card p-3 shadow-2xl z-50">
+                {/* Background section */}
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Background</p>
+                <div className="flex gap-1.5 mb-3">
+                  {BG_PALETTES.map((p, i) => (
+                    <button
+                      key={p.name}
+                      onClick={() => {
+                        setActiveBg(i);
+                        localStorage.setItem("sherpa-bg-palette", String(i));
+                        if (i === 0) clearBgPalette();
+                        else applyBgPalette(p);
+                      }}
+                      title={p.name}
+                      className={`h-8 w-8 shrink-0 rounded-lg border-2 shadow-sm transition ${
+                        activeBg === i ? "border-white ring-2 ring-primary scale-110" : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ background: `linear-gradient(135deg, ${p.surface} 50%, ${p.surfaceAlt} 50%)` }}
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] text-tx-muted mb-0.5">
+                  Active: <span className="font-medium text-tx-secondary">{BG_PALETTES[activeBg]?.name}</span>
+                </p>
+
+                <div className="my-2 border-t border-border-subtle" />
+
+                {/* Accent section */}
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Accent</p>
+                <div className="flex gap-1.5 mb-3">
+                  {ACCENT_PALETTES.map((p, i) => (
+                    <button
+                      key={p.name}
+                      onClick={() => {
+                        setActiveAccent(i);
+                        localStorage.setItem("sherpa-accent-palette", String(i));
+                        if (i === 0) clearAccentPalette();
+                        else applyAccentPalette(p);
+                      }}
+                      title={p.name}
+                      className={`h-8 w-8 shrink-0 rounded-full border-2 shadow-sm transition ${
+                        activeAccent === i ? "border-white ring-2 ring-offset-1 ring-offset-card scale-110" : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: p.swatch }}
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] text-tx-muted">
+                  Active: <span className="font-medium text-tx-secondary">{ACCENT_PALETTES[activeAccent]?.name}</span>
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="h-5 w-px bg-nav-border" />
 
           {/* Tax Year selector (display only for now) */}
@@ -523,57 +651,6 @@ export default function AppShell() {
         </div>
       )}
 
-      {/* ── Background Palette Picker (Dev Tool — remove after Ken picks) ── */}
-      <div className="fixed bottom-10 right-20 z-[90]">
-        {showPalettes && (
-          <div className="mb-2 w-64 rounded-xl border border-border bg-card p-3 shadow-2xl">
-            <p className="mb-2 text-xs font-semibold text-tx-secondary">Background Palette</p>
-            <div className="space-y-1.5">
-              {BG_PALETTES.map((p, i) => (
-                <button
-                  key={p.name}
-                  onClick={() => {
-                    setActivePalette(i);
-                    if (i === 0) clearPaletteOverrides();
-                    else applyPalette(p);
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition ${
-                    activePalette === i
-                      ? "ring-2 ring-primary bg-primary-subtle"
-                      : "hover:bg-surface"
-                  }`}
-                >
-                  {/* Color swatch */}
-                  <div
-                    className="h-8 w-8 shrink-0 rounded-md border border-border shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${p.surface} 50%, ${p.surfaceAlt} 50%)` }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-tx">{p.name}</p>
-                    <p className="text-[10px] text-tx-muted">{p.feel}</p>
-                  </div>
-                  {activePalette === i && (
-                    <svg className="ml-auto h-4 w-4 shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[10px] text-tx-muted italic">Pick one and let me know — I'll apply it permanently and remove this picker.</p>
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowPalettes(!showPalettes)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:bg-primary-hover hover:shadow-xl"
-          title="Background palette picker"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
-          </svg>
-        </button>
-      </div>
     </div>
   );
 }

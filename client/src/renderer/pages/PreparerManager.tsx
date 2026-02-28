@@ -152,9 +152,31 @@ export default function PreparerManager() {
     await fetchPreparers();
   }
 
+  // Format helpers — auto-insert dashes for EIN, SSN, and phone
+  function formatEIN(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 9);
+    if (digits.length > 2) return digits.slice(0, 2) + "-" + digits.slice(2);
+    return digits;
+  }
+
+  function formatPhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length > 6) return digits.slice(0, 3) + "-" + digits.slice(3, 6) + "-" + digits.slice(6);
+    if (digits.length > 3) return digits.slice(0, 3) + "-" + digits.slice(3);
+    return digits;
+  }
+
+  // Fields that get auto-formatted
+  const FORMAT_FIELDS: Record<string, (v: string) => string> = {
+    firm_ein: formatEIN,
+    firm_phone: formatPhone,
+    designee_phone: formatPhone,
+  };
+
   // Form field helper
   function field(label: string, key: keyof typeof formData, opts?: { type?: string; placeholder?: string; width?: string }) {
     const val = formData[key];
+    const formatter = FORMAT_FIELDS[key];
     return (
       <div className={opts?.width || "col-span-1"}>
         <label className="block text-xs font-medium text-tx-secondary mb-1">{label}</label>
@@ -162,7 +184,10 @@ export default function PreparerManager() {
           ref={key === "name" ? nameRef : undefined}
           type={opts?.type || "text"}
           value={val as string}
-          onChange={(e) => setFormData((prev) => ({ ...prev, [key]: e.target.value }))}
+          onChange={(e) => {
+            const v = formatter ? formatter(e.target.value) : e.target.value;
+            setFormData((prev) => ({ ...prev, [key]: v }));
+          }}
           placeholder={opts?.placeholder}
           className="w-full rounded-md border border-input-border bg-input px-2.5 py-1.5 text-sm text-tx outline-none focus:ring-2 focus:ring-focus-ring"
         />
