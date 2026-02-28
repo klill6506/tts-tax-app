@@ -119,6 +119,15 @@ interface PreparerInfoData {
   designee_pin: string;
 }
 
+interface PriorYearData {
+  id: string;
+  year: number;
+  form_code: string;
+  line_values: Record<string, number>;
+  other_deductions: Record<string, number>;
+  balance_sheet: Record<string, number>;
+}
+
 interface TaxReturnData {
   id: string;
   tax_year_id: string;
@@ -260,6 +269,22 @@ export default function FormEditor() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("info");
+
+  // Prior year data
+  const [priorYear, setPriorYear] = useState<PriorYearData | null>(null);
+
+  useEffect(() => {
+    if (!taxReturnId) return;
+    get(`/tax-returns/${taxReturnId}/prior-year/`).then((res) => {
+      if (res.ok) setPriorYear(res.data as PriorYearData);
+    });
+  }, [taxReturnId]);
+
+  /** Lookup prior year amount for a form line number. */
+  const pyLookup = useMemo(() => {
+    if (!priorYear) return {};
+    return priorYear.line_values;
+  }, [priorYear]);
 
   // Form context — so AiHelpPanel knows which form/tab we're on
   const { setFormContext, clearFormContext } = useFormContext();
@@ -524,6 +549,7 @@ export default function FormEditor() {
           otherDeductions={returnData.other_deductions || []}
           onChange={handleFieldChange}
           onRefresh={refreshReturn}
+          priorYear={priorYear}
         />
       ) : activeTab === "rental" ? (
         <RentalPropertiesSection
@@ -535,6 +561,7 @@ export default function FormEditor() {
         <BalanceSheetsSection
           fieldsBySection={fieldsBySection}
           onChange={handleFieldChange}
+          priorYear={priorYear}
         />
       ) : activeTab === "preparer" ? (
         <PreparerSection
@@ -547,6 +574,7 @@ export default function FormEditor() {
           sections={activeTabDef?.sections ?? []}
           fieldsBySection={fieldsBySection}
           onChange={handleFieldChange}
+          pyLookup={pyLookup}
         />
       )}
     </div>
@@ -1569,12 +1597,14 @@ function IncomeDeductionsSection({
   otherDeductions,
   onChange,
   onRefresh,
+  priorYear,
 }: {
   taxReturnId: string;
   fieldsBySection: Record<string, FieldValue[]>;
   otherDeductions: OtherDeductionRow[];
   onChange: (formLineId: string, value: string) => void;
   onRefresh: () => Promise<void>;
+  priorYear: PriorYearData | null;
 }) {
   const [categories, setCategories] = useState<string[]>([]);
   const [localOther, setLocalOther] = useState<OtherDeductionRow[]>(otherDeductions);
@@ -1657,6 +1687,10 @@ function IncomeDeductionsSection({
     return items;
   }, [stdDeductionItems, localOther]);
 
+  const pyLines = priorYear?.line_values ?? {};
+  const pyOther = priorYear?.other_deductions ?? {};
+  const hasPY = priorYear !== null;
+
   return (
     <div className="space-y-4">
       {/* ===== INCOME ===== */}
@@ -1667,11 +1701,14 @@ function IncomeDeductionsSection({
         <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          {hasPY && (
+            <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
+          )}
           <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
         </div>
         <div className="divide-y divide-border-subtle zebra-rows">
           {incomeFields.map((fv) => (
-            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
           ))}
         </div>
       </div>
@@ -1684,7 +1721,7 @@ function IncomeDeductionsSection({
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
             {cogsFields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
             ))}
           </div>
         </div>
@@ -1705,6 +1742,9 @@ function IncomeDeductionsSection({
         <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-2.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          {hasPY && (
+            <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
+          )}
           <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
           <div className="w-16 shrink-0" />
         </div>
@@ -1718,6 +1758,7 @@ function IncomeDeductionsSection({
                     <span className="text-sm text-tx">{item.field.label}</span>
                     {item.field.is_computed && <span className="ml-2 text-xs italic text-tx-muted">Calculated</span>}
                   </div>
+                  {hasPY && <PriorYearCell value={pyLines[item.field.line_number]} />}
                   <div className="w-48 shrink-0">
                     <FieldInput field={item.field} onChange={onChange} />
                   </div>
@@ -1745,6 +1786,7 @@ function IncomeDeductionsSection({
                       ))}
                     </datalist>
                   </div>
+                  {hasPY && <PriorYearCell value={pyOther[row.description]} />}
                   <div className="w-48 shrink-0">
                     <CurrencyInput
                       value={row.amount}
@@ -1769,7 +1811,7 @@ function IncomeDeductionsSection({
 
           {/* Summary lines: Total Deductions + Ordinary Business Income */}
           {summaryLines.map((fv) => (
-            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
           ))}
         </div>
       </div>
@@ -1782,7 +1824,7 @@ function IncomeDeductionsSection({
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
             {taxFields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
             ))}
           </div>
         </div>
@@ -2567,17 +2609,21 @@ function RentalPropertiesSection({
 function BalanceSheetsSection({
   fieldsBySection,
   onChange,
+  priorYear,
 }: {
   fieldsBySection: Record<string, FieldValue[]>;
   onChange: (formLineId: string, value: string) => void;
+  priorYear: PriorYearData | null;
 }) {
   const schedLFields = fieldsBySection["sched_l"] || [];
   const m1Fields = fieldsBySection["sched_m1"] || [];
   const m2Fields = fieldsBySection["sched_m2"] || [];
+  const bsPyLines = priorYear?.line_values ?? {};
+  const bsHasPY = priorYear !== null;
 
   return (
     <div className="space-y-6">
-      <ScheduleLSection fields={schedLFields} onChange={onChange} />
+      <ScheduleLSection fields={schedLFields} onChange={onChange} priorYear={priorYear} />
       {m1Fields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
@@ -2585,7 +2631,7 @@ function BalanceSheetsSection({
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
             {m1Fields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
             ))}
           </div>
         </div>
@@ -2597,7 +2643,7 @@ function BalanceSheetsSection({
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
             {m2Fields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} />
+              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
             ))}
           </div>
         </div>
@@ -2614,11 +2660,14 @@ function StandardSection({
   sections,
   fieldsBySection,
   onChange,
+  pyLookup,
 }: {
   sections: string[];
   fieldsBySection: Record<string, FieldValue[]>;
   onChange: (formLineId: string, value: string) => void;
+  pyLookup?: Record<string, number>;
 }) {
+  const hasPY = pyLookup && Object.keys(pyLookup).length > 0;
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       {sections.map((secCode, idx) => {
@@ -2649,6 +2698,11 @@ function StandardSection({
                 <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Description
                 </div>
+                {hasPY && (
+                  <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
+                    PY
+                  </div>
+                )}
                 <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Amount
                 </div>
@@ -2656,7 +2710,13 @@ function StandardSection({
             )}
             <div className="divide-y divide-border-subtle zebra-rows">
               {fields.map((fv) => (
-                <FieldRow key={fv.id} field={fv} onChange={onChange} />
+                <FieldRow
+                  key={fv.id}
+                  field={fv}
+                  onChange={onChange}
+                  pyValue={pyLookup?.[fv.line_number]}
+                  showPY={!!hasPY}
+                />
               ))}
             </div>
           </div>
@@ -2690,9 +2750,11 @@ function isBOY(lineNum: string): boolean {
 function ScheduleLSection({
   fields,
   onChange,
+  priorYear,
 }: {
   fields: FieldValue[];
   onChange: (formLineId: string, value: string) => void;
+  priorYear: PriorYearData | null;
 }) {
   // Group fields into pairs: [BOY, EOY] by category
   const groups: { label: string; boy?: FieldValue; eoy?: FieldValue }[] = [];
@@ -2717,6 +2779,9 @@ function ScheduleLSection({
     seen.add(group);
   }
 
+  const pyBS = priorYear?.balance_sheet ?? {};
+  const hasPY = priorYear !== null;
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Column headers */}
@@ -2727,9 +2792,19 @@ function ScheduleLSection({
         <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Description
         </div>
+        {hasPY && (
+          <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
+            PY BOY
+          </div>
+        )}
         <div className="w-40 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Beginning of Year
         </div>
+        {hasPY && (
+          <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
+            PY EOY
+          </div>
+        )}
         <div className="w-40 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           End of Year
         </div>
@@ -2777,6 +2852,9 @@ function ScheduleLSection({
                     </span>
                   )}
                 </div>
+                {hasPY && (
+                  <PriorYearCell value={pyBS[`${schedLGroup(g.boy?.line_number || g.eoy?.line_number || "")}_boy`]} />
+                )}
                 <div className="w-40 shrink-0">
                   {g.boy ? (
                     <FieldInput field={g.boy} onChange={onChange} />
@@ -2784,6 +2862,9 @@ function ScheduleLSection({
                     <div />
                   )}
                 </div>
+                {hasPY && (
+                  <PriorYearCell value={pyBS[`${schedLGroup(g.boy?.line_number || g.eoy?.line_number || "")}_eoy`]} />
+                )}
                 <div className="w-40 shrink-0">
                   {g.eoy ? (
                     <FieldInput field={g.eoy} onChange={onChange} />
@@ -2807,9 +2888,13 @@ function ScheduleLSection({
 function FieldRow({
   field,
   onChange,
+  pyValue,
+  showPY = false,
 }: {
   field: FieldValue;
   onChange: (formLineId: string, value: string) => void;
+  pyValue?: number;
+  showPY?: boolean;
 }) {
   return (
     <div
@@ -2837,6 +2922,9 @@ function FieldRow({
           />
         )}
       </div>
+
+      {/* Prior year */}
+      {showPY && <PriorYearCell value={pyValue} />}
 
       {/* Input */}
       <div className="w-48 shrink-0">
@@ -2897,6 +2985,22 @@ function FieldInput({
     default:
       return null;
   }
+}
+
+/** Grayed-out prior year amount cell. */
+function PriorYearCell({ value }: { value?: number }) {
+  if (value === undefined) {
+    return <div className="w-28 shrink-0" />;
+  }
+  const formatted =
+    value < 0
+      ? `(${Math.abs(value).toLocaleString()})`
+      : value.toLocaleString();
+  return (
+    <div className="w-28 shrink-0 text-right text-sm text-tx-muted tabular-nums">
+      {formatted}
+    </div>
+  );
 }
 
 function TextInput({
