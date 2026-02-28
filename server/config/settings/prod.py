@@ -50,6 +50,7 @@ STORAGES = {
 # ---------------------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_AGE = 28800  # 8 hours — re-login once per workday
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = False  # Render's load balancer handles this
 SESSION_COOKIE_SAMESITE = "Lax"
