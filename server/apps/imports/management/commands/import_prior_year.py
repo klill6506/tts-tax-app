@@ -142,12 +142,16 @@ class Command(BaseCommand):
             line_count = len(result.line_values)
             bs_count = len(result.balance_sheet)
             od_count = len(result.other_deductions)
+            sh_count = len(result.shareholders)
+            off_count = len(result.officers)
+            m2_count = len(result.m2_balances)
 
             match_label = f"by {match_method}" if match_method == "name" else ""
             self.stdout.write(
                 self.style.SUCCESS(
                     f"    Matched {match_label}: {entity.name} (EIN {result.ein}) — "
-                    f"{line_count} lines, {bs_count} BS items, {od_count} deductions"
+                    f"{line_count} lines, {bs_count} BS, {od_count} ded, "
+                    f"{sh_count} SH, {off_count} OFF, {m2_count} M-2"
                 )
             )
 
@@ -196,6 +200,9 @@ class Command(BaseCommand):
                     "line_values": line_values,
                     "other_deductions": result.other_deductions,
                     "balance_sheet": result.balance_sheet,
+                    "m2_balances": result.m2_balances,
+                    "shareholders": result.shareholders,
+                    "officers": result.officers,
                     "source_software": "lacerte",
                     "source_file": pdf_file.name,
                 },

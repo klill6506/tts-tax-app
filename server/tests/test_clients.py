@@ -122,8 +122,11 @@ class TestClientEndpoints:
         _, http = user_and_client
         resp = http.get("/api/v1/clients/")
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
-        assert resp.json()[0]["name"] == "Acme Corp"
+        data = resp.json()
+        # Paginated response
+        assert data["count"] == 1
+        assert len(data["results"]) == 1
+        assert data["results"][0]["name"] == "Acme Corp"
 
     def test_create_client(self, user_and_client):
         _, http = user_and_client
@@ -164,7 +167,7 @@ class TestClientEndpoints:
         _, other_http = other_user_and_client
         resp = other_http.get("/api/v1/clients/")
         assert resp.status_code == 200
-        assert len(resp.json()) == 0  # Sees nothing from the other firm
+        assert resp.json()["count"] == 0  # Sees nothing from the other firm
 
     def test_other_firm_cannot_access_client_detail(
         self, other_user_and_client, sample_client

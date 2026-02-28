@@ -686,6 +686,18 @@ class PriorYearReturn(models.Model):
         default=dict,
         help_text="Balance sheet: 'L{line}_{boy|eoy}' → amount.",
     )
+    m2_balances = models.JSONField(
+        default=dict,
+        help_text="Schedule M-2 balances: 'M2_{line}' → amount.",
+    )
+    shareholders = models.JSONField(
+        default=list,
+        help_text="Shareholders from K-1 pages (list of dicts).",
+    )
+    officers = models.JSONField(
+        default=list,
+        help_text="Officers from Form 1125-E (list of dicts).",
+    )
 
     # Import metadata
     source_software = models.CharField(

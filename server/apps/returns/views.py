@@ -113,6 +113,139 @@ def _populate_boy_from_prior_year(tax_return):
     return updated
 
 
+def _populate_m2_boy_from_prior_year(tax_return):
+    """
+    Auto-populate Schedule M-2 beginning balance (line 1) from
+    the prior year's ending balance (line 8).
+    """
+    entity = tax_return.tax_year.entity
+    prior_year_num = tax_return.tax_year.year - 1
+
+    try:
+        pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year_num)
+    except PriorYearReturn.DoesNotExist:
+        return 0
+
+    m2 = pyr.m2_balances or {}
+    if not m2:
+        return 0
+
+    # M2_8 is the ending balance on the 1120-S M-2
+    # (1065 uses M2_9, 1120 uses M2_8 as well)
+    ending_key = "M2_8"
+    if pyr.form_code == "1065":
+        ending_key = "M2_9"
+    ending_balance = m2.get(ending_key)
+    if ending_balance is None:
+        return 0
+
+    # Set M2_1 (beginning balance) on the current year return
+    try:
+        m2_1_fv = FormFieldValue.objects.get(
+            tax_return=tax_return,
+            form_line__line_number="M2_1",
+            form_line__section__code="sched_m2",
+        )
+    except FormFieldValue.DoesNotExist:
+        return 0
+
+    if m2_1_fv.is_overridden:
+        return 0
+
+    m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
+    m2_1_fv.save(update_fields=["value", "updated_at"])
+    compute_return(tax_return)
+    return 1
+
+
+def _populate_shareholders_from_prior_year(tax_return):
+    """
+    Pre-create Shareholder records from prior year K-1 data.
+
+    Uses PriorYearReturn.shareholders (list of dicts from K-1 parsing).
+    Only runs if no shareholders exist yet on this return.
+    """
+    if tax_return.shareholders.exists():
+        return 0
+
+    entity = tax_return.tax_year.entity
+    prior_year_num = tax_return.tax_year.year - 1
+
+    try:
+        pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year_num)
+    except PriorYearReturn.DoesNotExist:
+        return 0
+
+    py_shareholders = pyr.shareholders or []
+    if not py_shareholders:
+        return 0
+
+    shareholders = []
+    for idx, sh in enumerate(py_shareholders):
+        shareholders.append(
+            Shareholder(
+                tax_return=tax_return,
+                name=sh.get("name", ""),
+                ssn=sh.get("ssn", ""),
+                address_line1=sh.get("address_line1", ""),
+                city=sh.get("city", ""),
+                state=sh.get("state", ""),
+                zip_code=sh.get("zip_code", ""),
+                ownership_percentage=Decimal(
+                    str(sh.get("ownership_percentage", 0))
+                ),
+                # PY ending shares become this year's beginning shares
+                beginning_shares=sh.get("ending_shares", 0),
+                ending_shares=sh.get("ending_shares", 0),
+                sort_order=(idx + 1) * 10,
+                is_active=True,
+            )
+        )
+    Shareholder.objects.bulk_create(shareholders)
+    return len(shareholders)
+
+
+def _populate_officers_from_prior_year(tax_return):
+    """
+    Pre-create Officer records from prior year 1125-E data.
+
+    Uses PriorYearReturn.officers (list of dicts from 1125-E parsing).
+    Only runs if no officers exist yet on this return.
+    """
+    if tax_return.officers.exists():
+        return 0
+
+    entity = tax_return.tax_year.entity
+    prior_year_num = tax_return.tax_year.year - 1
+
+    try:
+        pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year_num)
+    except PriorYearReturn.DoesNotExist:
+        return 0
+
+    py_officers = pyr.officers or []
+    if not py_officers:
+        return 0
+
+    officers = []
+    for idx, off in enumerate(py_officers):
+        officers.append(
+            Officer(
+                tax_return=tax_return,
+                name=off.get("name", ""),
+                ssn=off.get("ssn", ""),
+                percent_ownership=Decimal(
+                    str(off.get("percent_ownership", 0))
+                ),
+                # Don't carry forward compensation — it changes every year
+                compensation=Decimal("0"),
+                sort_order=(idx + 1) * 10,
+            )
+        )
+    Officer.objects.bulk_create(officers)
+    return len(officers)
+
+
 # Maps entity_type → FormDefinition.code
 ENTITY_FORM_MAP = {
     "scorp": "1120-S",
@@ -456,6 +589,15 @@ class TaxReturnViewSet(
 
         # Auto-populate Balance Sheet BOY from prior year EOY
         _populate_boy_from_prior_year(tax_return)
+
+        # Auto-populate M-2 beginning balance from prior year ending balance
+        _populate_m2_boy_from_prior_year(tax_return)
+
+        # Auto-populate shareholders from prior year K-1 data
+        _populate_shareholders_from_prior_year(tax_return)
+
+        # Auto-populate officers from prior year 1125-E data
+        _populate_officers_from_prior_year(tax_return)
 
         return Response(
             TaxReturnSerializer(tax_return).data,
