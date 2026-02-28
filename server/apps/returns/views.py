@@ -271,28 +271,41 @@ OTHER_DEDUCTION_PRESETS = [
     "Answering Service",
     "Auto and Truck Expense",
     "Bank Charges",
+    "Charitable Contributions",
     "Commissions",
+    "Computer and Internet",
+    "Contract Labor",
     "Delivery and Freight",
     "Dues and Subscriptions",
+    "Equipment Rental",
     "Gifts",
+    "Insurance",
     "Janitorial",
     "Laundry and Cleaning",
     "Legal and Professional",
+    "Licenses and Permits",
+    "Meals",
     "Miscellaneous",
     "Office Expense",
     "Organizational Expenditures",
     "Outside Services",
     "Parking and Tolls",
+    "Payroll Processing",
     "Postage",
     "Printing",
+    "Professional Development",
     "Security",
+    "Software and Subscriptions",
     "Start-up Costs",
+    "Storage",
     "Supplies",
     "Telephone",
     "Tools",
+    "Training",
     "Travel",
     "Uniforms",
     "Utilities",
+    "Waste Removal",
 ]
 
 # Full list for the dropdown (includes presets + specialty categories)
@@ -553,7 +566,13 @@ class TaxReturnViewSet(
                 entity=entity, year=year - 1
             )
             if pyr.line_values and pyr.line_values.get("_s_election_date"):
-                extra_fields["s_election_date"] = pyr.line_values["_s_election_date"]
+                raw_date = pyr.line_values["_s_election_date"]
+                # Convert MM/DD/YYYY → YYYY-MM-DD for Django DateField
+                try:
+                    dt = datetime.datetime.strptime(raw_date, "%m/%d/%Y")
+                    extra_fields["s_election_date"] = dt.strftime("%Y-%m-%d")
+                except ValueError:
+                    extra_fields["s_election_date"] = raw_date
             if pyr.line_values and pyr.line_values.get("_number_of_shareholders"):
                 extra_fields["number_of_shareholders"] = pyr.line_values["_number_of_shareholders"]
         except PriorYearReturn.DoesNotExist:
