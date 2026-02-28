@@ -100,6 +100,22 @@ DEFAULT_FONT_SIZE = 10
 # ---------------------------------------------------------------------------
 
 
+def _flatten_template(reader: PdfReader) -> PdfReader:
+    """Strip fillable form field widgets (purple backgrounds) from an IRS PDF.
+
+    IRS templates contain AcroForm widgets that render as purple/blue boxes.
+    This removes those annotations so the overlay prints on a clean background.
+    """
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+    writer.remove_annotations(subtypes="/Widget")
+    buf = io.BytesIO()
+    writer.write(buf)
+    buf.seek(0)
+    return PdfReader(buf)
+
+
 def _get_template_path(form_id: str, tax_year: int) -> Path:
     """Resolve the local path of an IRS PDF template."""
     with open(MANIFEST_PATH) as f:
@@ -253,8 +269,8 @@ def render(
 
     header_map = HEADER_REGISTRY.get(form_id)
 
-    # Read template PDF
-    template_reader = PdfReader(str(template_path))
+    # Read template PDF and strip fillable form field widgets (purple backgrounds)
+    template_reader = _flatten_template(PdfReader(str(template_path)))
     page_count = len(template_reader.pages)
 
     # Create overlay
@@ -831,7 +847,7 @@ def render_8825(tax_return) -> bytes:
         )
 
     header_map = HEADER_REGISTRY.get("f8825")
-    template_reader = PdfReader(str(template_path))
+    template_reader = _flatten_template(PdfReader(str(template_path)))
     page_count = len(template_reader.pages)
 
     overlay_buf = _create_overlay(
