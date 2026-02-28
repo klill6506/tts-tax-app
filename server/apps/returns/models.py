@@ -72,7 +72,7 @@ class FormLine(models.Model):
         related_name="lines",
     )
     line_number = models.CharField(max_length=20)  # e.g. "1a", "7", "22a"
-    label = models.CharField(max_length=300)
+    label = models.CharField(max_length=500)
     field_type = models.CharField(
         max_length=20,
         choices=FieldType.choices,

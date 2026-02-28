@@ -87,31 +87,30 @@ SECTIONS = [
         ],
     ),
     # ------ SCHEDULE B: OTHER INFORMATION ------
+    # Questions 1 & 2 (accounting method, business activity) are on the
+    # TaxReturn model / Info tab — not stored as FormLines.
     (
         "sched_b",
         "Schedule B — Other Information",
         25,
         [
-            ("B1", "Check accounting method used", T, "", False, 10, DR),
-            ("B2", "Are the corporation's total receipts for the tax year less than $250,000?", B, "", False, 20, DR),
-            ("B3", "Is this corporation a member of a controlled group?", B, "", False, 30, DR),
-            ("B3_name", "Name of controlling entity", T, "", False, 35, DR),
-            ("B3_ein", "EIN of controlling entity", T, "", False, 36, DR),
-            ("B4", "At any time during the tax year, did any foreign or domestic corporation, partnership, trust, or tax-exempt organization own directly 20% or more of the stock?", B, "", False, 40, DR),
-            ("B5", "At the end of the tax year, did any individual, partnership, corporation, estate, or trust own directly 20% or more of the stock?", B, "", False, 50, DR),
-            ("B6", "Does the corporation have an election under section 444 in effect?", B, "", False, 60, DR),
-            ("B7a", "Does the corporation have qualified subchapter S subsidiaries?", B, "", False, 70, DR),
-            ("B7a_count", "Number of qualified subchapter S subsidiaries", I, "", False, 75, DR),
-            ("B8", "Did the corporation have any debt that was canceled, forgiven, or had the terms modified?", B, "", False, 80, DR),
-            ("B9", "Did the corporation make the section 163(j)(7)(B) election?", B, "", False, 90, DR),
-            ("B10", "Has the corporation filed, or is it required to file, Form 8990?", B, "", False, 100, DR),
-            ("B11", "Does the corporation have oil and gas activities?", B, "", False, 110, DR),
-            ("B12", "Is the corporation required to file Form 8918, Material Advisor Disclosure Statement?", B, "", False, 120, DR),
-            ("B13a", "Was there a transfer of property to the S corporation?", B, "", False, 130, DR),
-            ("B13b", "Did the corporation have an excess business loss as defined in section 461(l)?", B, "", False, 140, DR),
-            ("B14", "At end of tax year, did the corporation have an interest in or signature authority over a foreign bank account?", B, "", False, 150, DR),
-            ("B15", "During the tax year, did the corporation receive, sell, exchange, or dispose of any digital assets?", B, "", False, 160, DR),
-            ("B16", "During the tax year, did the corporation make any payments that would require it to file Form(s) 1099?", B, "", False, 170, DR),
+            ("B3", "At any time during the tax year, was any shareholder of the corporation a disregarded entity, a trust, an estate, or a nominee or similar person?", B, "", False, 30, DR),
+            ("B4a", "At the end of the tax year, did the corporation own, directly or indirectly, 50% or more of the total stock issued and outstanding of any foreign or domestic corporation?", B, "", False, 40, DR),
+            ("B4b", "Did the corporation own directly an interest of 20% or more, or own, directly or indirectly, an interest of 50% or more, in the profit, loss, or capital in any foreign or domestic partnership?", B, "", False, 45, DR),
+            ("B5a", "At the end of the tax year, did the corporation have any outstanding shares of restricted stock?", B, "", False, 50, DR),
+            ("B5b", "At the end of the tax year, did the corporation have any outstanding stock options, warrants, or similar instruments?", B, "", False, 55, DR),
+            ("B6", "Has this corporation filed, or is it required to file, Form 8918, Material Advisor Disclosure Statement?", B, "", False, 60, DR),
+            ("B7", "Check this box if the corporation issued publicly offered debt instruments with original issue discount.", B, "", False, 70, DR),
+            ("B8", "If the corporation was a C corporation before it elected to be an S corporation or acquired an asset with a basis determined by reference to a C corporation's basis, and has net unrealized built-in gain in excess of the net recognized built-in gain from prior years, enter the net unrealized built-in gain reduced by net recognized built-in gain from prior years.", C, "", False, 80, DR),
+            ("B9", "Did the corporation have an election under section 163(j) for any real property trade or business or any farming business in effect during the tax year?", B, "", False, 90, DR),
+            ("B10", "Does the corporation satisfy one or more of the following? (a) Owns a pass-through entity with current, or prior year carryover, excess business interest expense. (b) Aggregate average annual gross receipts for the 3 preceding tax years are more than $31 million. (c) Is a tax shelter with business interest expense.", B, "", False, 100, DR),
+            ("B11", "Does the corporation satisfy both of the following conditions? (a) Total receipts for the tax year were less than $250,000. (b) Total assets at the end of the tax year were less than $250,000.", B, "", False, 110, DR),
+            ("B12", "During the tax year, did the corporation have any non-shareholder debt that was canceled, was forgiven, or had the terms modified so as to reduce the principal amount of the debt?", B, "", False, 120, DR),
+            ("B13", "During the tax year, was a qualified subchapter S subsidiary election terminated or revoked?", B, "", False, 130, DR),
+            ("B14a", "During the tax year, did the corporation make any payments that would require it to file Form(s) 1099?", B, "", False, 140, DR),
+            ("B14b", "If 'Yes,' did the corporation file or will it file required Form(s) 1099?", B, "", False, 145, DR),
+            ("B15", "Does the corporation intend to self-certify as a Qualified Opportunity Fund?", B, "", False, 150, DR),
+            ("B16", "At any time during the tax year, did the corporation (a) receive (as a reward, award, or payment for property or services); or (b) sell, exchange, or otherwise dispose of a digital asset?", B, "", False, 160, DR),
         ],
     ),
     # ------ PAGE 1: TAX AND PAYMENTS ------
@@ -264,6 +263,7 @@ class Command(BaseCommand):
                 defaults={"title": sec_title, "sort_order": sec_order},
             )
 
+            new_line_numbers = {ln for ln, *_ in lines}
             for line_num, label, ftype, mkey, computed, sort, nbal in lines:
                 FormLine.objects.update_or_create(
                     section=section,
@@ -278,6 +278,25 @@ class Command(BaseCommand):
                     },
                 )
                 line_count += 1
+
+            # Remove stale lines (e.g., old Schedule B entries)
+            stale = FormLine.objects.filter(section=section).exclude(
+                line_number__in=new_line_numbers
+            )
+            stale_count = stale.count()
+            if stale_count:
+                # Must delete protected FormFieldValues first
+                from apps.returns.models import FormFieldValue
+                fv_deleted, _ = FormFieldValue.objects.filter(
+                    form_line__in=stale
+                ).delete()
+                stale.delete()
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Removed {stale_count} stale line(s) from {sec_code}"
+                        f" ({fv_deleted} field values cleaned up)"
+                    )
+                )
 
         self.stdout.write(
             self.style.SUCCESS(

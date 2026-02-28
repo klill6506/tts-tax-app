@@ -176,6 +176,36 @@ STANDARD_DEDUCTION_CATEGORIES = sorted(
 )
 
 
+def _populate_schedule_b_defaults(tax_return):
+    """
+    Auto-default all Schedule B Yes/No questions to "false" (Lacerte approach).
+
+    Most S-Corp returns answer "No" to all Schedule B questions.
+    B8 (built-in gain amount) defaults to "0".
+    Preparers change only the ones that apply.
+    """
+    b_fields = FormFieldValue.objects.filter(
+        tax_return=tax_return,
+        form_line__section__code="sched_b",
+    ).select_related("form_line")
+
+    updated = 0
+    for fv in b_fields:
+        if fv.is_overridden:
+            continue
+        if fv.form_line.field_type == "boolean":
+            fv.value = "false"
+            fv.save(update_fields=["value", "updated_at"])
+            updated += 1
+        elif fv.form_line.field_type == "currency":
+            # B8: net unrealized built-in gain — default 0
+            fv.value = "0.00"
+            fv.save(update_fields=["value", "updated_at"])
+            updated += 1
+
+    return updated
+
+
 def _prepopulate_standard_deductions(tax_return):
     """
     Pre-populate a new return with standard deduction categories
@@ -374,12 +404,35 @@ class TaxReturnViewSet(
         default_start = datetime.date(year, 1, 1)
         default_end = datetime.date(year, 12, 31)
 
+        # Auto-populate return-level fields from the entity
+        entity = tax_year.entity
+        extra_fields = {}
+        if entity.naics_code:
+            extra_fields["business_activity_code"] = entity.naics_code
+        if entity.business_activity:
+            extra_fields["product_or_service"] = entity.business_activity
+        if hasattr(entity, "date_incorporated") and entity.date_incorporated:
+            # S election date often == date incorporated for small S-Corps
+            pass  # s_election_date stays null unless PY data provides it
+        # Pull s_election_date from PriorYearReturn metadata if available
+        try:
+            pyr = PriorYearReturn.objects.get(
+                entity=entity, year=year - 1
+            )
+            if pyr.line_values and pyr.line_values.get("_s_election_date"):
+                extra_fields["s_election_date"] = pyr.line_values["_s_election_date"]
+            if pyr.line_values and pyr.line_values.get("_number_of_shareholders"):
+                extra_fields["number_of_shareholders"] = pyr.line_values["_number_of_shareholders"]
+        except PriorYearReturn.DoesNotExist:
+            pass
+
         tax_return = TaxReturn.objects.create(
             tax_year=tax_year,
             form_definition=form_def,
             created_by=request.user,
             tax_year_start=default_start,
             tax_year_end=default_end,
+            **extra_fields,
         )
 
         # Pre-populate all form lines with empty values
@@ -397,6 +450,9 @@ class TaxReturnViewSet(
 
         # Pre-populate standard deductions (Lacerte-style)
         _prepopulate_standard_deductions(tax_return)
+
+        # Auto-default Schedule B answers (Lacerte-style — all "No")
+        _populate_schedule_b_defaults(tax_return)
 
         # Auto-populate Balance Sheet BOY from prior year EOY
         _populate_boy_from_prior_year(tax_return)

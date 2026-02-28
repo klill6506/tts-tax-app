@@ -571,6 +571,12 @@ export default function FormEditor() {
           returnData={returnData}
           onRefresh={refreshReturn}
         />
+      ) : activeTab === "sched_b" ? (
+        <ScheduleBSection
+          fields={fieldsBySection["sched_b"] || []}
+          returnData={returnData}
+          onChange={handleFieldChange}
+        />
       ) : (
         <StandardSection
           sections={activeTabDef?.sections ?? []}
@@ -2683,6 +2689,119 @@ function BalanceSheetsSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedule B — Other Information (Yes/No question layout)
+// ---------------------------------------------------------------------------
+
+/** Accounting method labels. */
+const ACCT_METHOD_LABELS: Record<string, string> = {
+  cash: "Cash",
+  accrual: "Accrual",
+  other: "Other",
+};
+
+function ScheduleBSection({
+  fields,
+  returnData,
+  onChange,
+}: {
+  fields: FieldValue[];
+  returnData: TaxReturnData;
+  onChange: (formLineId: string, value: string) => void;
+}) {
+  // Build lookup for conditional visibility
+  const valByLine: Record<string, string> = {};
+  for (const f of fields) {
+    valByLine[f.line_number] = f.value;
+  }
+
+  // B14b only visible when B14a = Yes
+  const show14b = valByLine["B14a"] === "true" || valByLine["B14a"] === "1";
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      {/* Header: Questions 1 & 2 (from return data, not form fields) */}
+      <div className="border-b border-border bg-surface-alt px-5 py-3">
+        <h3 className="text-sm font-semibold text-tx mb-2">Schedule B — Other Information</h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-tx-muted">1. Accounting method: </span>
+            <span className="font-medium text-tx">
+              {ACCT_METHOD_LABELS[returnData.accounting_method] || returnData.accounting_method || "Not set"}
+            </span>
+            <span className="text-tx-muted text-xs ml-2">(set on Info tab)</span>
+          </div>
+          <div>
+            <span className="text-tx-muted">2a. Business activity code: </span>
+            <span className="font-medium text-tx">
+              {returnData.business_activity_code || "—"}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-tx-muted">2b. Product or service: </span>
+            <span className="font-medium text-tx">
+              {returnData.product_or_service || "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Yes/No questions */}
+      <div className="divide-y divide-border-subtle">
+        {fields.map((fv) => {
+          // Hide B14b unless B14a = Yes
+          if (fv.line_number === "B14b" && !show14b) return null;
+
+          // Sub-question indentation
+          const isSubQ = fv.line_number === "B14b";
+
+          return (
+            <div
+              key={fv.id}
+              className={`flex items-start gap-4 px-5 py-3.5 ${
+                isSubQ ? "pl-12 bg-surface-alt/30" : ""
+              }`}
+            >
+              {/* Question number */}
+              <div className="w-10 shrink-0 pt-0.5 text-sm font-medium text-tx-secondary">
+                {fv.line_number.replace("B", "")}
+              </div>
+
+              {/* Question text */}
+              <div className="flex-1 min-w-0 pt-0.5">
+                <span className="text-sm text-tx leading-relaxed">{fv.label}</span>
+              </div>
+
+              {/* Answer input */}
+              <div className="w-28 shrink-0 flex justify-end pt-0.5">
+                {fv.field_type === "boolean" ? (
+                  <BooleanField
+                    value={fv.value}
+                    readOnly={fv.is_computed}
+                    onChange={(v) => onChange(fv.form_line, v)}
+                  />
+                ) : fv.field_type === "currency" ? (
+                  <CurrencyInput
+                    value={fv.value}
+                    onValueChange={(v) => onChange(fv.form_line, v)}
+                    readOnly={fv.is_computed}
+                  />
+                ) : (
+                  <TextInput
+                    value={fv.value}
+                    readOnly={fv.is_computed}
+                    onChange={(v) => onChange(fv.form_line, v)}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

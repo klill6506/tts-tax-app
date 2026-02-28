@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 133
+        assert lines.count() == 130
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -85,7 +85,7 @@ class TestSeed:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 133
+        assert FormLine.objects.filter(section__form=seeded).count() == 130
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
@@ -137,8 +137,8 @@ class TestTaxReturnEndpoints:
         data = resp.json()
         assert data["form_code"] == "1120-S"
         assert data["status"] == "draft"
-        # All 105 lines should have empty field values
-        assert len(data["field_values"]) == 133
+        # All form lines should have field values (113 non-B + 17 Schedule B = 130)
+        assert len(data["field_values"]) == 130
 
     def test_create_duplicate_returns_409(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -414,6 +414,28 @@ class TestOtherDeductions:
         assert "Supplies" in descriptions
         assert "Travel" in descriptions
         assert "Utilities" in descriptions
+
+    def test_schedule_b_defaults(self, user_and_http, seeded, tax_year):
+        """New returns have Schedule B questions defaulted to No (Lacerte approach)."""
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        resp = http.get(f"/api/v1/tax-returns/{rid}/")
+        assert resp.status_code == 200
+        data = resp.json()
+        # Find all Schedule B fields
+        b_fields = [
+            fv for fv in data["field_values"]
+            if fv["section_code"] == "sched_b"
+        ]
+        assert len(b_fields) == 17  # B3-B16 + B4a/b, B5a/b, B14a/b
+        # All boolean fields should default to "false"
+        bool_fields = [f for f in b_fields if f["field_type"] == "boolean"]
+        for fv in bool_fields:
+            assert fv["value"] == "false", f"{fv['line_number']} should default to false"
+        # B8 (currency) should default to "0.00"
+        b8 = next((f for f in b_fields if f["line_number"] == "B8"), None)
+        assert b8 is not None
+        assert b8["value"] == "0.00"
 
     def test_create_deduction(self, user_and_http, seeded, tax_year):
         _, http = user_and_http

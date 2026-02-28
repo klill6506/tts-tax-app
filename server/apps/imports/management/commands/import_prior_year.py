@@ -13,6 +13,7 @@ Usage:
         --folder "D:\\dev\\tts-tax-app\\Lacerte Export" --dry-run
 """
 
+import datetime
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
@@ -156,8 +157,35 @@ class Command(BaseCommand):
                 entity.save(update_fields=["ein"])
                 stats["eins_backfilled"] += 1
 
+            # Backfill entity-level fields from the parsed return
+            if not dry_run:
+                entity_updated = []
+                if result.date_incorporated and not entity.date_incorporated:
+                    try:
+                        entity.date_incorporated = datetime.datetime.strptime(
+                            result.date_incorporated, "%m/%d/%Y"
+                        ).date()
+                        entity_updated.append("date_incorporated")
+                    except ValueError:
+                        pass
+                if result.business_activity_code and not entity.naics_code:
+                    entity.naics_code = result.business_activity_code
+                    entity_updated.append("naics_code")
+                if entity_updated:
+                    entity.save(update_fields=entity_updated)
+                    self.stdout.write(
+                        f"    Backfilled entity fields: {', '.join(entity_updated)}"
+                    )
+
             if dry_run:
                 continue
+
+            # Store metadata fields in line_values for use during return creation
+            line_values = dict(result.line_values)
+            if result.s_election_date:
+                line_values["_s_election_date"] = result.s_election_date
+            if result.number_of_shareholders:
+                line_values["_number_of_shareholders"] = result.number_of_shareholders
 
             # Create or update PriorYearReturn
             pyr, created = PriorYearReturn.objects.update_or_create(
@@ -165,7 +193,7 @@ class Command(BaseCommand):
                 year=tax_year,
                 form_code=form_code,
                 defaults={
-                    "line_values": result.line_values,
+                    "line_values": line_values,
                     "other_deductions": result.other_deductions,
                     "balance_sheet": result.balance_sheet,
                     "source_software": "lacerte",

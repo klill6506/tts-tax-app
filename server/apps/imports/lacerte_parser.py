@@ -32,6 +32,7 @@ class LacerteParseResult:
     s_election_date: str = ""
     business_activity_code: str = ""
     number_of_shareholders: int = 0
+    date_incorporated: str = ""
 
     # Form line values: line_number → amount (as int, dollars)
     line_values: dict[str, int] = field(default_factory=dict)
@@ -327,6 +328,24 @@ def parse_lacerte_1120s(pdf_path: str | Path) -> LacerteParseResult:
             bac_match = re.search(r"(\d{6})", text1[bac_idx : bac_idx + 100])
             if bac_match:
                 result.business_activity_code = bac_match.group(1)
+
+        # Date incorporated (Line E on page 1 header)
+        # Appears after S election date — look for a second date pattern
+        # or look for "Date incorporated" label nearby
+        date_inc_match = re.search(
+            r"(?:date\s+incorporated|incorporated)\s*[:\-]?\s*(\d{1,2}/\d{2}/\d{4})",
+            text1[:600],
+            re.IGNORECASE,
+        )
+        if date_inc_match:
+            result.date_incorporated = date_inc_match.group(1)
+        else:
+            # On Lacerte PDFs, dates appear in sequence: S election date, then
+            # date incorporated. Look for a second date after the first one.
+            all_dates = re.findall(r"(\d{1,2}/\d{2}/\d{4})", text1[:600])
+            if len(all_dates) >= 2:
+                # First date = S election date (Line A), second = date incorporated (Line E)
+                result.date_incorporated = all_dates[1]
 
         # Number of shareholders
         sh_match = re.search(
