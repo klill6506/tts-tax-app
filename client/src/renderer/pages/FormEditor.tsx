@@ -1701,10 +1701,10 @@ function IncomeDeductionsSection({
         <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
           {hasPY && (
             <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
           )}
-          <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
         </div>
         <div className="divide-y divide-border-subtle zebra-rows">
           {incomeFields.map((fv) => (
@@ -1742,10 +1742,10 @@ function IncomeDeductionsSection({
         <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-2.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
           {hasPY && (
             <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
           )}
-          <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
           <div className="w-16 shrink-0" />
         </div>
         <div className="divide-y divide-border-subtle zebra-rows">
@@ -1758,10 +1758,10 @@ function IncomeDeductionsSection({
                     <span className="text-sm text-tx">{item.field.label}</span>
                     {item.field.is_computed && <span className="ml-2 text-xs italic text-tx-muted">Calculated</span>}
                   </div>
-                  {hasPY && <PriorYearCell value={pyLines[item.field.line_number]} />}
-                  <div className="w-48 shrink-0">
+                  <div className="w-36 shrink-0">
                     <FieldInput field={item.field} onChange={onChange} />
                   </div>
+                  {hasPY && <PriorYearCell value={pyLines[item.field.line_number]} />}
                   <div className="w-16 shrink-0" />
                 </div>
               );
@@ -1786,8 +1786,7 @@ function IncomeDeductionsSection({
                       ))}
                     </datalist>
                   </div>
-                  {hasPY && <PriorYearCell value={pyOther[row.description]} />}
-                  <div className="w-48 shrink-0">
+                  <div className="w-36 shrink-0">
                     <CurrencyInput
                       value={row.amount}
                       onValueChange={(v) => {
@@ -1796,6 +1795,7 @@ function IncomeDeductionsSection({
                       }}
                     />
                   </div>
+                  {hasPY && <PriorYearCell value={pyOther[row.description]} />}
                   <div className="w-16 shrink-0 text-center">
                     <button
                       onClick={() => deleteDeduction(row.id)}
@@ -2698,14 +2698,14 @@ function StandardSection({
                 <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Description
                 </div>
+                <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
+                  Amount
+                </div>
                 {hasPY && (
                   <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
                     PY
                   </div>
                 )}
-                <div className="w-48 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
-                  Amount
-                </div>
               </div>
             )}
             <div className="divide-y divide-border-subtle zebra-rows">
@@ -2792,20 +2792,15 @@ function ScheduleLSection({
         <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Description
         </div>
-        {hasPY && (
-          <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
-            PY BOY
-          </div>
-        )}
-        <div className="w-40 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
+        <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Beginning of Year
         </div>
         {hasPY && (
           <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
-            PY EOY
+            PY
           </div>
         )}
-        <div className="w-40 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
+        <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           End of Year
         </div>
       </div>
@@ -2814,6 +2809,7 @@ function ScheduleLSection({
         {groups.map((g, i) => {
           const lineNum = g.boy?.line_number?.replace(/[a-b]$/, "") ||
             g.eoy?.line_number?.replace(/[d-e]$/, "") || "";
+          const groupKey = schedLGroup(g.boy?.line_number || g.eoy?.line_number || "");
           const isComputed = (g.boy?.is_computed || g.eoy?.is_computed) ?? false;
 
           // Section dividers
@@ -2852,10 +2848,7 @@ function ScheduleLSection({
                     </span>
                   )}
                 </div>
-                {hasPY && (
-                  <PriorYearCell value={pyBS[`${schedLGroup(g.boy?.line_number || g.eoy?.line_number || "")}_boy`]} />
-                )}
-                <div className="w-40 shrink-0">
+                <div className="w-36 shrink-0">
                   {g.boy ? (
                     <FieldInput field={g.boy} onChange={onChange} />
                   ) : (
@@ -2863,9 +2856,9 @@ function ScheduleLSection({
                   )}
                 </div>
                 {hasPY && (
-                  <PriorYearCell value={pyBS[`${schedLGroup(g.boy?.line_number || g.eoy?.line_number || "")}_eoy`]} />
+                  <PriorYearCell value={pyBS[`${groupKey}_eoy`]} />
                 )}
-                <div className="w-40 shrink-0">
+                <div className="w-36 shrink-0">
                   {g.eoy ? (
                     <FieldInput field={g.eoy} onChange={onChange} />
                   ) : (
@@ -2923,13 +2916,13 @@ function FieldRow({
         )}
       </div>
 
-      {/* Prior year */}
-      {showPY && <PriorYearCell value={pyValue} />}
-
       {/* Input */}
-      <div className="w-48 shrink-0">
+      <div className="w-36 shrink-0">
         <FieldInput field={field} onChange={onChange} />
       </div>
+
+      {/* Prior year */}
+      {showPY && <PriorYearCell value={pyValue} />}
     </div>
   );
 }
