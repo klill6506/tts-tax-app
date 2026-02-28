@@ -22,6 +22,7 @@ from .models import (
     Officer,
     OtherDeduction,
     PreparerInfo,
+    PriorYearReturn,
     RentalProperty,
     Shareholder,
     ShareholderLoan,
@@ -34,6 +35,7 @@ from .serializers import (
     OfficerSerializer,
     OtherDeductionSerializer,
     PreparerInfoSerializer,
+    PriorYearReturnSerializer,
     RentalPropertySerializer,
     ShareholderLoanSerializer,
     ShareholderSerializer,
@@ -846,3 +848,33 @@ class TaxReturnViewSet(
             "unmapped_rows": len(unmapped_rows),
             "other_deductions_created": other_ded_created,
         })
+
+    # ------------------------------------------------------------------
+    # Prior Year Data
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get"], url_path="prior-year")
+    def prior_year(self, request, pk=None):
+        """
+        Get prior year return data for comparison display.
+
+        Returns the PriorYearReturn for this return's entity and
+        the year before this return's tax year.
+        """
+        tax_return = self.get_object()
+        entity = tax_return.tax_year.entity
+        prior_year = tax_return.tax_year.year - 1
+
+        try:
+            pyr = PriorYearReturn.objects.get(
+                entity=entity,
+                year=prior_year,
+            )
+        except PriorYearReturn.DoesNotExist:
+            return Response(
+                {"error": f"No prior year data for {entity.name} ({prior_year})."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = PriorYearReturnSerializer(pyr)
+        return Response(serializer.data)

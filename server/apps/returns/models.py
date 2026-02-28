@@ -163,6 +163,29 @@ class TaxReturn(models.Model):
     is_name_change = models.BooleanField(default=False)
     is_address_change = models.BooleanField(default=False)
     is_amended_return = models.BooleanField(default=False)
+
+    # Extension tracking (Form 7004)
+    extension_filed = models.BooleanField(
+        default=False,
+        help_text="Whether Form 7004 extension was filed for this return.",
+    )
+    extension_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date the Form 7004 extension was filed.",
+    )
+    tentative_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Form 7004 Line 6: Tentative total tax.",
+    )
+    total_payments = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Form 7004 Line 7: Total payments and credits.",
+    )
+    balance_due = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Form 7004 Line 8: Balance due (Line 6 minus Line 7).",
+    )
+
     s_election_date = models.DateField(
         null=True, blank=True,
         help_text="Date S-Corp election was effective.",
@@ -627,3 +650,58 @@ class PreparerInfo(models.Model):
 
     def __str__(self):
         return f"Preparer: {self.preparer_name or '(blank)'}"
+
+
+class PriorYearReturn(models.Model):
+    """
+    Imported prior year return data for year-over-year comparison.
+
+    Stores form line values, balance sheet, and other deduction detail
+    as JSON — this is read-only reference data displayed alongside the
+    current year return. One record per entity per year per form type.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entity = models.ForeignKey(
+        "clients.Entity",
+        on_delete=models.CASCADE,
+        related_name="prior_year_returns",
+    )
+    year = models.IntegerField(help_text="Tax year (e.g., 2024).")
+    form_code = models.CharField(
+        max_length=20, help_text="IRS form code (e.g., '1120-S')."
+    )
+
+    # All data stored as JSON — flexible, read-only reference
+    line_values = models.JSONField(
+        default=dict,
+        help_text="Form line number → amount (e.g., {'1c': 112450, '22': 14938}).",
+    )
+    other_deductions = models.JSONField(
+        default=dict,
+        help_text="Other deduction detail: description → amount.",
+    )
+    balance_sheet = models.JSONField(
+        default=dict,
+        help_text="Balance sheet: 'L{line}_{boy|eoy}' → amount.",
+    )
+
+    # Import metadata
+    source_software = models.CharField(
+        max_length=50, default="lacerte",
+        help_text="Software the data was imported from.",
+    )
+    source_file = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Original filename (for audit trail).",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("entity", "year", "form_code")]
+        ordering = ["-year"]
+
+    def __str__(self):
+        return f"PY {self.year} {self.form_code} — {self.entity.name}"

@@ -8,6 +8,7 @@ from .models import (
     Officer,
     OtherDeduction,
     PreparerInfo,
+    PriorYearReturn,
     RentalProperty,
     Shareholder,
     ShareholderLoan,
@@ -303,6 +304,12 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "is_name_change",
             "is_address_change",
             "is_amended_return",
+            # Extension (Form 7004)
+            "extension_filed",
+            "extension_date",
+            "tentative_tax",
+            "total_payments",
+            "balance_due",
             "s_election_date",
             "number_of_shareholders",
             "product_or_service",
@@ -375,3 +382,30 @@ class UpdateFieldsSerializer(serializers.Serializer):
         child=serializers.DictField(),
         allow_empty=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Prior Year Return
+# ---------------------------------------------------------------------------
+
+
+class PriorYearReturnSerializer(serializers.ModelSerializer):
+    entity_name = serializers.CharField(source="entity.name", read_only=True)
+
+    class Meta:
+        model = PriorYearReturn
+        fields = (
+            "id",
+            "entity",
+            "entity_name",
+            "year",
+            "form_code",
+            "line_values",
+            "other_deductions",
+            "balance_sheet",
+            "source_software",
+            "source_file",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")

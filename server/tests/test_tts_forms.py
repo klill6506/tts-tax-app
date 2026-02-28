@@ -57,6 +57,10 @@ from apps.tts_forms.coordinates.f1125a import (
     FIELD_MAP as F1125A_FIELD_MAP,
     HEADER_FIELDS as F1125A_HEADER_FIELDS,
 )
+from apps.tts_forms.coordinates.f7004 import (
+    FIELD_MAP as F7004_FIELD_MAP,
+    HEADER_FIELDS as F7004_HEADER_FIELDS,
+)
 from apps.tts_forms.coordinates.f7203 import (
     FIELD_MAP as F7203_FIELD_MAP,
     HEADER_FIELDS as F7203_HEADER_FIELDS,
@@ -68,6 +72,7 @@ from apps.tts_forms.coordinates.f8825 import (
 )
 from apps.tts_forms.renderer import (
     COORDINATE_REGISTRY,
+    EXTENSION_FORM_CODES,
     HEADER_REGISTRY,
     SCHED_K_TO_K1_MAP,
     _create_overlay,
@@ -75,6 +80,7 @@ from apps.tts_forms.renderer import (
     _format_value,
     render,
     render_1125a,
+    render_7004,
     render_7203,
     render_7206,
     render_8825,
@@ -857,7 +863,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 12  # 9 form templates + 3 instruction PDFs
+        assert len(data["forms"]) == 13  # 10 form templates + 3 instruction PDFs
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (
@@ -1676,3 +1682,171 @@ class TestForm7203Endpoint:
             content_type="application/json",
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Form 7004 coordinate tests
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinates7004:
+    def test_f7004_field_map_has_entries(self):
+        assert len(F7004_FIELD_MAP) > 0
+
+    def test_coordinate_registry_contains_f7004(self):
+        assert "f7004" in COORDINATE_REGISTRY
+
+    def test_header_registry_contains_f7004(self):
+        assert "f7004" in HEADER_REGISTRY
+
+    def test_all_coords_are_field_coord(self):
+        for key, coord in F7004_FIELD_MAP.items():
+            assert isinstance(coord, FieldCoord), f"7004: {key} is not a FieldCoord"
+
+    def test_all_pages_are_page_zero(self):
+        for key, coord in F7004_FIELD_MAP.items():
+            assert coord.page == 0, f"7004: {key} should be on page 0"
+
+    def test_all_positions_are_positive(self):
+        for key, coord in F7004_FIELD_MAP.items():
+            assert coord.x >= 0, f"7004: {key} has negative x"
+            assert coord.y >= 0, f"7004: {key} has negative y"
+            assert coord.width > 0, f"7004: {key} has non-positive width"
+
+    def test_header_has_required_fields(self):
+        assert "entity_name" in F7004_HEADER_FIELDS
+        assert "ein" in F7004_HEADER_FIELDS
+        assert "address_street" in F7004_HEADER_FIELDS
+        assert "address_city_state_zip" in F7004_HEADER_FIELDS
+
+    def test_line_1_form_code_mapped(self):
+        assert "1" in F7004_FIELD_MAP
+
+    def test_line_5a_tax_year_fields_mapped(self):
+        for field in ["5a_year", "5a_begin", "5a_begin_year", "5a_end", "5a_end_year"]:
+            assert field in F7004_FIELD_MAP, f"7004: {field} missing"
+
+    def test_financial_lines_mapped(self):
+        for ln in ["6", "7", "8"]:
+            assert ln in F7004_FIELD_MAP, f"7004 line {ln} missing"
+
+    def test_extension_form_codes_dict(self):
+        assert EXTENSION_FORM_CODES["1120-S"] == "25"
+        assert EXTENSION_FORM_CODES["1065"] == "09"
+        assert EXTENSION_FORM_CODES["1120"] == "12"
+
+
+# ---------------------------------------------------------------------------
+# Form 7004 rendering tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestRender7004:
+    def test_render_7004_produces_valid_pdf(
+        self, tax_return_with_data, test_template_pdf
+    ):
+        tr = tax_return_with_data
+        tr.extension_filed = True
+        tr.tentative_tax = Decimal("5000.00")
+        tr.total_payments = Decimal("3000.00")
+        tr.balance_due = Decimal("2000.00")
+        tr.save()
+
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_7004(tr)
+
+        assert len(pdf_bytes) > 0
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        assert len(reader.pages) >= 1
+
+    def test_render_7004_scorp_uses_code_25(
+        self, tax_return_with_data, test_template_pdf
+    ):
+        """S-Corp return should use form code 25."""
+        tr = tax_return_with_data
+        assert tr.form_definition.code == "1120-S"
+
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            pdf_bytes = render_7004(tr)
+
+        assert len(pdf_bytes) > 0
+
+
+# ---------------------------------------------------------------------------
+# Form 7004 API endpoint tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestForm7004Endpoint:
+    def test_render_7004_endpoint(
+        self, user_and_http, tax_return_with_data, test_template_pdf
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            return_value=test_template_pdf,
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_data.id}/render-7004/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+        assert "7004" in resp["Content-Disposition"]
+
+    def test_render_7004_404_for_missing_template(
+        self, user_and_http, tax_return_with_data
+    ):
+        _, http = user_and_http
+        with patch(
+            "apps.tts_forms.renderer._get_template_path",
+            side_effect=FileNotFoundError("No template"),
+        ):
+            resp = http.post(
+                f"/api/v1/tax-returns/{tax_return_with_data.id}/render-7004/",
+                content_type="application/json",
+            )
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Extension field model tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestExtensionFields:
+    def test_extension_fields_default_values(self, tax_return_with_data):
+        """Extension fields should have sensible defaults."""
+        tr = tax_return_with_data
+        assert tr.extension_filed is False
+        assert tr.extension_date is None
+        assert tr.tentative_tax == Decimal("0")
+        assert tr.total_payments == Decimal("0")
+        assert tr.balance_due == Decimal("0")
+
+    def test_extension_fields_can_be_set(self, tax_return_with_data):
+        """Extension fields should be settable and readable."""
+        from datetime import date
+        tr = tax_return_with_data
+        tr.extension_filed = True
+        tr.extension_date = date(2026, 3, 15)
+        tr.tentative_tax = Decimal("10000.00")
+        tr.total_payments = Decimal("8000.00")
+        tr.balance_due = Decimal("2000.00")
+        tr.save()
+
+        tr.refresh_from_db()
+        assert tr.extension_filed is True
+        assert tr.extension_date == date(2026, 3, 15)
+        assert tr.tentative_tax == Decimal("10000.00")
+        assert tr.total_payments == Decimal("8000.00")
+        assert tr.balance_due == Decimal("2000.00")

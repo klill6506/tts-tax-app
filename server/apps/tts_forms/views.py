@@ -19,6 +19,9 @@ Endpoints:
 
     POST /api/v1/tax-returns/{id}/render-8825/
         Generate Form 8825 (Rental Real Estate).
+
+    POST /api/v1/tax-returns/{id}/render-7004/
+        Generate Form 7004 (Extension).
 """
 
 import io
@@ -33,6 +36,7 @@ from apps.returns.models import Shareholder, TaxReturn
 
 from .renderer import (
     render_1125a,
+    render_7004,
     render_8825,
     render_all_k1s,
     render_k1,
@@ -313,6 +317,34 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         filename = f"7203s_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 7004 rendering (Extension)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-7004")
+    def render_7004_pdf(self, request, pk=None):
+        """Generate Form 7004 (Extension) for this tax return."""
+        tax_return = self.get_object()
+
+        try:
+            pdf_bytes = render_7004(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"7004_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

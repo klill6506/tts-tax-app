@@ -37,6 +37,8 @@ from .coordinates.f7206 import FIELD_MAP as F7206_FIELD_MAP
 from .coordinates.f7206 import HEADER_FIELDS as F7206_HEADER_FIELDS
 from .coordinates.f1125a import FIELD_MAP as F1125A_FIELD_MAP
 from .coordinates.f1125a import HEADER_FIELDS as F1125A_HEADER_FIELDS
+from .coordinates.f7004 import FIELD_MAP as F7004_FIELD_MAP
+from .coordinates.f7004 import HEADER_FIELDS as F7004_HEADER_FIELDS
 from .coordinates.f7203 import FIELD_MAP as F7203_FIELD_MAP
 from .coordinates.f7203 import HEADER_FIELDS as F7203_HEADER_FIELDS
 from .coordinates.f8825 import (
@@ -66,6 +68,7 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1125a": F1125A_FIELD_MAP,
     "f8825": F8825_FIELD_MAP,
     "f7203": F7203_FIELD_MAP,
+    "f7004": F7004_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
@@ -77,6 +80,14 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f1125a": F1125A_HEADER_FIELDS,
     "f8825": F8825_HEADER_FIELDS,
     "f7203": F7203_HEADER_FIELDS,
+    "f7004": F7004_HEADER_FIELDS,
+}
+
+# Form code → 2-digit IRS extension code for Form 7004 Line 1
+EXTENSION_FORM_CODES: dict[str, str] = {
+    "1120-S": "25",
+    "1065": "09",
+    "1120": "12",
 }
 
 # Font settings
@@ -918,3 +929,84 @@ def render_all_7203s(tax_return) -> bytes:
     output_buf = io.BytesIO()
     writer.write(output_buf)
     return output_buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Form 7004 rendering (Extension)
+# ---------------------------------------------------------------------------
+
+
+def render_7004(tax_return) -> bytes:
+    """
+    Render Form 7004 (Application for Automatic Extension of Time To File)
+    for a tax return.
+
+    Populates:
+    - Header: entity name, EIN, address
+    - Line 1: 2-digit form code (25 for 1120-S, 09 for 1065, 12 for 1120)
+    - Line 5a: tax year begin/end dates
+    - Lines 6-8: tentative tax, total payments, balance due
+    """
+    entity = tax_return.tax_year.entity
+    year = tax_return.tax_year.year
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    form_code = tax_return.form_definition.code
+
+    # Look up the 2-digit IRS extension code
+    ext_code = EXTENSION_FORM_CODES.get(form_code)
+    if not ext_code:
+        raise ValueError(
+            f"Form 7004 not supported for form code {form_code!r}. "
+            f"Supported: {', '.join(EXTENSION_FORM_CODES.keys())}"
+        )
+
+    # Build header
+    city_state_zip = ", ".join(p for p in [entity.city, entity.state] if p)
+    if entity.zip_code:
+        city_state_zip += f" {entity.zip_code}"
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+        "address_street": entity.address_line1 or "",
+        "address_city_state_zip": city_state_zip,
+    }
+
+    # Build field values
+    field_values: dict[str, tuple[str, str]] = {
+        "1": (ext_code, "text"),
+    }
+
+    # Line 5a: tax year dates
+    if tax_return.tax_year_start:
+        begin = tax_return.tax_year_start
+    else:
+        from datetime import date
+        begin = date(year, 1, 1)
+
+    if tax_return.tax_year_end:
+        end = tax_return.tax_year_end
+    else:
+        from datetime import date
+        end = date(year, 12, 31)
+
+    field_values["5a_year"] = (str(begin.year), "text")
+    field_values["5a_begin"] = (begin.strftime("%m/%d"), "text")
+    field_values["5a_begin_year"] = (str(begin.year)[-2:], "text")
+    field_values["5a_end"] = (end.strftime("%m/%d"), "text")
+    field_values["5a_end_year"] = (str(end.year)[-2:], "text")
+
+    # Lines 6-8: financial amounts
+    if tax_return.tentative_tax:
+        field_values["6"] = (str(tax_return.tentative_tax), "currency")
+    if tax_return.total_payments:
+        field_values["7"] = (str(tax_return.total_payments), "currency")
+    if tax_return.balance_due:
+        field_values["8"] = (str(tax_return.balance_due), "currency")
+
+    return render(
+        form_id="f7004",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )

@@ -148,6 +148,18 @@
       "local_path": "2025/i1120.pdf",
       "pages": null,
       "notes": "Official IRS instructions for Form 1120 (C Corporation)"
+    },
+    {
+      "form_id": "f7004",
+      "form_code": "7004",
+      "title": "Application for Automatic Extension of Time To File Certain Business Income Tax, Information, and Other Returns",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f7004.pdf",
+      "revision_date": "2024-12",
+      "sha256": "9fc3dbf661741266974b29444c5649993d0105531b56fe34b5dc14c37a89f932",
+      "local_path": "2025/f7004.pdf",
+      "pages": 1,
+      "notes": "1-page extension form: S-Corps (code 25), partnerships (code 09), C-Corps (code 12)"
     }
   ]
 }
