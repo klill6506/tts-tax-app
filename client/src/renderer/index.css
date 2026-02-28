@@ -59,6 +59,10 @@
   --color-success: var(--success);
   --color-success-hover: var(--success-hover);
 
+  /* Warning (amber — attention/pending) */
+  --color-warning: var(--warning);
+  --color-warning-dark: var(--warning-dark);
+
   /* Danger (red — errors, destructive) */
   --color-danger: var(--danger);
   --color-danger-hover: var(--danger-hover);
@@ -113,6 +117,10 @@
   --success: #16a34a;            /* Green-600 */
   --success-hover: #15803d;      /* Green-700 */
 
+  /* Warning (amber — attention, pending) */
+  --warning: #f59e0b;            /* Amber-500 */
+  --warning-dark: #b45309;       /* Amber-700 — readable on light bg */
+
   /* Danger (red — errors only, use sparingly) */
   --danger: #dc2626;             /* Red-600 */
   --danger-hover: #b91c1c;       /* Red-700 */
@@ -166,6 +174,10 @@
   /* Success (green — lighter) */
   --success: #4ade80;            /* Green-400 */
   --success-hover: #22c55e;      /* Green-500 */
+
+  /* Warning (amber — lighter) */
+  --warning: #fbbf24;            /* Amber-400 */
+  --warning-dark: #f59e0b;       /* Amber-500 */
 
   /* Danger (red — lighter) */
   --danger: #f87171;             /* Red-400 */
