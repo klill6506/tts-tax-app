@@ -327,6 +327,10 @@ class Officer(models.Model):
     name = models.CharField(max_length=255)
     title = models.CharField(max_length=100, blank=True, default="")
     ssn = models.CharField(max_length=11, blank=True, default="")
+    percent_time = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text="Percent of time devoted to business.",
+    )
     percent_ownership = models.DecimalField(
         max_digits=5, decimal_places=2, default=0,
     )

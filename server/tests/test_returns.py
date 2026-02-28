@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 130
+        assert lines.count() == 133
 
     def test_seed_is_idempotent(self, seeded):
         # Run again

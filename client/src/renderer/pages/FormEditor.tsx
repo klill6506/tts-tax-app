@@ -38,6 +38,7 @@ interface OfficerRow {
   name: string;
   title: string;
   ssn: string;
+  percent_time: string;
   percent_ownership: string;
   compensation: string;
 }
@@ -797,6 +798,7 @@ function InfoSection({
           name: editingOfficer.name || "",
           title: editingOfficer.title || "",
           ssn: editingOfficer.ssn || "",
+          percent_time: editingOfficer.percent_time || "0",
           percent_ownership: editingOfficer.percent_ownership || "0",
           compensation: editingOfficer.compensation || "0",
         }
@@ -811,6 +813,7 @@ function InfoSection({
         name: editingOfficer.name || "",
         title: editingOfficer.title || "",
         ssn: editingOfficer.ssn || "",
+        percent_time: editingOfficer.percent_time || "0",
         percent_ownership: editingOfficer.percent_ownership || "0",
         compensation: editingOfficer.compensation || "0",
       });
@@ -1199,6 +1202,7 @@ function InfoSection({
                 name: "",
                 title: "",
                 ssn: "",
+                percent_time: "",
                 percent_ownership: "",
                 compensation: "",
               })
@@ -1222,6 +1226,9 @@ function InfoSection({
                   <th className="pb-2 pr-4 font-semibold text-tx-secondary">Title</th>
                   <th className="pb-2 pr-4 font-semibold text-tx-secondary">SSN</th>
                   <th className="pb-2 pr-4 text-right font-semibold text-tx-secondary">
+                    % Time
+                  </th>
+                  <th className="pb-2 pr-4 text-right font-semibold text-tx-secondary">
                     % Ownership
                   </th>
                   <th className="pb-2 pr-4 text-right font-semibold text-tx-secondary">
@@ -1236,6 +1243,9 @@ function InfoSection({
                     <td className="py-2 pr-4 text-tx">{o.name}</td>
                     <td className="py-2 pr-4 text-tx">{o.title}</td>
                     <td className="py-2 pr-4 text-tx">{o.ssn}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-tx">
+                      {o.percent_time ? `${o.percent_time}%` : ""}
+                    </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-tx">
                       {o.percent_ownership ? `${o.percent_ownership}%` : ""}
                     </td>
@@ -1276,7 +1286,7 @@ function InfoSection({
             <h4 className="mb-3 text-sm font-semibold text-tx">
               {editingOfficer.id ? "Edit Officer" : "New Officer"}
             </h4>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
               <div>
                 <label className="mb-1 block text-xs font-medium text-tx-secondary">
                   Name
@@ -1315,6 +1325,22 @@ function InfoSection({
                   }
                   className={inputClass}
                   placeholder="XXX-XX-XXXX"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                  % Time
+                </label>
+                <input
+                  type="text"
+                  value={editingOfficer.percent_time || ""}
+                  onChange={(e) =>
+                    setEditingOfficer({
+                      ...editingOfficer,
+                      percent_time: e.target.value,
+                    })
+                  }
+                  className={inputClass}
                 />
               </div>
               <div>
@@ -1670,16 +1696,30 @@ function IncomeDeductionsSection({
   }, []);
 
   // --- Other deduction CRUD ---
+  const [newDedId, setNewDedId] = useState<string | null>(null);
+
   async function addDeduction() {
-    await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
+    const res = await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
       description: "",
       amount: "0",
       category: "",
       sort_order: localOther.length + 1,
       source: "manual",
     });
-    await onRefresh();
+    if (res.ok) {
+      setNewDedId((res.data as OtherDeductionRow).id);
+      await onRefresh();
+    }
   }
+
+  // Auto-focus on newly added deduction row
+  useEffect(() => {
+    if (newDedId) {
+      const el = document.getElementById(`ded-desc-${newDedId}`);
+      if (el) { el.focus(); el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      setNewDedId(null);
+    }
+  }, [localOther, newDedId]);
 
   async function updateDeduction(dedId: string, field: string, value: string) {
     await patch(`/tax-returns/${taxReturnId}/other-deductions/${dedId}/`, { [field]: value });
@@ -1822,7 +1862,7 @@ function IncomeDeductionsSection({
               const isStandard = row.source === "standard";
               const isEmptyStandard = isStandard && parseFloat(row.amount || "0") === 0;
               return (
-                <div key={row.id} className={`flex items-center gap-4 px-4 py-3 ${isEmptyStandard ? "opacity-50" : ""}`}>
+                <div key={row.id} className={`flex items-center gap-4 px-4 py-3 ${isEmptyStandard ? "opacity-70" : ""}`}>
                   <div className="w-14 shrink-0 text-sm text-tx-muted">•</div>
                   <div className="flex-1">
                     {isStandard ? (
@@ -1830,6 +1870,7 @@ function IncomeDeductionsSection({
                     ) : (
                       <>
                         <input
+                          id={`ded-desc-${row.id}`}
                           type="text"
                           list={`ded-cats-${row.id}`}
                           value={row.description}

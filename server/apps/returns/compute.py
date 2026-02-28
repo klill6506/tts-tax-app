@@ -56,12 +56,26 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("25", lambda v: max(ZERO, _d(v, "22c") - _d(v, "23d"))),
     ("26", lambda v: max(ZERO, _d(v, "23d") - _d(v, "22c"))),
 
+    # Schedule K — auto-flows from Page 1 and sub-schedules
+    # K1 = ordinary business income (from Page 1 Line 21)
+    ("K1", lambda v: _d(v, "21")),
+    # K18 = total income/loss reconciliation
+    # (income items positive, deduction items negative)
+    ("K18", lambda v: (
+        _sum(v, "K1", "K2", "K3", "K4", "K5a", "K6", "K7", "K8a", "K9", "K10")
+        - _d(v, "K11") - _d(v, "K12a")
+        + _d(v, "K16a") + _d(v, "K16b") - _d(v, "K16c")
+    )),
+
     # Schedule L — Balance Sheet
-    # Total assets = cash + AR + shareholder loans + other current
+    # Inventory flows from COGS (Schedule A)
+    ("L3a", lambda v: _d(v, "A1")),   # BOY inventory = COGS beginning inventory
+    ("L3d", lambda v: _d(v, "A7")),   # EOY inventory = COGS ending inventory
+    # Total assets = cash + AR + inventories + shareholder loans + other current
     #              + (buildings − accum depr)
-    ("L14a", lambda v: _sum(v, "L1a", "L2a", "L5a", "L7a")
+    ("L14a", lambda v: _sum(v, "L1a", "L2a", "L3a", "L5a", "L7a")
      + _d(v, "L9a") - _d(v, "L9b")),
-    ("L14d", lambda v: _sum(v, "L1d", "L2d", "L5d", "L7d")
+    ("L14d", lambda v: _sum(v, "L1d", "L2d", "L3d", "L5d", "L7d")
      + _d(v, "L9d") - _d(v, "L9e")),
     # Total liabilities & equity
     ("L27a", lambda v: _sum(
@@ -78,13 +92,21 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("M1_7", lambda v: _d(v, "M1_5") + _d(v, "M1_6")),
     ("M1_8", lambda v: _d(v, "M1_4") - _d(v, "M1_7")),
 
-    # Schedule M-2
-    ("M2_2", lambda v: max(ZERO, _d(v, "21"))),   # ordinary income (positive)
-    ("M2_4", lambda v: max(ZERO, -_d(v, "21"))),   # loss (positive amount)
+    # Schedule M-2 — AAA tracking
+    # Line 2: ordinary income (positive only, from K1 via line 21)
+    ("M2_2", lambda v: max(ZERO, _d(v, "K1"))),
+    # Line 4: loss (from K1, shown as positive amount)
+    ("M2_4", lambda v: max(ZERO, -_d(v, "K1"))),
+    # Line 5: other reductions = charitable + sec 179 + nondeductible expenses
+    ("M2_5", lambda v: _sum(v, "K12a", "K11", "K16c")),
+    # Line 6: combine lines 1 through 5
     ("M2_6", lambda v: (
         _d(v, "M2_1") + _d(v, "M2_2") + _d(v, "M2_3")
         - _d(v, "M2_4") - _d(v, "M2_5")
     )),
+    # Line 7: distributions (from Schedule K line 16d)
+    ("M2_7", lambda v: _d(v, "K16d")),
+    # Line 8: ending balance
     ("M2_8", lambda v: _d(v, "M2_6") - _d(v, "M2_7")),
 ]
 

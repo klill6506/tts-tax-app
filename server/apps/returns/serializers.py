@@ -88,6 +88,7 @@ class OfficerSerializer(serializers.ModelSerializer):
             "name",
             "title",
             "ssn",
+            "percent_time",
             "percent_ownership",
             "compensation",
             "sort_order",

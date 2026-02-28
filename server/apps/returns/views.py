@@ -234,6 +234,9 @@ def _populate_officers_from_prior_year(tax_return):
                 tax_return=tax_return,
                 name=off.get("name", ""),
                 ssn=off.get("ssn", ""),
+                percent_time=Decimal(
+                    str(off.get("percent_time", 0))
+                ),
                 percent_ownership=Decimal(
                     str(off.get("percent_ownership", 0))
                 ),
@@ -772,6 +775,7 @@ class TaxReturnViewSet(
         ser = OfficerSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         ser.save(tax_return=tax_return)
+        self._rollup_officer_compensation(tax_return)
         return Response(ser.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -789,12 +793,14 @@ class TaxReturnViewSet(
 
         if request.method == "DELETE":
             officer.delete()
+            self._rollup_officer_compensation(tax_return)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         # PATCH
         ser = OfficerSerializer(officer, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
+        self._rollup_officer_compensation(tax_return)
         return Response(ser.data)
 
     # ------------------------------------------------------------------
@@ -1000,6 +1006,41 @@ class TaxReturnViewSet(
             fl = FormLine.objects.get(
                 section__form=tax_return.form_definition,
                 mapping_key=k16d_key,
+            )
+            fv, _ = FormFieldValue.objects.get_or_create(
+                tax_return=tax_return,
+                form_line=fl,
+            )
+            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.is_overridden = False
+            fv.save(update_fields=["value", "is_overridden", "updated_at"])
+        except FormLine.DoesNotExist:
+            pass
+
+        compute_return(tax_return)
+
+    def _rollup_officer_compensation(self, tax_return):
+        """Sum all officer compensation into Page 1 Line 7."""
+        from decimal import Decimal
+        from django.db.models import Sum
+
+        total = (
+            Officer.objects.filter(tax_return=tax_return)
+            .aggregate(total=Sum("compensation"))["total"]
+        ) or Decimal("0")
+
+        form_code = tax_return.form_definition.code
+        line7_key = {
+            "1120-S": "1120S_L7",
+            "1065": "1065_L9",
+        }.get(form_code)
+        if not line7_key:
+            return
+
+        try:
+            fl = FormLine.objects.get(
+                section__form=tax_return.form_definition,
+                mapping_key=line7_key,
             )
             fv, _ = FormFieldValue.objects.get_or_create(
                 tax_return=tax_return,
