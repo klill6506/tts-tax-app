@@ -470,7 +470,7 @@ export default function FormEditor() {
       {/* Breadcrumb */}
       <div className="mb-4 text-sm text-tx-secondary">
         <Link to="/" className="text-primary-text hover:underline">
-          Client Manager
+          Return Manager
         </Link>
         <span className="mx-2">/</span>
         <span className="text-tx">{returnData.client_name}</span>
@@ -559,8 +559,10 @@ export default function FormEditor() {
         />
       ) : activeTab === "balance_sheets" ? (
         <BalanceSheetsSection
+          taxReturnId={taxReturnId!}
           fieldsBySection={fieldsBySection}
           onChange={handleFieldChange}
+          onRefresh={refreshReturn}
           priorYear={priorYear}
         />
       ) : activeTab === "preparer" ? (
@@ -1767,24 +1769,32 @@ function IncomeDeductionsSection({
               );
             } else {
               const row = item.row;
+              const isStandard = row.source === "standard";
+              const isEmptyStandard = isStandard && parseFloat(row.amount || "0") === 0;
               return (
-                <div key={row.id} className="flex items-center gap-4 px-4 py-3">
+                <div key={row.id} className={`flex items-center gap-4 px-4 py-3 ${isEmptyStandard ? "opacity-50" : ""}`}>
                   <div className="w-14 shrink-0 text-sm text-tx-muted">•</div>
                   <div className="flex-1">
-                    <input
-                      type="text"
-                      list={`ded-cats-${row.id}`}
-                      value={row.description}
-                      onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
-                      onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
-                      className="w-full rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                      placeholder="Enter or select deduction..."
-                    />
-                    <datalist id={`ded-cats-${row.id}`}>
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat} />
-                      ))}
-                    </datalist>
+                    {isStandard ? (
+                      <span className="inline-block px-3 py-1.5 text-sm text-tx">{row.description}</span>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          list={`ded-cats-${row.id}`}
+                          value={row.description}
+                          onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
+                          onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
+                          className="w-full rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                          placeholder="Enter or select deduction..."
+                        />
+                        <datalist id={`ded-cats-${row.id}`}>
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat} />
+                          ))}
+                        </datalist>
+                      </>
+                    )}
                   </div>
                   <div className="w-36 shrink-0">
                     <CurrencyInput
@@ -1797,12 +1807,14 @@ function IncomeDeductionsSection({
                   </div>
                   {hasPY && <PriorYearCell value={pyOther[row.description]} />}
                   <div className="w-16 shrink-0 text-center">
-                    <button
-                      onClick={() => deleteDeduction(row.id)}
-                      className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
-                    >
-                      Delete
-                    </button>
+                    {!isStandard && (
+                      <button
+                        onClick={() => deleteDeduction(row.id)}
+                        className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -2607,12 +2619,16 @@ function RentalPropertiesSection({
 // ---------------------------------------------------------------------------
 
 function BalanceSheetsSection({
+  taxReturnId,
   fieldsBySection,
   onChange,
+  onRefresh,
   priorYear,
 }: {
+  taxReturnId: string;
   fieldsBySection: Record<string, FieldValue[]>;
   onChange: (formLineId: string, value: string) => void;
+  onRefresh: () => Promise<void>;
   priorYear: PriorYearData | null;
 }) {
   const schedLFields = fieldsBySection["sched_l"] || [];
@@ -2621,9 +2637,28 @@ function BalanceSheetsSection({
   const bsPyLines = priorYear?.line_values ?? {};
   const bsHasPY = priorYear !== null;
 
+  async function populateBOY() {
+    const res = await post(`/tax-returns/${taxReturnId}/populate-boy/`);
+    if (res.ok) {
+      await onRefresh();
+    } else {
+      alert("No prior year data found to populate from.");
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <ScheduleLSection fields={schedLFields} onChange={onChange} priorYear={priorYear} />
+      {/* Populate BOY button */}
+      <div className="flex items-center justify-end">
+        <button
+          onClick={populateBOY}
+          className="rounded-lg bg-primary-subtle px-3 py-1.5 text-xs font-medium text-primary-text transition hover:bg-primary hover:text-white"
+          title="Copy prior year end-of-year balances into beginning-of-year fields"
+        >
+          Populate BOY from Prior Year
+        </button>
+      </div>
+      <ScheduleLSection fields={schedLFields} onChange={onChange} />
       {m1Fields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
@@ -2750,11 +2785,9 @@ function isBOY(lineNum: string): boolean {
 function ScheduleLSection({
   fields,
   onChange,
-  priorYear,
 }: {
   fields: FieldValue[];
   onChange: (formLineId: string, value: string) => void;
-  priorYear: PriorYearData | null;
 }) {
   // Group fields into pairs: [BOY, EOY] by category
   const groups: { label: string; boy?: FieldValue; eoy?: FieldValue }[] = [];
@@ -2779,9 +2812,6 @@ function ScheduleLSection({
     seen.add(group);
   }
 
-  const pyBS = priorYear?.balance_sheet ?? {};
-  const hasPY = priorYear !== null;
-
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Column headers */}
@@ -2795,11 +2825,6 @@ function ScheduleLSection({
         <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Beginning of Year
         </div>
-        {hasPY && (
-          <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">
-            PY
-          </div>
-        )}
         <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           End of Year
         </div>
@@ -2855,9 +2880,6 @@ function ScheduleLSection({
                     <div />
                   )}
                 </div>
-                {hasPY && (
-                  <PriorYearCell value={pyBS[`${groupKey}_eoy`]} />
-                )}
                 <div className="w-36 shrink-0">
                   {g.eoy ? (
                     <FieldInput field={g.eoy} onChange={onChange} />

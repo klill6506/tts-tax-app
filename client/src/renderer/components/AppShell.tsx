@@ -45,8 +45,7 @@ const MENUS: MenuGroup[] = [
   {
     label: "Clients",
     items: [
-      { label: "Client Manager", to: "/" },
-      { label: "New Client...", to: "/" },
+      { label: "New Client...", action: "new-client" },
       { divider: true, label: "" },
       { label: "Client Search...", shortcut: "Ctrl+K", disabled: true },
     ],
@@ -54,7 +53,7 @@ const MENUS: MenuGroup[] = [
   {
     label: "Returns",
     items: [
-      { label: "All Returns", to: "/returns" },
+      { label: "All Returns", to: "/" },
       { divider: true, label: "" },
       { label: "S-Corp Returns (1120-S)", to: "/returns?form=1120-S" },
       { label: "Partnership Returns (1065)", to: "/returns?form=1065" },
@@ -115,8 +114,7 @@ const MENUS: MenuGroup[] = [
 ];
 
 const NAV_TABS = [
-  { to: "/", label: "Client Manager", end: true },
-  { to: "/returns", label: "Return Manager", end: true },
+  { to: "/", label: "Return Manager", end: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -291,6 +289,7 @@ export default function AppShell() {
 
   function handleMenuAction(action: string) {
     if (action === "about") setShowAbout(true);
+    if (action === "new-client") navigate("/?new-client=1");
   }
 
   // Determine "parent" route for hierarchical back navigation

@@ -279,6 +279,7 @@ class FormFieldValue(models.Model):
 class DeductionSource(models.TextChoices):
     MANUAL = "manual", "Manual"
     TB_IMPORT = "tb_import", "TB Import"
+    STANDARD = "standard", "Standard"
 
 
 class OtherDeduction(models.Model):

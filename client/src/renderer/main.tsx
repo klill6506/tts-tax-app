@@ -8,7 +8,6 @@ import { FormContextProvider } from "./lib/form-context";
 import { ThemeProvider } from "./lib/theme";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import ClientReturns from "./pages/ClientReturns";
 import EntityDetail from "./pages/EntityDetail";
 import TrialBalance from "./pages/TrialBalance";
@@ -33,10 +32,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        {/* Client Manager (home) */}
-        <Route path="/" element={<Dashboard />} />
-
-        {/* Return Manager */}
+        {/* Return Manager (home) */}
+        <Route path="/" element={<ReturnManager />} />
         <Route path="/returns" element={<ReturnManager />} />
 
         {/* Client Returns — all returns for an individual */}

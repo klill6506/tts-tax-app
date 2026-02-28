@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { get, del } from "../lib/api";
+import { get, del, post } from "../lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,6 +64,11 @@ export default function ReturnManager() {
   const [returns, setReturns] = useState<TaxReturnRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // New client form
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [creating, setCreating] = useState(false);
+
   // Filters — initialize from URL params (set by Returns menu shortcuts)
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
@@ -81,6 +86,9 @@ export default function ReturnManager() {
     setFormFilter(searchParams.get("form") || "");
     setStatusFilter(searchParams.get("status") || "");
     setYearFilter(searchParams.get("year") || "");
+    if (searchParams.get("new-client") === "1") {
+      setShowNewClient(true);
+    }
   }, [searchParams]);
 
   // ---- Load data ----
@@ -94,6 +102,24 @@ export default function ReturnManager() {
     const res = await get("/tax-returns/");
     if (res.ok) setReturns(res.data as TaxReturnRow[]);
     setLoading(false);
+  }
+
+  // ---- New client ----
+
+  async function handleCreateClient(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = newClientName.trim();
+    if (!trimmed) return;
+    setCreating(true);
+    const res = await post("/clients/", { name: trimmed });
+    setCreating(false);
+    if (res.ok) {
+      setNewClientName("");
+      setShowNewClient(false);
+      navigate(`/clients/${(res.data as { id: string }).id}`);
+    } else {
+      alert("Failed to create client.");
+    }
   }
 
   // ---- Delete ----
@@ -167,13 +193,41 @@ export default function ReturnManager() {
             {firmName} &mdash; {loading ? "Loading..." : `${filtered.length} returns`}
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="rounded-lg bg-primary-subtle px-4 py-2 text-sm font-medium text-primary-text transition hover:bg-primary hover:text-white"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowNewClient(true)}
+            className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover"
+          >
+            + New Client
+          </button>
+          <button
+            onClick={loadData}
+            className="rounded-lg bg-primary-subtle px-4 py-2 text-sm font-medium text-primary-text transition hover:bg-primary hover:text-white"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* New client form */}
+      {showNewClient && (
+        <form onSubmit={handleCreateClient} className="mb-4 flex items-center gap-2 rounded-lg border border-border-subtle bg-card p-3">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Client name (individual)..."
+            value={newClientName}
+            onChange={(e) => setNewClientName(e.target.value)}
+            className="w-full max-w-sm rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm placeholder:text-tx-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+          />
+          <button type="submit" disabled={creating || !newClientName.trim()} className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition hover:bg-success-hover disabled:opacity-50">
+            {creating ? "Creating..." : "Create"}
+          </button>
+          <button type="button" onClick={() => { setShowNewClient(false); setNewClientName(""); }} className="rounded-lg px-3 py-2 text-sm font-medium text-tx-secondary transition hover:bg-surface-alt">
+            Cancel
+          </button>
+        </form>
+      )}
 
       {/* Filter bar */}
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">

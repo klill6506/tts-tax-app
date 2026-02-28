@@ -46,6 +46,73 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
+
+def _populate_boy_from_prior_year(tax_return):
+    """
+    Auto-populate Balance Sheet BOY (beginning of year) values from
+    the prior year's EOY (end of year) values.
+
+    Prior year's ending balance IS this year's beginning balance.
+    Skips fields that have been manually overridden.
+    """
+    entity = tax_return.tax_year.entity
+    prior_year_num = tax_return.tax_year.year - 1
+
+    try:
+        pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year_num)
+    except PriorYearReturn.DoesNotExist:
+        return 0
+
+    bs = pyr.balance_sheet or {}
+    if not bs:
+        return 0
+
+    # Get all BOY FormFieldValues for this return's Schedule L
+    boy_fvs = FormFieldValue.objects.filter(
+        tax_return=tax_return,
+        form_line__section__code="sched_l",
+        form_line__mapping_key__endswith="_boy",
+    ).select_related("form_line")
+
+    updated = 0
+    for fv in boy_fvs:
+        if fv.is_overridden:
+            continue
+
+        line_num = fv.form_line.line_number  # e.g., "L1a", "L9b"
+        ln = line_num[1:]  # strip 'L' → "1a", "9b"
+
+        # Build candidate PY keys to try
+        # "L1a" → try "L1" (strip trailing 'a' column letter)
+        # "L9b" → try "L9b" (sub-line, keep as-is)
+        py_keys = []
+        if ln.endswith("a"):
+            base = ln[:-1]  # "1" from "1a"
+            py_keys = [f"L{base}", f"L{ln}"]
+        elif ln.endswith("b"):
+            py_keys = [f"L{ln}"]
+        else:
+            py_keys = [f"L{ln}"]
+
+        # Look up the PY EOY value using candidate keys
+        amount = None
+        for key in py_keys:
+            eoy_key = f"{key}_eoy"
+            if eoy_key in bs:
+                amount = bs[eoy_key]
+                break
+
+        if amount is not None and amount != 0:
+            fv.value = str(Decimal(str(amount)).quantize(Decimal("0.01")))
+            fv.save(update_fields=["value", "updated_at"])
+            updated += 1
+
+    if updated:
+        compute_return(tax_return)
+
+    return updated
+
+
 # Maps entity_type → FormDefinition.code
 ENTITY_FORM_MAP = {
     "scorp": "1120-S",
@@ -60,10 +127,14 @@ OTHER_DED_LINE_KEY = {
     "1120": "1120_L26",
 }
 
-# Standard deduction categories for the Other Deductions dropdown
-STANDARD_DEDUCTION_CATEGORIES = [
-    "Amortization",
+# ── Standard deduction presets ──────────────────────────────────────────
+# These are pre-populated as OtherDeduction rows on every new return
+# (Lacerte-style).  They do NOT have their own IRS form line — they
+# all roll up into the "Other deductions" line (1120-S L19, 1065 L20,
+# 1120 L26) and generate a supporting schedule on the printed return.
+OTHER_DEDUCTION_PRESETS = [
     "Accounting",
+    "Amortization",
     "Answering Service",
     "Auto and Truck Expense",
     "Bank Charges",
@@ -89,14 +160,58 @@ STANDARD_DEDUCTION_CATEGORIES = [
     "Travel",
     "Uniforms",
     "Utilities",
-    "Operating Expenses (O&G)",
-    "Allocated Overhead (O&G)",
-    "Other Expenses (O&G)",
-    "Total Farm Expenses",
-    "Pension Start-up Credit Reduction",
-    "Credit Reduction",
-    "Other Deductions",
 ]
+
+# Full list for the dropdown (includes presets + specialty categories)
+STANDARD_DEDUCTION_CATEGORIES = sorted(
+    set(OTHER_DEDUCTION_PRESETS) | {
+        "Operating Expenses (O&G)",
+        "Allocated Overhead (O&G)",
+        "Other Expenses (O&G)",
+        "Total Farm Expenses",
+        "Pension Start-up Credit Reduction",
+        "Credit Reduction",
+        "Other Deductions",
+    }
+)
+
+
+def _prepopulate_standard_deductions(tax_return):
+    """
+    Pre-populate a new return with standard deduction categories
+    (Lacerte-style).  Each preset gets an OtherDeduction row with $0.
+
+    If prior year data exists, match PY other_deductions descriptions
+    to standard categories and fill in amounts.
+    """
+    # Look up prior year deductions for matching
+    entity = tax_return.tax_year.entity
+    prior_year_num = tax_return.tax_year.year - 1
+    py_other = {}
+    try:
+        pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year_num)
+        py_other = pyr.other_deductions or {}
+    except PriorYearReturn.DoesNotExist:
+        pass
+
+    # Build case-insensitive PY lookup
+    py_lookup = {k.lower().strip(): v for k, v in py_other.items()}
+
+    standard_deds = []
+    for idx, cat in enumerate(OTHER_DEDUCTION_PRESETS):
+        # Check if PY has a matching deduction
+        py_amount = py_lookup.get(cat.lower(), 0)
+        standard_deds.append(
+            OtherDeduction(
+                tax_return=tax_return,
+                description=cat,
+                amount=Decimal(str(py_amount)).quantize(Decimal("0.01")),
+                category=cat,
+                sort_order=(idx + 1) * 10,
+                source="standard",
+            )
+        )
+    OtherDeduction.objects.bulk_create(standard_deds)
 
 
 def _rollup_other_deductions(tax_return):
@@ -279,6 +394,12 @@ class TaxReturnViewSet(
             )
             for line in lines
         ])
+
+        # Pre-populate standard deductions (Lacerte-style)
+        _prepopulate_standard_deductions(tax_return)
+
+        # Auto-populate Balance Sheet BOY from prior year EOY
+        _populate_boy_from_prior_year(tax_return)
 
         return Response(
             TaxReturnSerializer(tax_return).data,
@@ -811,22 +932,43 @@ class TaxReturnViewSet(
             except FormFieldValue.DoesNotExist:
                 continue
 
-        # Create OtherDeduction rows (clear previous TB imports first)
+        # Create/update OtherDeduction rows
+        # First clear previous TB-only imports (not standard rows)
         OtherDeduction.objects.filter(
             tax_return=tax_return, source="tb_import"
         ).delete()
 
+        # Reset standard deduction amounts before re-importing
+        OtherDeduction.objects.filter(
+            tax_return=tax_return, source="standard"
+        ).update(amount=Decimal("0.00"))
+
+        # Build lookup of existing standard deductions for matching
+        existing_standard = {
+            d.description.lower().strip(): d
+            for d in OtherDeduction.objects.filter(
+                tax_return=tax_return, source="standard"
+            )
+        }
+
         other_ded_created = 0
         for idx, (desc, amt) in enumerate(other_ded_rows):
-            if amt:  # skip zero amounts
+            if not amt:  # skip zero amounts
+                continue
+            # Try to match to an existing standard deduction
+            match = existing_standard.get(desc.lower().strip())
+            if match:
+                match.amount = match.amount + amt.quantize(Decimal("0.01"))
+                match.save(update_fields=["amount", "updated_at"])
+            else:
                 OtherDeduction.objects.create(
                     tax_return=tax_return,
                     description=desc,
                     amount=amt.quantize(Decimal("0.01")),
                     source="tb_import",
-                    sort_order=idx,
+                    sort_order=1000 + idx,
                 )
-                other_ded_created += 1
+            other_ded_created += 1
 
         # Roll up Other Deductions total into the form line
         _rollup_other_deductions(tax_return)
@@ -878,3 +1020,26 @@ class TaxReturnViewSet(
 
         serializer = PriorYearReturnSerializer(pyr)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="populate-boy")
+    def populate_boy(self, request, pk=None):
+        """
+        Populate Balance Sheet BOY values from prior year EOY.
+
+        Useful when prior year data is imported after the return was
+        already created.
+        """
+        tax_return = self.get_object()
+        updated = _populate_boy_from_prior_year(tax_return)
+        if updated == 0:
+            # Check if PY data exists at all
+            entity = tax_return.tax_year.entity
+            prior_year_num = tax_return.tax_year.year - 1
+            if not PriorYearReturn.objects.filter(
+                entity=entity, year=prior_year_num
+            ).exists():
+                return Response(
+                    {"error": "No prior year data found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        return Response({"updated": updated})

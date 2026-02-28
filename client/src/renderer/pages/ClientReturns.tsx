@@ -198,7 +198,7 @@ export default function ClientReturns() {
     <div>
       {/* Breadcrumb */}
       <div className="mb-4 text-sm text-tx-secondary">
-        <Link to="/" className="text-primary-text hover:underline">Client Manager</Link>
+        <Link to="/" className="text-primary-text hover:underline">Return Manager</Link>
         <span className="mx-2">/</span>
         <span className="font-medium text-tx">{client.name}</span>
       </div>

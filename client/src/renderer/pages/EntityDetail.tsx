@@ -155,7 +155,7 @@ export default function EntityDetail() {
     <div>
       {/* Breadcrumb */}
       <div className="mb-4 text-sm text-tx-secondary">
-        <Link to="/" className="text-primary-text hover:underline">Client Manager</Link>
+        <Link to="/" className="text-primary-text hover:underline">Return Manager</Link>
         <span className="mx-2">/</span>
         <Link to={`/clients/${clientId}`} className="text-primary-text hover:underline">{client.name}</Link>
         <span className="mx-2">/</span>

@@ -395,12 +395,25 @@ class TestOtherDeductions:
         resp = _create_return(http, tax_year.id)
         return resp.json()["id"]
 
-    def test_list_empty_deductions(self, user_and_http, seeded, tax_year):
+    def test_standard_deductions_prepopulated(self, user_and_http, seeded, tax_year):
+        """New returns come pre-populated with standard deduction categories."""
         _, http = user_and_http
         rid = self._setup_return(http, seeded, tax_year)
         resp = http.get(f"/api/v1/tax-returns/{rid}/other-deductions/")
         assert resp.status_code == 200
-        assert resp.json() == []
+        data = resp.json()
+        # Should have 27 standard deduction presets
+        assert len(data) == 27
+        # All should have zero amounts and source=standard
+        for d in data:
+            assert d["amount"] == "0.00"
+            assert d["source"] == "standard"
+        # Check a few specific categories are present
+        descriptions = {d["description"] for d in data}
+        assert "Accounting" in descriptions
+        assert "Supplies" in descriptions
+        assert "Travel" in descriptions
+        assert "Utilities" in descriptions
 
     def test_create_deduction(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
