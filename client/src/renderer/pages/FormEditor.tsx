@@ -3443,73 +3443,134 @@ function FormsTab({
     return list;
   }, [taxReturnId, formCode, shareholders, hasRentals, hasCOGS]);
 
-  async function handleView(entry: FormEntry) {
-    setLoading(entry.key);
+  const [activeForm, setActiveForm] = useState<string>("main");
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+
+  // Auto-load the selected form's PDF
+  async function loadForm(key: string) {
+    const entry = forms.find((f) => f.key === key);
+    if (!entry) return;
+
+    // Revoke previous URL
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = null;
+    }
+    setPdfUrl(null);
+    setLoading(key);
     setError(null);
+
     const res = await entry.renderFn();
     setLoading(null);
+
     if (res.ok && res.pdfBase64) {
-      openPdfBlob(res.pdfBase64, `${entry.label}.pdf`);
+      const binary = atob(res.pdfBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      pdfUrlRef.current = url;
+      setPdfUrl(url);
     } else {
       setError(res.error || "Failed to generate PDF.");
     }
   }
 
-  // Group forms for display
-  const mainForms = forms.filter((f) => !f.key.includes("-") || f.key === "1125a" || f.key === "k1s-all" || f.key === "7203s-all");
-  const k1Forms = forms.filter((f) => f.key.startsWith("k1-"));
-  const basisForms = forms.filter((f) => f.key.startsWith("7203-"));
-  const healthForms = forms.filter((f) => f.key.startsWith("7206-"));
+  // Auto-load main form on first render
+  useEffect(() => {
+    loadForm("main");
+    return () => {
+      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    };
+  }, [taxReturnId]);
 
-  function FormRow({ entry }: { entry: FormEntry }) {
-    const isLoading = loading === entry.key;
-    return (
-      <div className="flex items-center justify-between px-5 py-3 hover:bg-surface-alt/50 transition">
-        <div>
-          <span className="text-sm font-semibold text-tx">{entry.label}</span>
-          <span className="ml-3 text-sm text-tx-secondary">{entry.description}</span>
-        </div>
-        <button
-          onClick={() => handleView(entry)}
-          disabled={!!loading}
-          className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
-              </svg>
-              Generating...
-            </span>
-          ) : "View PDF"}
-        </button>
-      </div>
-    );
+  function handleSelectForm(key: string) {
+    setActiveForm(key);
+    loadForm(key);
   }
 
-  function FormGroup({ title, entries }: { title: string; entries: FormEntry[] }) {
-    if (entries.length === 0) return null;
-    return (
-      <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
-          {title}
-        </div>
-        <div className="divide-y divide-border-subtle">
-          {entries.map((e) => <FormRow key={e.key} entry={e} />)}
-        </div>
-      </div>
-    );
+  function handleDownload() {
+    if (!pdfUrl) return;
+    const entry = forms.find((f) => f.key === activeForm);
+    const a = document.createElement("a");
+    a.href = pdfUrl;
+    a.download = `${entry?.label || "form"}.pdf`;
+    a.click();
   }
+
+  // Group forms for sidebar
+  const groups: { title: string; entries: FormEntry[] }[] = [
+    { title: "Return", entries: forms.filter((f) => ["main", "7004", "1125a", "8825"].includes(f.key)) },
+    { title: "K-1s", entries: forms.filter((f) => f.key === "k1s-all" || f.key.startsWith("k1-")) },
+    { title: "Basis (7203)", entries: forms.filter((f) => f.key === "7203s-all" || f.key.startsWith("7203-")) },
+    { title: "Health (7206)", entries: forms.filter((f) => f.key.startsWith("7206-")) },
+  ].filter((g) => g.entries.length > 0);
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger">{error}</div>
-      )}
-      <FormGroup title="Tax Return & Schedules" entries={mainForms} />
-      {k1Forms.length > 0 && <FormGroup title="Schedule K-1 — Individual" entries={k1Forms} />}
-      {basisForms.length > 0 && <FormGroup title="Form 7203 — Shareholder Basis" entries={basisForms} />}
-      {healthForms.length > 0 && <FormGroup title="Form 7206 — Health Insurance" entries={healthForms} />}
+    <div className="flex gap-0 -mx-2" style={{ height: "calc(100vh - 14rem)" }}>
+      {/* Sidebar — form selector */}
+      <div className="w-56 shrink-0 overflow-y-auto border-r border-border bg-card">
+        {groups.map((group) => (
+          <div key={group.title}>
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-tx-muted bg-surface-alt border-b border-border-subtle">
+              {group.title}
+            </div>
+            {group.entries.map((entry) => (
+              <button
+                key={entry.key}
+                onClick={() => handleSelectForm(entry.key)}
+                className={`block w-full text-left px-3 py-2 text-sm transition border-b border-border-subtle ${
+                  activeForm === entry.key
+                    ? "bg-primary-subtle text-primary-text font-semibold"
+                    : "text-tx hover:bg-surface-alt/50"
+                }`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* PDF viewer */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-1.5">
+          <span className="text-sm font-semibold text-tx">
+            {forms.find((f) => f.key === activeForm)?.label || ""}
+          </span>
+          <button
+            onClick={handleDownload}
+            disabled={!pdfUrl}
+            className="rounded-lg bg-primary px-3 py-1 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            Download
+          </button>
+        </div>
+
+        {/* PDF content */}
+        {loading && (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary-subtle border-t-primary" />
+              <p className="text-sm text-tx-secondary">Generating PDF...</p>
+            </div>
+          </div>
+        )}
+        {error && !loading && (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-danger">{error}</p>
+          </div>
+        )}
+        {pdfUrl && !loading && (
+          <iframe
+            src={pdfUrl}
+            className="flex-1 border-0"
+            title="Form PDF"
+          />
+        )}
+      </div>
     </div>
   );
 }
