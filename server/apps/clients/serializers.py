@@ -207,11 +207,9 @@ class TaxYearSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
     def get_tax_return_id(self, obj):
-        """Return the UUID of the linked TaxReturn, or None."""
-        try:
-            return str(obj.tax_return.id)
-        except TaxReturn.DoesNotExist:
-            return None
+        """Return the UUID of the federal TaxReturn, or None."""
+        federal = obj.tax_returns.filter(federal_return__isnull=True).first()
+        return str(federal.id) if federal else None
 
 
 class TaxYearCreateSerializer(serializers.ModelSerializer):

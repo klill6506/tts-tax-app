@@ -46,6 +46,8 @@ from .coordinates.f8825 import (
     HEADER_FIELDS as F8825_HEADER_FIELDS,
     PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
 )
+from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
+from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
 from .statements import render_statement_pages
 
 # ---------------------------------------------------------------------------
@@ -69,6 +71,7 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f8825": F8825_FIELD_MAP,
     "f7203": F7203_FIELD_MAP,
     "f7004": F7004_FIELD_MAP,
+    "fga600s": FGA600S_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
@@ -81,6 +84,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f8825": F8825_HEADER_FIELDS,
     "f7203": F7203_HEADER_FIELDS,
     "f7004": F7004_HEADER_FIELDS,
+    "fga600s": FGA600S_HEADER_FIELDS,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -329,6 +333,7 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
         "1120-S": "f1120s",
         "1065": "f1065",
         "1120": "f1120",
+        "GA-600S": "fga600s",
     }
     form_id = form_code_to_id.get(form_code)
     if not form_id:

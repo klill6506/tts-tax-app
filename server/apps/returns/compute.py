@@ -183,11 +183,118 @@ FORMULAS_1120: list[tuple[str, callable]] = [
     ("M2_8", lambda v: _d(v, "M2_4") - _d(v, "M2_7")),
 ]
 
+# ---------------------------------------------------------------------------
+# GA 600S Formulas (Georgia S Corporation Tax Return)
+# ORDER MATTERS — dependencies must come before dependents.
+# ---------------------------------------------------------------------------
+
+# GA Net Worth Tax — flat dollar amounts by bracket (from IT-611S instructions)
+GA_NET_WORTH_TAX_TABLE: list[tuple[int, int]] = [
+    (100_000,        0),
+    (150_000,      125),
+    (200_000,      150),
+    (300_000,      200),
+    (500_000,      250),
+    (750_000,      300),
+    (1_000_000,    500),
+    (2_000_000,    750),
+    (4_000_000,  1_000),
+    (6_000_000,  1_250),
+    (8_000_000,  1_500),
+    (10_000_000, 1_750),
+    (12_000_000, 2_000),
+    (14_000_000, 2_500),
+    (16_000_000, 3_000),
+    (18_000_000, 3_500),
+    (20_000_000, 4_000),
+    (22_000_000, 4_500),
+]
+GA_NET_WORTH_TAX_MAX = 5_000  # Over $22M
+
+
+def _ga_net_worth_tax(net_worth: Decimal) -> Decimal:
+    """Look up the GA net worth tax from the tiered bracket table."""
+    nw = int(net_worth)
+    if nw <= 0:
+        return ZERO
+    for threshold, tax in GA_NET_WORTH_TAX_TABLE:
+        if nw <= threshold:
+            return Decimal(str(tax))
+    return Decimal(str(GA_NET_WORTH_TAX_MAX))
+
+
+FORMULAS_GA600S: list[tuple[str, callable]] = [
+    # Schedule 7 — Additions to Federal Taxable Income
+    ("S7_8", lambda v: _sum(v, "S7_1", "S7_2", "S7_3", "S7_5", "S7_6", "S7_7")),
+
+    # Schedule 8 — Subtractions from Federal Taxable Income
+    ("S8_5", lambda v: _sum(v, "S8_1", "S8_2", "S8_3", "S8_4")),
+
+    # Schedule 6 — Total Income for GA Purposes
+    ("S6_3c", lambda v: _d(v, "S6_3a") - _d(v, "S6_3b")),
+    ("S6_7", lambda v: _sum(
+        v, "S6_1", "S6_2", "S6_3c",
+        "S6_4a", "S6_4b", "S6_4c", "S6_4d", "S6_4e", "S6_4f",
+        "S6_5", "S6_6",
+    )),
+    ("S6_8", lambda v: _d(v, "S7_8")),
+    ("S6_9", lambda v: _d(v, "S6_7") + _d(v, "S6_8")),
+    ("S6_10", lambda v: _d(v, "S8_5")),
+    ("S6_11", lambda v: _d(v, "S6_9") - _d(v, "S6_10")),
+
+    # Schedule 5 — GA Net Income (apportionment)
+    ("S5_1", lambda v: _d(v, "S6_11")),
+    ("S5_3", lambda v: _d(v, "S5_1") - _d(v, "S5_2")),
+    ("S5_5", lambda v: _d(v, "S5_3") * _d(v, "S5_4")),
+    ("S5_7", lambda v: _d(v, "S5_5") + _d(v, "S5_6")),
+
+    # Schedule 1 — GA Taxable Income and Tax
+    ("S1_1", lambda v: _d(v, "S5_7")),
+    ("S1_3", lambda v: _d(v, "S1_1") + _d(v, "S1_2")),
+    ("S1_6", lambda v: _d(v, "S1_3") - _d(v, "S1_4") - _d(v, "S1_5")),
+    ("S1_7", lambda v: max(ZERO, _d(v, "S1_6")) * Decimal("0.0539")),
+
+    # Schedule 3 — Net Worth Tax
+    ("S3_4", lambda v: _sum(v, "S3_1", "S3_2", "S3_3")),
+    ("S3_6", lambda v: _d(v, "S3_4") * _d(v, "S3_5")),
+    ("S3_7", lambda v: _ga_net_worth_tax(_d(v, "S3_6"))),
+
+    # Schedule 4 — Tax Due or Overpayment
+    ("S4_1a", lambda v: _d(v, "S1_7")),
+    ("S4_1b", lambda v: _d(v, "S3_7")),
+    ("S4_1c", lambda v: _d(v, "S4_1a") + _d(v, "S4_1b")),
+    ("S4_2c", lambda v: _d(v, "S4_2a") + _d(v, "S4_2b")),
+    ("S4_3c", lambda v: _d(v, "S4_3a") + _d(v, "S4_3b")),
+    ("S4_4c", lambda v: _d(v, "S4_4a") + _d(v, "S4_4b")),
+    # Balance due = tax - payments - credits - withholding (if positive)
+    ("S4_5a", lambda v: max(ZERO, _d(v, "S4_1a") - _d(v, "S4_2a") - _d(v, "S4_3a") - _d(v, "S4_4a"))),
+    ("S4_5b", lambda v: max(ZERO, _d(v, "S4_1b") - _d(v, "S4_2b") - _d(v, "S4_3b") - _d(v, "S4_4b"))),
+    ("S4_5c", lambda v: _d(v, "S4_5a") + _d(v, "S4_5b")),
+    # Overpayment = payments + credits + withholding - tax (if positive)
+    ("S4_6a", lambda v: max(ZERO, _d(v, "S4_2a") + _d(v, "S4_3a") + _d(v, "S4_4a") - _d(v, "S4_1a"))),
+    ("S4_6b", lambda v: max(ZERO, _d(v, "S4_2b") + _d(v, "S4_3b") + _d(v, "S4_4b") - _d(v, "S4_1b"))),
+    ("S4_6c", lambda v: _d(v, "S4_6a") + _d(v, "S4_6b")),
+    # Interest & penalty totals
+    ("S4_7c", lambda v: _d(v, "S4_7a") + _d(v, "S4_7b")),
+    ("S4_8c", lambda v: _d(v, "S4_8a") + _d(v, "S4_8b")),
+    ("S4_9c", lambda v: _d(v, "S4_9a") + _d(v, "S4_9b")),
+    # Amount Due = balance due + interest + penalties
+    ("S4_10a", lambda v: _d(v, "S4_5a") + _d(v, "S4_7a") + _d(v, "S4_8a") + _d(v, "S4_9a")),
+    ("S4_10b", lambda v: _d(v, "S4_5b") + _d(v, "S4_7b") + _d(v, "S4_8b") + _d(v, "S4_9b")),
+    ("S4_10c", lambda v: _d(v, "S4_10a") + _d(v, "S4_10b")),
+    # Credit to next year estimated tax (from overpayment)
+    ("S4_11a", lambda v: _d(v, "S4_6a")),
+    ("S4_11b", lambda v: _d(v, "S4_6b")),
+    ("S4_11c", lambda v: _d(v, "S4_11a") + _d(v, "S4_11b")),
+]
+
+
 # Registry by form code
 FORMULA_REGISTRY: dict[str, list[tuple[str, callable]]] = {
     "1120-S": FORMULAS_1120S,
     "1065": FORMULAS_1065,
     "1120": FORMULAS_1120,
+    "GA-600S": FORMULAS_GA600S,
 }
 
 

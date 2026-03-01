@@ -133,15 +133,23 @@ class TaxReturn(models.Model):
     """A single tax return for a tax year, linked to a form definition."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    tax_year = models.OneToOneField(
+    tax_year = models.ForeignKey(
         "clients.TaxYear",
         on_delete=models.CASCADE,
-        related_name="tax_return",
+        related_name="tax_returns",
     )
     form_definition = models.ForeignKey(
         FormDefinition,
         on_delete=models.PROTECT,
         related_name="returns",
+    )
+    federal_return = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="state_returns",
+        help_text="Links a state return to its federal return.",
     )
     status = models.CharField(
         max_length=20,

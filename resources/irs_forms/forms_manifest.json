@@ -160,6 +160,17 @@
       "local_path": "2025/f7004.pdf",
       "pages": 1,
       "notes": "1-page extension form: S-Corps (code 25), partnerships (code 09), C-Corps (code 12)"
+    },
+    {
+      "form_id": "fga600s",
+      "form_code": "GA-600S",
+      "title": "Georgia S Corporation Tax Return",
+      "tax_year": 2024,
+      "irs_url": "https://dor.georgia.gov/document/form/2024-form-600s-2024-s-corporation-tax-return/download",
+      "sha256": "",
+      "local_path": "../state_forms/GA/2024/ga600s.pdf",
+      "pages": 7,
+      "notes": "Georgia Form 600S - S Corporation Tax Return. State form, not IRS."
     }
   ]
 }
