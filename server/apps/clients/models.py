@@ -191,6 +191,11 @@ class TaxYear(models.Model):
         choices=ReturnStatus.choices,
         default=ReturnStatus.DRAFT,
     )
+    filing_states = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of 2-letter state codes this entity files in, e.g. ['GA', 'AL']",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

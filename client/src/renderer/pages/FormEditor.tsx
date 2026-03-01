@@ -182,6 +182,10 @@ interface TaxReturnData {
   staff_preparer: string | null;
   staff_preparer_display_name: string | null;
   signature_date: string | null;
+  // State returns
+  federal_return_id: string | null;
+  filing_states: string[];
+  state_returns: { id: string; form_code: string; status: string }[];
   field_values: FieldValue[];
   other_deductions: OtherDeductionRow[];
   officers: OfficerRow[];
@@ -240,14 +244,68 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["M2_8", (v) => val(v, "M2_6") - val(v, "M2_7")],
 ];
 
+/** GA-600S compute formulas (mirrors server compute.py GA section). */
+const FORMULAS_GA600S: [string, (v: Record<string, number>) => number][] = [
+  // Schedule 7 & 8
+  ["S7_8", (v) => sumLines(v, "S7_1","S7_2","S7_3","S7_5","S7_6","S7_7")],
+  ["S8_5", (v) => sumLines(v, "S8_1","S8_2","S8_3","S8_4")],
+  // Schedule 6
+  ["S6_3c", (v) => val(v, "S6_3a") - val(v, "S6_3b")],
+  ["S6_7", (v) => sumLines(v, "S6_1","S6_2","S6_3c","S6_4a","S6_4b","S6_4c","S6_4d","S6_4e","S6_4f","S6_5","S6_6")],
+  ["S6_8", (v) => val(v, "S7_8")],
+  ["S6_9", (v) => val(v, "S6_7") + val(v, "S6_8")],
+  ["S6_10", (v) => val(v, "S8_5")],
+  ["S6_11", (v) => val(v, "S6_9") - val(v, "S6_10")],
+  // Schedule 5
+  ["S5_1", (v) => val(v, "S6_11")],
+  ["S5_3", (v) => val(v, "S5_1") - val(v, "S5_2")],
+  ["S5_5", (v) => val(v, "S5_3") * val(v, "S5_4")],
+  ["S5_7", (v) => val(v, "S5_5") + val(v, "S5_6")],
+  // Schedule 1
+  ["S1_1", (v) => val(v, "S5_7")],
+  ["S1_3", (v) => val(v, "S1_1") + val(v, "S1_2")],
+  ["S1_6", (v) => val(v, "S1_3") - val(v, "S1_4") - val(v, "S1_5")],
+  ["S1_7", (v) => Math.max(0, val(v, "S1_6")) * 0.0539],
+  // Schedule 3
+  ["S3_4", (v) => sumLines(v, "S3_1","S3_2","S3_3")],
+  ["S3_6", (v) => val(v, "S3_4") * val(v, "S3_5")],
+  // Schedule 4
+  ["S4_1a", (v) => val(v, "S1_7")],
+  ["S4_1c", (v) => val(v, "S4_1a") + val(v, "S4_1b")],
+  ["S4_2c", (v) => val(v, "S4_2a") + val(v, "S4_2b")],
+  ["S4_3c", (v) => val(v, "S4_3a") + val(v, "S4_3b")],
+  ["S4_4c", (v) => val(v, "S4_4a") + val(v, "S4_4b")],
+  ["S4_5a", (v) => Math.max(0, val(v,"S4_1a") - val(v,"S4_2a") - val(v,"S4_3a") - val(v,"S4_4a"))],
+  ["S4_5b", (v) => Math.max(0, val(v,"S4_1b") - val(v,"S4_2b") - val(v,"S4_3b") - val(v,"S4_4b"))],
+  ["S4_5c", (v) => val(v, "S4_5a") + val(v, "S4_5b")],
+  ["S4_6a", (v) => Math.max(0, val(v,"S4_2a") + val(v,"S4_3a") + val(v,"S4_4a") - val(v,"S4_1a"))],
+  ["S4_6b", (v) => Math.max(0, val(v,"S4_2b") + val(v,"S4_3b") + val(v,"S4_4b") - val(v,"S4_1b"))],
+  ["S4_6c", (v) => val(v, "S4_6a") + val(v, "S4_6b")],
+  ["S4_7c", (v) => val(v, "S4_7a") + val(v, "S4_7b")],
+  ["S4_8c", (v) => val(v, "S4_8a") + val(v, "S4_8b")],
+  ["S4_9c", (v) => val(v, "S4_9a") + val(v, "S4_9b")],
+  ["S4_10a", (v) => val(v,"S4_5a") + val(v,"S4_7a") + val(v,"S4_8a") + val(v,"S4_9a")],
+  ["S4_10b", (v) => val(v,"S4_5b") + val(v,"S4_7b") + val(v,"S4_8b") + val(v,"S4_9b")],
+  ["S4_10c", (v) => val(v, "S4_10a") + val(v, "S4_10b")],
+  ["S4_11a", (v) => val(v, "S4_6a")],
+  ["S4_11b", (v) => val(v, "S4_6b")],
+  ["S4_11c", (v) => val(v, "S4_11a") + val(v, "S4_11b")],
+];
+
 /** Set of line numbers that are computed — used for quick lookup. */
-const COMPUTED_LINES = new Set(FORMULAS_1120S.map(([ln]) => ln));
+const COMPUTED_LINES = new Set([
+  ...FORMULAS_1120S.map(([ln]) => ln),
+  ...FORMULAS_GA600S.map(([ln]) => ln),
+]);
 
 /**
  * Run all formulas over current field values and return updated values.
  * Only updates computed fields — input fields are left untouched.
  */
-function computeFields(fieldValues: FieldValue[]): FieldValue[] {
+function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue[] {
+  // Select formula set based on form code
+  const formulas = formCode === "GA-600S" ? FORMULAS_GA600S : FORMULAS_1120S;
+
   // Build line_number → numeric value map from all current values
   const numValues: Record<string, number> = {};
   for (const fv of fieldValues) {
@@ -257,7 +315,7 @@ function computeFields(fieldValues: FieldValue[]): FieldValue[] {
 
   // Evaluate formulas in order
   const computedValues: Record<string, string> = {};
-  for (const [lineNum, fn] of FORMULAS_1120S) {
+  for (const [lineNum, fn] of formulas) {
     const result = fn(numValues);
     numValues[lineNum] = result; // update for downstream formulas
     computedValues[lineNum] = result.toFixed(2);
@@ -288,6 +346,19 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
   { id: "balance_sheets", label: "Balance Sheets", sections: ["sched_l", "sched_m1", "sched_m2"] },
+  { id: "state", label: "State", sections: [] },
+];
+
+/** GA-600S section tabs — shown when editing a GA state return. */
+const GA_SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
+  { id: "info", label: "Info", sections: [] },
+  { id: "sched_6", label: "Sched 6 — Income", sections: ["sched_6"] },
+  { id: "sched_7", label: "Sched 7 — Additions", sections: ["sched_7"] },
+  { id: "sched_8", label: "Sched 8 — Subtractions", sections: ["sched_8"] },
+  { id: "sched_5", label: "Sched 5 — Apportionment", sections: ["sched_5"] },
+  { id: "sched_3", label: "Sched 3 — Net Worth", sections: ["sched_3"] },
+  { id: "sched_1", label: "Sched 1 — Tax", sections: ["sched_1"] },
+  { id: "sched_4", label: "Sched 4 — Tax Due", sections: ["sched_4"] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -342,7 +413,7 @@ export default function FormEditor() {
   function setReturnWithCompute(data: TaxReturnData) {
     setReturnData({
       ...data,
-      field_values: computeFields(data.field_values),
+      field_values: computeFields(data.field_values, data.form_code),
     });
   }
 
@@ -377,7 +448,15 @@ export default function FormEditor() {
     return map;
   }, [returnData]);
 
-  const activeTabDef = SECTION_TABS.find((t) => t.id === activeTab);
+  const isStateReturn = returnData?.form_code === "GA-600S";
+  const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
+  const sectionTabs = useMemo(() => {
+    if (isStateReturn) return GA_SECTION_TABS;
+    // Hide State tab on federal returns if no filing states configured
+    if (!hasFilingStates) return SECTION_TABS.filter((t) => t.id !== "state");
+    return SECTION_TABS;
+  }, [isStateReturn, hasFilingStates]);
+  const activeTabDef = sectionTabs.find((t) => t.id === activeTab);
 
   /** All fields for the active tab (flattened across its sections). */
   const fieldsForActiveTab = useMemo(() => {
@@ -433,7 +512,7 @@ export default function FormEditor() {
           ? { ...fv, value: newValue, is_overridden: true }
           : fv,
       );
-      return { ...prev, field_values: computeFields(updated) };
+      return { ...prev, field_values: computeFields(updated, prev.form_code) };
     });
 
     scheduleFlush();
@@ -510,9 +589,21 @@ export default function FormEditor() {
         <span className="mx-2">/</span>
         <span className="text-tx">{returnData.entity_name}</span>
         <span className="mx-2">/</span>
-        <span className="font-medium text-tx">
-          {returnData.form_code} &mdash; {returnData.year}
-        </span>
+        {returnData.federal_return_id ? (
+          <>
+            <Link to={`/returns/${returnData.federal_return_id}`} className="text-primary hover:underline">
+              Federal Return
+            </Link>
+            <span className="mx-2">/</span>
+            <span className="font-medium text-tx">
+              {returnData.form_code} &mdash; {returnData.year}
+            </span>
+          </>
+        ) : (
+          <span className="font-medium text-tx">
+            {returnData.form_code} &mdash; {returnData.year}
+          </span>
+        )}
       </div>
 
       {/* Header */}
@@ -533,13 +624,15 @@ export default function FormEditor() {
             </span>
           )}
           <SaveStatusIndicator status={saveStatus} />
-          <button
-            onClick={handleImportTB}
-            disabled={importing}
-            className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
-          >
-            {importing ? "Importing..." : "Import Trial Balance"}
-          </button>
+          {!isStateReturn && (
+            <button
+              onClick={handleImportTB}
+              disabled={importing}
+              className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
+            >
+              {importing ? "Importing..." : "Import Trial Balance"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -565,7 +658,7 @@ export default function FormEditor() {
         <>
           {/* Section tab bar */}
           <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-            {SECTION_TABS.map((tab) => (
+            {sectionTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -631,6 +724,12 @@ export default function FormEditor() {
               fields={fieldsBySection["sched_b"] || []}
               returnData={returnData}
               onChange={handleFieldChange}
+            />
+          ) : activeTab === "state" ? (
+            <StateSection
+              taxReturnId={taxReturnId!}
+              returnData={returnData}
+              onRefresh={refreshReturn}
             />
           ) : (
             <StandardSection
@@ -3824,6 +3923,21 @@ function FormsTab({
       });
     }
 
+    // State returns
+    const stateReturns = returnData.state_returns || [];
+    for (const sr of stateReturns) {
+      list.push({
+        key: `state-${sr.id}`,
+        label: `${sr.form_code}`,
+        description: `State return`,
+        renderFn: () => renderPdf(sr.id),
+      });
+    }
+    // If this IS a state return, the main form is already the state form
+    if (formCode === "GA-600S") {
+      // Already rendered as "main" — no additional entries needed
+    }
+
     // Shareholder-level forms (1120-S only)
     if (formCode === "1120-S" && shareholders.length > 0) {
       // All K-1s combined
@@ -3938,6 +4052,7 @@ function FormsTab({
   // Group forms for sidebar
   const groups: { title: string; entries: FormEntry[] }[] = [
     { title: "Return", entries: forms.filter((f) => ["main", "7004", "1125a", "8825"].includes(f.key)) },
+    { title: "State", entries: forms.filter((f) => f.key.startsWith("state-")) },
     { title: "K-1s", entries: forms.filter((f) => f.key === "k1s-all" || f.key.startsWith("k1-")) },
     { title: "Basis (7203)", entries: forms.filter((f) => f.key === "7203s-all" || f.key.startsWith("7203-")) },
     { title: "Health (7206)", entries: forms.filter((f) => f.key.startsWith("7206-")) },
@@ -4007,6 +4122,130 @@ function FormsTab({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// State Section — filing states + create state return
+// ---------------------------------------------------------------------------
+
+function StateSection({
+  taxReturnId,
+  returnData,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  returnData: TaxReturnData;
+  onRefresh: () => Promise<void>;
+}) {
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const filingStates = returnData.filing_states || [];
+  const stateReturns = returnData.state_returns || [];
+
+  // Map of state code → state return (if created)
+  const stateReturnMap: Record<string, { id: string; form_code: string; status: string }> = {};
+  for (const sr of stateReturns) {
+    // Extract state from form_code (e.g., "GA-600S" → "GA")
+    const stateCode = sr.form_code.split("-")[0];
+    stateReturnMap[stateCode] = sr;
+  }
+
+  async function handleCreateStateReturn(stateCode: string) {
+    setCreating(true);
+    setError(null);
+    const res = await post(`/tax-returns/${taxReturnId}/create-state-return/`, {
+      state: stateCode,
+    });
+    setCreating(false);
+    if (res.ok) {
+      await onRefresh();
+    } else {
+      const data = res.data as { error?: string };
+      setError(data?.error || "Failed to create state return.");
+    }
+  }
+
+  // Supported states
+  const SUPPORTED_STATES: Record<string, string> = {
+    GA: "Georgia (Form 600S)",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filing States */}
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-tx mb-4">State Filing</h3>
+
+        {filingStates.length === 0 ? (
+          <p className="text-sm text-tx-secondary">
+            No filing states configured. Edit the entity&apos;s state address or
+            update the tax year&apos;s filing states to enable state returns.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {filingStates.map((stateCode) => {
+              const sr = stateReturnMap[stateCode];
+              const supported = stateCode in SUPPORTED_STATES;
+              return (
+                <div
+                  key={stateCode}
+                  className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-alt/30 px-4 py-3"
+                >
+                  <div>
+                    <span className="text-sm font-semibold text-tx">
+                      {SUPPORTED_STATES[stateCode] || stateCode}
+                    </span>
+                    {sr && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary-text">
+                        {sr.status}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    {sr ? (
+                      <button
+                        onClick={() => navigate(`/returns/${sr.id}`)}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
+                      >
+                        Open {sr.form_code}
+                      </button>
+                    ) : supported ? (
+                      <button
+                        onClick={() => handleCreateStateReturn(stateCode)}
+                        disabled={creating}
+                        className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {creating ? "Creating..." : `Create ${SUPPORTED_STATES[stateCode]?.split(" ")[0] || stateCode} Return`}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-tx-muted">Not yet supported</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-3 text-sm text-danger">{error}</p>
+        )}
+      </div>
+
+      {/* Quick add state */}
+      {filingStates.length === 0 && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <p className="text-sm text-tx-secondary">
+            Tip: The tax year&apos;s filing states are automatically set from the
+            entity&apos;s address state when created. You can also add states via
+            the API.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

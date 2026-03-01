@@ -261,6 +261,16 @@ class FieldValueSerializer(serializers.ModelSerializer):
         )
 
 
+class StateReturnSummarySerializer(serializers.ModelSerializer):
+    """Lightweight serializer for state returns nested inside federal return data."""
+    form_code = serializers.CharField(source="form_definition.code", read_only=True)
+
+    class Meta:
+        model = TaxReturn
+        fields = ("id", "form_code", "status")
+        read_only_fields = fields
+
+
 class TaxReturnSerializer(serializers.ModelSerializer):
     field_values = FieldValueSerializer(many=True, read_only=True)
     other_deductions = OtherDeductionSerializer(many=True, read_only=True)
@@ -280,6 +290,11 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(
         source="tax_year.entity.client.name", read_only=True
     )
+    filing_states = serializers.SerializerMethodField()
+    state_returns = StateReturnSummarySerializer(many=True, read_only=True)
+    federal_return_id = serializers.UUIDField(
+        source="federal_return.id", read_only=True, default=None
+    )
     # Preparer assignment (firm-level)
     preparer_display_name = serializers.CharField(
         source="preparer.name", read_only=True, default=None
@@ -287,6 +302,9 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     staff_preparer_display_name = serializers.CharField(
         source="staff_preparer.name", read_only=True, default=None
     )
+
+    def get_filing_states(self, obj):
+        return obj.tax_year.filing_states or []
 
     class Meta:
         model = TaxReturn
@@ -328,6 +346,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "staff_preparer",
             "staff_preparer_display_name",
             "signature_date",
+            # State returns
+            "federal_return_id",
+            "filing_states",
+            "state_returns",
             # Nested data
             "field_values",
             "other_deductions",

@@ -263,6 +263,27 @@ OTHER_DED_LINE_KEY = {
     "1120": "1120_L26",
 }
 
+# Maps 2-letter state code → FormDefinition.code for state returns
+STATE_FORM_MAP = {
+    "GA": "GA-600S",
+}
+
+# Maps GA-600S Schedule 6 lines → federal 1120-S Schedule K line numbers.
+# Federal K line values are pulled to populate the GA Schedule 6 inputs.
+GA_FEDERAL_PULL = {
+    # GA S6 line → federal section_code, line_number
+    "S6_1": ("page1_deductions", "21"), # Ordinary income (loss) — line 21 is in deductions section
+    "S6_2": ("sched_k", "K2"),          # Net rental real estate income
+    "S6_3a": ("sched_k", "K3"),         # Other net rental income (loss)
+    "S6_4a": ("sched_k", "K4"),         # Interest income
+    "S6_4b": ("sched_k", "K5a"),        # Ordinary dividends
+    "S6_4c": ("sched_k", "K6"),         # Royalty income
+    "S6_4d": ("sched_k", "K7"),         # Net short-term capital gain
+    "S6_4e": ("sched_k", "K8a"),        # Net long-term capital gain
+    "S6_5": ("sched_k", "K9"),          # Net section 1231 gain
+    "S6_6": ("sched_k", "K10"),         # Other income (loss)
+}
+
 # ── Standard deduction presets ──────────────────────────────────────────
 # These are pre-populated as OtherDeduction rows on every new return
 # (Lacerte-style).  They do NOT have their own IRS form line — they
@@ -577,8 +598,10 @@ class TaxReturnViewSet(
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check if return already exists
-        if TaxReturn.objects.filter(tax_year=tax_year).exists():
+        # Check if a federal return already exists
+        if TaxReturn.objects.filter(
+            tax_year=tax_year, federal_return__isnull=True
+        ).exists():
             return Response(
                 {"error": "A return already exists for this tax year."},
                 status=status.HTTP_409_CONFLICT,
@@ -678,6 +701,134 @@ class TaxReturnViewSet(
             TaxReturnSerializer(tax_return).data,
             status=status.HTTP_201_CREATED,
         )
+
+    # ------------------------------------------------------------------
+    # Create state return (linked to federal)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="create-state-return")
+    def create_state_return(self, request, pk=None):
+        """Create a state return linked to this federal return.
+
+        POST /api/v1/tax-returns/{federal_id}/create-state-return/
+        Body: { "state": "GA" }
+        """
+        federal_return = self.get_object()
+
+        # Must be a federal return (not itself a state return)
+        if federal_return.federal_return_id is not None:
+            return Response(
+                {"error": "Cannot create a state return from another state return."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        state_code = (request.data.get("state") or "").upper().strip()
+        if not state_code or len(state_code) != 2:
+            return Response(
+                {"error": "A 2-letter state code is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        form_code = STATE_FORM_MAP.get(state_code)
+        if not form_code:
+            return Response(
+                {"error": f"State returns not yet supported for '{state_code}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if state return already exists for this federal return + state
+        existing = federal_return.state_returns.filter(
+            form_definition__code=form_code
+        ).first()
+        if existing:
+            return Response(
+                {"error": f"A {form_code} return already exists for this federal return."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        form_def = FormDefinition.objects.filter(code=form_code).first()
+        if not form_def:
+            return Response(
+                {"error": f"Form {form_code} definition not found. Run seed_ga600s."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Create the state return linked to the federal return
+        state_return = TaxReturn.objects.create(
+            tax_year=federal_return.tax_year,
+            form_definition=form_def,
+            federal_return=federal_return,
+            created_by=request.user,
+            tax_year_start=federal_return.tax_year_start,
+            tax_year_end=federal_return.tax_year_end,
+        )
+
+        # Pre-populate all form lines with empty values
+        lines = FormLine.objects.filter(
+            section__form=form_def
+        ).select_related("section")
+        FormFieldValue.objects.bulk_create([
+            FormFieldValue(
+                tax_return=state_return,
+                form_line=line,
+                value="",
+            )
+            for line in lines
+        ])
+
+        # Auto-populate GA Schedule 6 from federal return values
+        if state_code == "GA":
+            self._populate_ga_from_federal(state_return, federal_return)
+
+        # Compute formulas to cascade through schedules
+        compute_return(state_return)
+
+        return Response(
+            TaxReturnSerializer(state_return).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def _populate_ga_from_federal(self, state_return, federal_return):
+        """Pull federal values into GA-600S Schedule 6 fields."""
+        # Build lookup: federal (section_code, line_number) → value
+        federal_fvs = FormFieldValue.objects.filter(
+            tax_return=federal_return,
+        ).select_related("form_line__section")
+
+        federal_vals = {}
+        for fv in federal_fvs:
+            key = (fv.form_line.section.code, fv.form_line.line_number)
+            federal_vals[key] = fv.value
+
+        # Re-fetch state FVs from database (bulk_create objects may lack related fields)
+        state_fv_map = {}
+        for fv in FormFieldValue.objects.filter(
+            tax_return=state_return,
+        ).select_related("form_line"):
+            state_fv_map[fv.form_line.line_number] = fv
+
+        updates = []
+        for ga_line, (fed_section, fed_line) in GA_FEDERAL_PULL.items():
+            fed_value = federal_vals.get((fed_section, fed_line), "")
+            if fed_value and ga_line in state_fv_map:
+                fv = state_fv_map[ga_line]
+                fv.value = fed_value
+                updates.append(fv)
+
+        # Default S5_4 (GA apportionment ratio) to 1.000000 for single-state
+        if "S5_4" in state_fv_map:
+            fv = state_fv_map["S5_4"]
+            fv.value = "1.000000"
+            updates.append(fv)
+
+        # Default S3_5 (net worth ratio) to 1.000000 for domestic GA corps
+        if "S3_5" in state_fv_map:
+            fv = state_fv_map["S3_5"]
+            fv.value = "1.000000"
+            updates.append(fv)
+
+        if updates:
+            FormFieldValue.objects.bulk_update(updates, ["value"])
 
     # ------------------------------------------------------------------
     # Update return info (accounting method, tax year dates)

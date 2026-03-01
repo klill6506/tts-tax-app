@@ -199,6 +199,7 @@ class TaxYearSerializer(serializers.ModelSerializer):
             "entity_name",
             "year",
             "status",
+            "filing_states",
             "created_by_username",
             "tax_return_id",
             "created_at",
@@ -219,7 +220,7 @@ class TaxYearCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TaxYear
-        fields = ("id", "entity", "year", "status")
+        fields = ("id", "entity", "year", "status", "filing_states")
         read_only_fields = ("id",)
 
     def __init__(self, *args, **kwargs):

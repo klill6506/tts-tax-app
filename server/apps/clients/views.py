@@ -114,7 +114,7 @@ class ClientViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
         entities = Entity.objects.filter(
             id__in=all_entity_ids,
         ).prefetch_related(
-            "tax_years__tax_return__form_definition",
+            "tax_years__tax_returns__form_definition",
         ).order_by("name")
 
         rows = []
@@ -129,7 +129,13 @@ class ClientViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
             tax_years = entity.tax_years.all()
             if tax_years:
                 for ty in tax_years:
-                    tax_return = getattr(ty, "tax_return", None)
+                    # Get the federal return (the one without a federal_return parent)
+                    federal = None
+                    for tr in ty.tax_returns.all():
+                        if tr.federal_return_id is None:
+                            federal = tr
+                            break
+                    tax_return = federal
                     rows.append({
                         "entity_id": entity.id,
                         "entity_name": entity.name,
@@ -226,7 +232,7 @@ class TaxYearViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = TaxYear.objects.filter(
             entity__client__firm=self.request.firm
-        ).select_related("entity", "created_by", "tax_return")
+        ).select_related("entity", "created_by").prefetch_related("tax_returns")
         # Optional filters
         entity_id = self.request.query_params.get("entity")
         if entity_id:
@@ -242,6 +248,13 @@ class TaxYearViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
         return TaxYearSerializer
 
     def perform_create(self, serializer):
+        # Default filing_states from entity's address state if not provided
+        filing_states = serializer.validated_data.get("filing_states")
+        if not filing_states:
+            entity = serializer.validated_data["entity"]
+            if entity.state:
+                serializer.validated_data["filing_states"] = [entity.state.upper()]
+
         instance = serializer.save(created_by=self.request.user)
         from apps.audit.service import log_create
 
