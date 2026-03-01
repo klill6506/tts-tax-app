@@ -222,9 +222,11 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["23d", (v) => val(v, "23a") + val(v, "23b") + val(v, "23c")],
   ["25", (v) => Math.max(0, val(v, "22c") - val(v, "23d"))],
   ["26", (v) => Math.max(0, val(v, "23d") - val(v, "22c"))],
-  // Schedule L — Balance Sheet
-  ["L14a", (v) => sumLines(v, "L1a","L2a","L5a","L7a") + val(v, "L9a") - val(v, "L9b")],
-  ["L14d", (v) => sumLines(v, "L1d","L2d","L5d","L7d") + val(v, "L9d") - val(v, "L9e")],
+  // Schedule L — Balance Sheet (inventory flows from COGS)
+  ["L3a", (v) => val(v, "A1")],
+  ["L3d", (v) => val(v, "A7")],
+  ["L14a", (v) => sumLines(v, "L1a","L2a","L3a","L5a","L7a") + val(v, "L9a") - val(v, "L9b")],
+  ["L14d", (v) => sumLines(v, "L1d","L2d","L3d","L5d","L7d") + val(v, "L9d") - val(v, "L9e")],
   ["L27a", (v) => sumLines(v, "L15a","L17a","L18a","L20a","L21a","L23a","L24a","L25a")],
   ["L27d", (v) => sumLines(v, "L15d","L17d","L18d","L20d","L21d","L23d","L24d","L25d")],
   // Schedule M-1
@@ -1762,6 +1764,9 @@ function IncomeDeductionsSection({
     if (res.ok) {
       setNewDedId((res.data as OtherDeductionRow).id);
       await onRefresh();
+    } else {
+      console.error("Failed to add deduction:", res);
+      alert("Failed to add deduction. Please try again.");
     }
   }
 

@@ -368,7 +368,7 @@ class TestFormSelection:
         resp = _create_return(http, partnership_tax_year.id)
         assert resp.status_code == 201
         assert resp.json()["form_code"] == "1065"
-        assert len(resp.json()["field_values"]) == 97
+        assert len(resp.json()["field_values"]) == 98
 
     def test_ccorp_gets_1120(self, user_and_http, seeded_1120, ccorp_tax_year):
         _, http = user_and_http
@@ -402,8 +402,8 @@ class TestOtherDeductions:
         resp = http.get(f"/api/v1/tax-returns/{rid}/other-deductions/")
         assert resp.status_code == 200
         data = resp.json()
-        # Should have 40 standard deduction presets
-        assert len(data) == 40
+        # Should have 41 standard deduction presets
+        assert len(data) == 41
         # All should have zero amounts and source=standard
         for d in data:
             assert d["amount"] == "0.00"
@@ -517,7 +517,34 @@ class TestOtherDeductions:
         data = resp.json()
         assert "Amortization" in data
         assert "Other Deductions" in data
-        assert len(data) == 47
+        assert "Non-Deductible Expenses" in data
+        assert len(data) == 48
+
+    def test_nondeductible_rolls_to_k16c(self, user_and_http, seeded, tax_year):
+        """Non-Deductible Expenses should roll to K16c, not Line 19."""
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        # Add a normal deduction and a non-deductible expense
+        http.post(
+            f"/api/v1/tax-returns/{rid}/other-deductions/",
+            data={"description": "Supplies", "amount": "500.00"},
+            content_type="application/json",
+        )
+        http.post(
+            f"/api/v1/tax-returns/{rid}/other-deductions/",
+            data={"description": "Non-Deductible Expenses", "amount": "200.00"},
+            content_type="application/json",
+        )
+        # Line 19 should only have $500 (supplies), not $700
+        fv_l19 = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__mapping_key="1120S_L19",
+        )
+        assert fv_l19.value == "500.00"
+        # K16c should have the $200 non-deductible
+        fv_k16c = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__mapping_key="1120S_K16c",
+        )
+        assert fv_k16c.value == "200.00"
 
 
 # ---------------------------------------------------------------------------
@@ -901,7 +928,7 @@ class TestSeed1065:
         assert FormSection.objects.filter(form=seeded_1065).count() == 6
 
     def test_seed_creates_lines(self, seeded_1065):
-        assert FormLine.objects.filter(section__form=seeded_1065).count() == 97
+        assert FormLine.objects.filter(section__form=seeded_1065).count() == 98
 
     def test_seed_has_normal_balance(self, seeded_1065):
         """1065 lines should have normal_balance set."""

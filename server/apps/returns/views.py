@@ -289,6 +289,7 @@ OTHER_DEDUCTION_PRESETS = [
     "Licenses and Permits",
     "Meals",
     "Miscellaneous",
+    "Non-Deductible Expenses",
     "Office Expense",
     "Organizational Expenditures",
     "Outside Services",
@@ -394,7 +395,8 @@ def _prepopulate_standard_deductions(tax_return):
 
 
 def _rollup_other_deductions(tax_return):
-    """Sum OtherDeduction rows: charity → K12a, everything else → Line 19."""
+    """Sum OtherDeduction rows: charity → K12a, non-deductible → K16c/K18c,
+    everything else → Line 19."""
     form_code = tax_return.form_definition.code
     mapping_key = OTHER_DED_LINE_KEY.get(form_code)
     if not mapping_key:
@@ -402,14 +404,20 @@ def _rollup_other_deductions(tax_return):
 
     deductions = OtherDeduction.objects.filter(tax_return=tax_return)
 
-    # Separate charity from other deductions
+    # Separate special categories from ordinary deductions
     charity_total = (
         deductions.filter(description__iexact="Charitable Contributions")
         .aggregate(total=models_Sum("amount"))["total"]
     ) or Decimal("0.00")
 
+    nonded_total = (
+        deductions.filter(description__iexact="Non-Deductible Expenses")
+        .aggregate(total=models_Sum("amount"))["total"]
+    ) or Decimal("0.00")
+
     other_total = (
         deductions.exclude(description__iexact="Charitable Contributions")
+        .exclude(description__iexact="Non-Deductible Expenses")
         .aggregate(total=models_Sum("amount"))["total"]
     ) or Decimal("0.00")
 
@@ -435,23 +443,37 @@ def _rollup_other_deductions(tax_return):
         "1065": "1065_K13a",
     }
     charity_key = CHARITY_LINE_KEY.get(form_code)
-    if charity_key and charity_total:
-        try:
-            fl_charity = FormLine.objects.get(
-                section__form=tax_return.form_definition,
-                mapping_key=charity_key,
-            )
-            fv_charity, _ = FormFieldValue.objects.get_or_create(
-                tax_return=tax_return,
-                form_line=fl_charity,
-            )
-            if not fv_charity.is_overridden:
-                fv_charity.value = str(charity_total.quantize(Decimal("0.01")))
-                fv_charity.save(update_fields=["value", "updated_at"])
-        except FormLine.DoesNotExist:
-            pass
+    if charity_key:
+        _write_schedule_k_line(tax_return, charity_key, charity_total)
+
+    # Write non-deductible → K16c (1120-S) or K18c (1065)
+    NONDED_LINE_KEY = {
+        "1120-S": "1120S_K16c",
+        "1065": "1065_K18c",
+    }
+    nonded_key = NONDED_LINE_KEY.get(form_code)
+    if nonded_key:
+        _write_schedule_k_line(tax_return, nonded_key, nonded_total)
 
     compute_return(tax_return)
+
+
+def _write_schedule_k_line(tax_return, mapping_key, total):
+    """Write a total to a Schedule K line, respecting is_overridden."""
+    try:
+        fl = FormLine.objects.get(
+            section__form=tax_return.form_definition,
+            mapping_key=mapping_key,
+        )
+        fv, _ = FormFieldValue.objects.get_or_create(
+            tax_return=tax_return,
+            form_line=fl,
+        )
+        if not fv.is_overridden:
+            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.save(update_fields=["value", "updated_at"])
+    except FormLine.DoesNotExist:
+        pass
 
 
 # Need this import for the aggregate

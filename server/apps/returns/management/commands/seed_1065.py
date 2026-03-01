@@ -95,6 +95,7 @@ SECTIONS = [
             ("K14a", "Net earnings (loss) from self-employment", C, "1065_K14a", False, 160, DR),
             ("K16a", "Foreign taxes paid or accrued", C, "1065_K16a", False, 170, CR),
             ("K18a", "Tax-exempt interest income", C, "1065_K18a", False, 180, CR),
+            ("K18c", "Nondeductible expenses", C, "1065_K18c", False, 182, DR),
             ("K19a", "Distributions", C, "1065_K19a", False, 190, DR),
         ],
     ),

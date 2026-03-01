@@ -36,7 +36,7 @@ class TestSeed1065:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 97
+        assert lines.count() == 98
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -44,7 +44,7 @@ class TestSeed1065:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 97
+        assert FormLine.objects.filter(section__form=seeded).count() == 98
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
