@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 133
+        assert lines.count() == 138
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -85,7 +85,7 @@ class TestSeed:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 130
+        assert FormLine.objects.filter(section__form=seeded).count() == 138
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
@@ -138,7 +138,7 @@ class TestTaxReturnEndpoints:
         assert data["form_code"] == "1120-S"
         assert data["status"] == "draft"
         # All form lines should have field values (113 non-B + 17 Schedule B = 130)
-        assert len(data["field_values"]) == 130
+        assert len(data["field_values"]) == 138
 
     def test_create_duplicate_returns_409(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -402,8 +402,8 @@ class TestOtherDeductions:
         resp = http.get(f"/api/v1/tax-returns/{rid}/other-deductions/")
         assert resp.status_code == 200
         data = resp.json()
-        # Should have 27 standard deduction presets
-        assert len(data) == 27
+        # Should have 40 standard deduction presets
+        assert len(data) == 40
         # All should have zero amounts and source=standard
         for d in data:
             assert d["amount"] == "0.00"
@@ -517,7 +517,7 @@ class TestOtherDeductions:
         data = resp.json()
         assert "Amortization" in data
         assert "Other Deductions" in data
-        assert len(data) == 34
+        assert len(data) == 47
 
 
 # ---------------------------------------------------------------------------

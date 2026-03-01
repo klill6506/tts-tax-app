@@ -641,12 +641,18 @@ class TaxReturnViewSet(
             "is_address_change", "is_amended_return",
             "s_election_date", "number_of_shareholders",
             "product_or_service", "business_activity_code",
+            # Extension (Form 7004)
+            "extension_filed", "extension_date",
+            "tentative_tax", "total_payments", "balance_due",
+            # Banking
+            "bank_routing_number", "bank_account_number", "bank_account_type",
             # Preparer
-            "preparer", "signature_date",
+            "preparer", "staff_preparer", "signature_date",
         }
         nullable_fields = {
             "s_election_date", "number_of_shareholders",
-            "preparer", "signature_date",
+            "extension_date",
+            "preparer", "staff_preparer", "signature_date",
         }
         updated = 0
         for field in allowed:
@@ -656,8 +662,8 @@ class TaxReturnViewSet(
                 if val == "" and field in nullable_fields:
                     val = None
                 # For FK fields, convert UUID string to _id
-                if field == "preparer":
-                    setattr(tax_return, "preparer_id", val)
+                if field in ("preparer", "staff_preparer"):
+                    setattr(tax_return, f"{field}_id", val)
                 else:
                     setattr(tax_return, field, val)
                 updated += 1

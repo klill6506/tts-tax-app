@@ -186,6 +186,21 @@ class TaxReturn(models.Model):
         help_text="Form 7004 Line 8: Balance due (Line 6 minus Line 7).",
     )
 
+    # Banking info (for payments/refunds)
+    bank_routing_number = models.CharField(
+        max_length=9, blank=True, default="",
+        help_text="9-digit ABA routing number.",
+    )
+    bank_account_number = models.CharField(
+        max_length=17, blank=True, default="",
+        help_text="Bank account number.",
+    )
+    bank_account_type = models.CharField(
+        max_length=10, blank=True, default="checking",
+        choices=[("checking", "Checking"), ("savings", "Savings")],
+        help_text="Checking or Savings.",
+    )
+
     s_election_date = models.DateField(
         null=True, blank=True,
         help_text="Date S-Corp election was effective.",
@@ -211,6 +226,14 @@ class TaxReturn(models.Model):
         blank=True,
         related_name="tax_returns",
         help_text="Assigned preparer from the firm's preparer list.",
+    )
+    staff_preparer = models.ForeignKey(
+        "firms.Preparer",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_returns",
+        help_text="Staff preparer who entered the data (not the signer).",
     )
     signature_date = models.DateField(
         null=True, blank=True,

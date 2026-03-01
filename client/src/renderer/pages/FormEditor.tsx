@@ -57,6 +57,18 @@ interface ShareholderRow {
   ending_shares: string;
   distributions: string;
   health_insurance_premium: string;
+  // Form 7203 basis fields
+  stock_basis_boy: string;
+  capital_contributions: string;
+  depletion: string;
+  suspended_ordinary_loss: string;
+  suspended_rental_re_loss: string;
+  suspended_other_rental_loss: string;
+  suspended_st_capital_loss: string;
+  suspended_lt_capital_loss: string;
+  suspended_1231_loss: string;
+  suspended_other_loss: string;
+  // Links & metadata
   linked_client: string | null;
   linked_client_name: string | null;
   is_active: boolean;
@@ -154,9 +166,21 @@ interface TaxReturnData {
   number_of_shareholders: number | null;
   product_or_service: string;
   business_activity_code: string;
+  // Extension (Form 7004)
+  extension_filed: boolean;
+  extension_date: string | null;
+  tentative_tax: string;
+  total_payments: string;
+  balance_due: string;
+  // Bank info
+  bank_routing_number: string;
+  bank_account_number: string;
+  bank_account_type: string;
   // Preparer assignment
   preparer: string | null;
   preparer_display_name: string | null;
+  staff_preparer: string | null;
+  staff_preparer_display_name: string | null;
   signature_date: string | null;
   field_values: FieldValue[];
   other_deductions: OtherDeductionRow[];
@@ -256,7 +280,8 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "info", label: "Info", sections: [] },
   { id: "preparer", label: "Preparer", sections: [] },
   { id: "shareholders", label: "Shareholders", sections: [] },
-  { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions", "page1_tax"] },
+  { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions"] },
+  { id: "tax_payments", label: "Tax & Payments", sections: ["page1_tax"] },
   { id: "rental", label: "Rental (8825)", sections: [] },
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
@@ -589,6 +614,14 @@ export default function FormEditor() {
             <PreparerSection
               taxReturnId={taxReturnId!}
               returnData={returnData}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "tax_payments" ? (
+            <TaxPaymentsSection
+              taxReturnId={taxReturnId!}
+              fieldsBySection={fieldsBySection}
+              returnData={returnData}
+              onChange={handleFieldChange}
               onRefresh={refreshReturn}
             />
           ) : activeTab === "sched_b" ? (
@@ -1453,6 +1486,7 @@ function PreparerSection({
   const navigate = useNavigate();
   const [preparers, setPreparers] = useState<PreparerOption[]>([]);
   const [selectedId, setSelectedId] = useState<string>(returnData.preparer || "");
+  const [staffPreparerId, setStaffPreparerId] = useState<string>(returnData.staff_preparer || "");
   const [signatureDate, setSignatureDate] = useState<string>(returnData.signature_date || "");
   const [detail, setDetail] = useState<PreparerDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1481,14 +1515,16 @@ function PreparerSection({
   // Sync from returnData when it refreshes
   useEffect(() => {
     setSelectedId(returnData.preparer || "");
+    setStaffPreparerId(returnData.staff_preparer || "");
     setSignatureDate(returnData.signature_date || "");
-  }, [returnData.preparer, returnData.signature_date]);
+  }, [returnData.preparer, returnData.staff_preparer, returnData.signature_date]);
 
   async function handleSave() {
     setSaving(true);
     setSaveMsg(null);
     const res = await patch(`/tax-returns/${taxReturnId}/info/`, {
       preparer: selectedId || "",
+      staff_preparer: staffPreparerId || "",
       signature_date: signatureDate || "",
     });
     setSaving(false);
@@ -1512,20 +1548,37 @@ function PreparerSection({
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <h3 className="mb-4 text-sm font-bold text-tx">Assign Preparer</h3>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                Preparer
+                Signing Preparer
               </label>
               <select
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
                 className={inputClass}
               >
-                <option value="">— Select a preparer —</option>
+                <option value="">— Select —</option>
                 {preparers.filter((p) => p.is_active).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}{p.ptin ? ` (${p.ptin})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                Staff Preparer
+              </label>
+              <select
+                value={staffPreparerId}
+                onChange={(e) => setStaffPreparerId(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">— Select —</option>
+                {preparers.filter((p) => p.is_active).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -2151,6 +2204,7 @@ function ShareholdersSection({
   const [editing, setEditing] = useState<Partial<ShareholderRow> | null>(null);
   const [saving, setSaving] = useState(false);
   const [alsoCreateOfficer, setAlsoCreateOfficer] = useState(false);
+  const [showBasis, setShowBasis] = useState(false);
 
   function formatSSN(raw: string): string {
     const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -2176,6 +2230,17 @@ function ShareholdersSection({
       distributions: editing.distributions || "0",
       health_insurance_premium: editing.health_insurance_premium || "0",
       linked_client: editing.linked_client || null,
+      // Form 7203 basis fields
+      stock_basis_boy: editing.stock_basis_boy || "0",
+      capital_contributions: editing.capital_contributions || "0",
+      depletion: editing.depletion || "0",
+      suspended_ordinary_loss: editing.suspended_ordinary_loss || "0",
+      suspended_rental_re_loss: editing.suspended_rental_re_loss || "0",
+      suspended_other_rental_loss: editing.suspended_other_rental_loss || "0",
+      suspended_st_capital_loss: editing.suspended_st_capital_loss || "0",
+      suspended_lt_capital_loss: editing.suspended_lt_capital_loss || "0",
+      suspended_1231_loss: editing.suspended_1231_loss || "0",
+      suspended_other_loss: editing.suspended_other_loss || "0",
     };
 
     if (editing.id) {
@@ -2426,6 +2491,66 @@ function ShareholdersSection({
               <label className="mb-1 block text-xs font-medium text-tx-secondary">Health Insurance Premium</label>
               <CurrencyInput value={editing.health_insurance_premium || "0"} onValueChange={(v) => setEditing({ ...editing, health_insurance_premium: v })} />
             </div>
+          </div>
+          {/* Form 7203 Basis Tracking (collapsible) */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowBasis(!showBasis)}
+              className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover"
+            >
+              <span className="text-[10px]">{showBasis ? "\u25BC" : "\u25B6"}</span>
+              Basis Tracking (Form 7203)
+            </button>
+            {showBasis && (
+              <div className="mt-2 rounded-lg border border-border-subtle bg-card p-3">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Stock Basis BOY</label>
+                    <CurrencyInput value={editing.stock_basis_boy || "0"} onValueChange={(v) => setEditing({ ...editing, stock_basis_boy: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Capital Contributions</label>
+                    <CurrencyInput value={editing.capital_contributions || "0"} onValueChange={(v) => setEditing({ ...editing, capital_contributions: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Depletion</label>
+                    <CurrencyInput value={editing.depletion || "0"} onValueChange={(v) => setEditing({ ...editing, depletion: v })} />
+                  </div>
+                </div>
+                <p className="mt-3 mb-1 text-xs font-semibold text-tx-muted uppercase">Suspended Prior Year Losses</p>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Ordinary Loss</label>
+                    <CurrencyInput value={editing.suspended_ordinary_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_ordinary_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Rental RE Loss</label>
+                    <CurrencyInput value={editing.suspended_rental_re_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_rental_re_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Other Rental Loss</label>
+                    <CurrencyInput value={editing.suspended_other_rental_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_other_rental_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">ST Capital Loss</label>
+                    <CurrencyInput value={editing.suspended_st_capital_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_st_capital_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">LT Capital Loss</label>
+                    <CurrencyInput value={editing.suspended_lt_capital_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_lt_capital_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Section 1231 Loss</label>
+                    <CurrencyInput value={editing.suspended_1231_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_1231_loss: v })} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Other Loss</label>
+                    <CurrencyInput value={editing.suspended_other_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_other_loss: v })} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           {/* Cross-link checkbox — only show for new shareholders */}
           {!editing.id && (
@@ -2770,6 +2895,233 @@ function BalanceSheetsSection({
           <div className="divide-y divide-border-subtle zebra-rows">
             {m2Fields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tax & Payments section
+// ---------------------------------------------------------------------------
+
+function TaxPaymentsSection({
+  taxReturnId,
+  fieldsBySection,
+  returnData,
+  onChange,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  fieldsBySection: Record<string, FieldValue[]>;
+  returnData: TaxReturnData;
+  onChange: (formLineId: string, value: string) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Extension fields
+  const [extensionFiled, setExtensionFiled] = useState(returnData.extension_filed ?? false);
+  const [extensionDate, setExtensionDate] = useState(returnData.extension_date || "");
+  const [tentativeTax, setTentativeTax] = useState(returnData.tentative_tax || "0.00");
+  const [totalPayments, setTotalPayments] = useState(returnData.total_payments || "0.00");
+  const [balanceDue, setBalanceDue] = useState(returnData.balance_due || "0.00");
+
+  // Bank info
+  const [bankRouting, setBankRouting] = useState(returnData.bank_routing_number || "");
+  const [bankAccount, setBankAccount] = useState(returnData.bank_account_number || "");
+  const [bankType, setBankType] = useState(returnData.bank_account_type || "checking");
+
+  // Sync when returnData changes
+  useEffect(() => {
+    setExtensionFiled(returnData.extension_filed ?? false);
+    setExtensionDate(returnData.extension_date || "");
+    setTentativeTax(returnData.tentative_tax || "0.00");
+    setTotalPayments(returnData.total_payments || "0.00");
+    setBalanceDue(returnData.balance_due || "0.00");
+    setBankRouting(returnData.bank_routing_number || "");
+    setBankAccount(returnData.bank_account_number || "");
+    setBankType(returnData.bank_account_type || "checking");
+  }, [returnData]);
+
+  async function savePaymentInfo() {
+    setSaving(true);
+    setSaveMsg(null);
+    const res = await patch(`/tax-returns/${taxReturnId}/info/`, {
+      extension_filed: extensionFiled,
+      extension_date: extensionDate || null,
+      tentative_tax: tentativeTax || "0.00",
+      total_payments: totalPayments || "0.00",
+      balance_due: balanceDue || "0.00",
+      bank_routing_number: bankRouting,
+      bank_account_number: bankAccount,
+      bank_account_type: bankType,
+    });
+    setSaving(false);
+    if (res.ok) {
+      await onRefresh();
+      setSaveMsg("Payment info saved.");
+      setTimeout(() => setSaveMsg(null), 3000);
+    } else {
+      setSaveMsg("Save failed.");
+    }
+  }
+
+  const taxFields = fieldsBySection["page1_tax"] || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Extension (Form 7004) Card */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border bg-surface-alt px-5 py-3">
+          <h3 className="text-sm font-semibold text-tx">Extension (Form 7004)</h3>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="extension_filed"
+              checked={extensionFiled}
+              onChange={(e) => setExtensionFiled(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <label htmlFor="extension_filed" className="text-sm font-medium text-tx">
+              Extension Filed
+            </label>
+          </div>
+          {extensionFiled && (
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-tx-muted mb-1">Extension Date</label>
+                <input
+                  type="date"
+                  value={extensionDate}
+                  onChange={(e) => setExtensionDate(e.target.value)}
+                  className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-muted mb-1">Tentative Tax</label>
+                <CurrencyInput
+                  value={tentativeTax}
+                  onValueChange={setTentativeTax}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-muted mb-1">Total Payments</label>
+                <CurrencyInput
+                  value={totalPayments}
+                  onValueChange={setTotalPayments}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-muted mb-1">Balance Due</label>
+                <CurrencyInput
+                  value={balanceDue}
+                  onValueChange={setBalanceDue}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bank Information Card */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border bg-surface-alt px-5 py-3">
+          <h3 className="text-sm font-semibold text-tx">Direct Deposit / Payment — Bank Information</h3>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Routing Number</label>
+              <input
+                type="text"
+                value={bankRouting}
+                onChange={(e) => setBankRouting(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                maxLength={9}
+                placeholder="9 digits"
+                className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx font-mono focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Account Number</label>
+              <input
+                type="text"
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value.replace(/\D/g, "").slice(0, 17))}
+                maxLength={17}
+                placeholder="Up to 17 digits"
+                className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx font-mono focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Account Type</label>
+              <select
+                value={bankType}
+                onChange={(e) => setBankType(e.target.value)}
+                className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx focus:ring-2 focus:ring-primary"
+              >
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Save Button for Extension + Bank */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={savePaymentInfo}
+          disabled={saving}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Payment Info"}
+        </button>
+        {saveMsg && (
+          <span className={`text-sm ${saveMsg.includes("fail") ? "text-red-600" : "text-green-600"}`}>
+            {saveMsg}
+          </span>
+        )}
+      </div>
+
+      {/* Page 1 Tax Lines (22a-27) */}
+      {taxFields.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border bg-surface-alt px-5 py-3">
+            <h3 className="text-sm font-semibold text-tx">Tax and Payments (Page 1, Lines 22–27)</h3>
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {taxFields.map((fv) => (
+              <div key={fv.id} className="flex items-center gap-4 px-5 py-2.5">
+                <div className="w-12 shrink-0 text-sm font-medium text-tx-secondary text-right">
+                  {fv.line_number}
+                </div>
+                <div className="flex-1 min-w-0 text-sm text-tx truncate">
+                  {fv.label}
+                </div>
+                <div className="w-36 shrink-0">
+                  {fv.field_type === "currency" ? (
+                    <CurrencyInput
+                      value={fv.value}
+                      onValueChange={(v) => onChange(fv.form_line, v)}
+                      readOnly={fv.is_computed && !fv.is_overridden}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={fv.value}
+                      onChange={(e) => onChange(fv.form_line, e.target.value)}
+                      readOnly={fv.is_computed && !fv.is_overridden}
+                      className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx text-right focus:ring-2 focus:ring-primary read-only:bg-surface-alt read-only:text-tx-muted"
+                    />
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>

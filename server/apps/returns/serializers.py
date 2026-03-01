@@ -284,6 +284,9 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     preparer_display_name = serializers.CharField(
         source="preparer.name", read_only=True, default=None
     )
+    staff_preparer_display_name = serializers.CharField(
+        source="staff_preparer.name", read_only=True, default=None
+    )
 
     class Meta:
         model = TaxReturn
@@ -311,6 +314,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "tentative_tax",
             "total_payments",
             "balance_due",
+            # Banking
+            "bank_routing_number",
+            "bank_account_number",
+            "bank_account_type",
             "s_election_date",
             "number_of_shareholders",
             "product_or_service",
@@ -318,6 +325,8 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             # Preparer
             "preparer",
             "preparer_display_name",
+            "staff_preparer",
+            "staff_preparer_display_name",
             "signature_date",
             # Nested data
             "field_values",
