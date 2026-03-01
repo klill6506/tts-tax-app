@@ -394,17 +394,26 @@ def _prepopulate_standard_deductions(tax_return):
 
 
 def _rollup_other_deductions(tax_return):
-    """Sum all OtherDeduction rows and write to the 'Other deductions' FormLine."""
+    """Sum OtherDeduction rows: charity → K12a, everything else → Line 19."""
     form_code = tax_return.form_definition.code
     mapping_key = OTHER_DED_LINE_KEY.get(form_code)
     if not mapping_key:
         return
 
-    total = (
-        OtherDeduction.objects.filter(tax_return=tax_return)
+    deductions = OtherDeduction.objects.filter(tax_return=tax_return)
+
+    # Separate charity from other deductions
+    charity_total = (
+        deductions.filter(description__iexact="Charitable Contributions")
         .aggregate(total=models_Sum("amount"))["total"]
     ) or Decimal("0.00")
 
+    other_total = (
+        deductions.exclude(description__iexact="Charitable Contributions")
+        .aggregate(total=models_Sum("amount"))["total"]
+    ) or Decimal("0.00")
+
+    # Write other deductions → Line 19 (or equivalent)
     try:
         fl = FormLine.objects.get(
             section__form=tax_return.form_definition,
@@ -414,11 +423,33 @@ def _rollup_other_deductions(tax_return):
             tax_return=tax_return,
             form_line=fl,
         )
-        fv.value = str(total.quantize(Decimal("0.01")))
+        fv.value = str(other_total.quantize(Decimal("0.01")))
         fv.is_overridden = False
         fv.save(update_fields=["value", "is_overridden", "updated_at"])
     except FormLine.DoesNotExist:
         pass
+
+    # Write charity → K12a (Schedule K, charitable contributions)
+    CHARITY_LINE_KEY = {
+        "1120-S": "1120S_K12a",
+        "1065": "1065_K13a",
+    }
+    charity_key = CHARITY_LINE_KEY.get(form_code)
+    if charity_key and charity_total:
+        try:
+            fl_charity = FormLine.objects.get(
+                section__form=tax_return.form_definition,
+                mapping_key=charity_key,
+            )
+            fv_charity, _ = FormFieldValue.objects.get_or_create(
+                tax_return=tax_return,
+                form_line=fl_charity,
+            )
+            if not fv_charity.is_overridden:
+                fv_charity.value = str(charity_total.quantize(Decimal("0.01")))
+                fv_charity.save(update_fields=["value", "updated_at"])
+        except FormLine.DoesNotExist:
+            pass
 
     compute_return(tax_return)
 
@@ -669,7 +700,41 @@ class TaxReturnViewSet(
                 updated += 1
         if updated:
             tax_return.save()
+
+        # Auto-sync PreparerInfo snapshot when preparer FK changes
+        if "preparer" in request.data:
+            self._sync_preparer_info(tax_return)
+
         return Response(TaxReturnSerializer(tax_return).data)
+
+    # ------------------------------------------------------------------
+    # Preparer → PreparerInfo sync
+    # ------------------------------------------------------------------
+
+    def _sync_preparer_info(self, tax_return):
+        """Copy data from the firm-level Preparer into the per-return PreparerInfo snapshot."""
+        prep = tax_return.preparer
+        if prep is None:
+            # Preparer was cleared — delete the snapshot
+            PreparerInfo.objects.filter(tax_return=tax_return).delete()
+            return
+
+        info, _ = PreparerInfo.objects.get_or_create(tax_return=tax_return)
+        info.preparer_name = prep.name
+        info.ptin = prep.ptin
+        info.is_self_employed = prep.is_self_employed
+        info.signature_date = tax_return.signature_date
+        info.firm_name = prep.firm_name
+        info.firm_ein = prep.firm_ein
+        info.firm_phone = prep.firm_phone
+        info.firm_address = prep.firm_address
+        info.firm_city = prep.firm_city
+        info.firm_state = prep.firm_state
+        info.firm_zip = prep.firm_zip
+        info.designee_name = prep.designee_name
+        info.designee_phone = prep.designee_phone
+        info.designee_pin = prep.designee_pin
+        info.save()
 
     # ------------------------------------------------------------------
     # Bulk update field values
