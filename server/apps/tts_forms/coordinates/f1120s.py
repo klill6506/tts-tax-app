@@ -113,30 +113,30 @@ HEADER_FIELDS: dict[str, FieldCoord] = {
         page=0, x=400, y=583, width=120, alignment="left", font_size=8
     ),
 
-    # ----- Page 4: Paid Preparer Use Only (bottom of last page) -----
+    # ----- Page 0: Paid Preparer Use Only (bottom of page 1) -----
     "preparer_name": FieldCoord(
-        page=4, x=104, y=322, width=170, alignment="left", font_size=8
+        page=0, x=135, y=100, width=170, alignment="left", font_size=8
     ),
     "preparer_date": FieldCoord(
-        page=4, x=320, y=322, width=70, alignment="left", font_size=8
+        page=0, x=415, y=100, width=40, alignment="left", font_size=8
     ),
     "preparer_ptin": FieldCoord(
-        page=4, x=480, y=322, width=100, alignment="left", font_size=8
+        page=0, x=505, y=100, width=85, alignment="left", font_size=8
     ),
     "preparer_self_employed": FieldCoord(
-        page=4, x=416, y=322, width=10, alignment="left", font_size=9
+        page=0, x=485, y=98, width=10, alignment="left", font_size=9
     ),
     "firm_name": FieldCoord(
-        page=4, x=104, y=305, width=310, alignment="left", font_size=8
+        page=0, x=135, y=87, width=310, alignment="left", font_size=8
     ),
     "firm_ein": FieldCoord(
-        page=4, x=480, y=305, width=100, alignment="left", font_size=8
+        page=0, x=490, y=87, width=100, alignment="left", font_size=8
     ),
     "firm_address": FieldCoord(
-        page=4, x=104, y=288, width=310, alignment="left", font_size=8
+        page=0, x=135, y=77, width=310, alignment="left", font_size=8
     ),
     "firm_phone": FieldCoord(
-        page=4, x=480, y=288, width=100, alignment="left", font_size=8
+        page=0, x=490, y=77, width=100, alignment="left", font_size=8
     ),
 }
 
