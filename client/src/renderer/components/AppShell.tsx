@@ -430,10 +430,10 @@ export default function AppShell() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
                     isActive
-                      ? "bg-nav-active text-primary"
-                      : "text-tx-muted hover:bg-nav-active hover:text-white"
+                      ? "bg-nav-active text-white"
+                      : "text-blue-200 hover:bg-nav-active hover:text-white"
                   }`
                 }
               >

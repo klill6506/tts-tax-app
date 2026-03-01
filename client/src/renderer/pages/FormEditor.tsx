@@ -338,14 +338,13 @@ function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue
 /** Each tab can show one or more section codes. */
 const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "info", label: "Info", sections: [] },
-  { id: "preparer", label: "Preparer", sections: [] },
   { id: "shareholders", label: "Shareholders", sections: [] },
   { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions"] },
-  { id: "tax_payments", label: "Tax & Payments", sections: ["page1_tax"] },
-  { id: "rental", label: "Rental (8825)", sections: [] },
-  { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
-  { id: "balance_sheets", label: "Balance Sheets", sections: ["sched_l", "sched_m1", "sched_m2"] },
+  { id: "balance_sheets", label: "Balance Sheet", sections: ["sched_l", "sched_m1", "sched_m2"] },
+  { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
+  { id: "rental", label: "Rental (8825)", sections: [] },
+  { id: "tax_payments", label: "Tax & Payments", sections: ["page1_tax"] },
   { id: "state", label: "State", sections: [] },
 ];
 
@@ -662,7 +661,7 @@ export default function FormEditor() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition ${
                   activeTab === tab.id
                     ? "border-b-2 border-primary text-primary-text"
                     : "text-tx-secondary hover:text-tx"
@@ -704,12 +703,6 @@ export default function FormEditor() {
               onChange={handleFieldChange}
               onRefresh={refreshReturn}
               priorYear={priorYear}
-            />
-          ) : activeTab === "preparer" ? (
-            <PreparerSection
-              taxReturnId={taxReturnId!}
-              returnData={returnData}
-              onRefresh={refreshReturn}
             />
           ) : activeTab === "tax_payments" ? (
             <TaxPaymentsSection
@@ -798,6 +791,12 @@ function InfoSection({
   const [productOrService, setProductOrService] = useState(returnData.product_or_service || "");
   const [businessActivityCode, setBusinessActivityCode] = useState(returnData.business_activity_code || "");
 
+  // Preparer (inline on Info tab)
+  const [preparers, setPreparers] = useState<PreparerOption[]>([]);
+  const [selectedPreparer, setSelectedPreparer] = useState<string>(returnData.preparer || "");
+  const [staffPreparerId, setStaffPreparerId] = useState<string>(returnData.staff_preparer || "");
+  const [signatureDate, setSignatureDate] = useState<string>(returnData.signature_date || "");
+
   // Officers
   const [officers, setOfficers] = useState<OfficerRow[]>(
     returnData.officers || []
@@ -805,6 +804,13 @@ function InfoSection({
   const [editingOfficer, setEditingOfficer] = useState<Partial<OfficerRow> | null>(null);
   const [officerSaving, setOfficerSaving] = useState(false);
   const [alsoCreateShareholder, setAlsoCreateShareholder] = useState(false);
+
+  // Load preparer list
+  useEffect(() => {
+    get("/preparers/").then((res) => {
+      if (res.ok) setPreparers(res.data as PreparerOption[]);
+    });
+  }, []);
 
   useEffect(() => {
     if (!returnData.entity_id) {
@@ -833,6 +839,9 @@ function InfoSection({
     );
     setProductOrService(returnData.product_or_service || "");
     setBusinessActivityCode(returnData.business_activity_code || "");
+    setSelectedPreparer(returnData.preparer || "");
+    setStaffPreparerId(returnData.staff_preparer || "");
+    setSignatureDate(returnData.signature_date || "");
     setOfficers(returnData.officers || []);
   }, [returnData]);
 
@@ -909,6 +918,9 @@ function InfoSection({
       number_of_shareholders: numberOfShareholders ? parseInt(numberOfShareholders) : null,
       product_or_service: productOrService,
       business_activity_code: businessActivityCode,
+      preparer: selectedPreparer || "",
+      staff_preparer: staffPreparerId || "",
+      signature_date: signatureDate || "",
     });
     setSaving(false);
     if (res.ok) {
@@ -975,7 +987,7 @@ function InfoSection({
   }
 
   const inputClass =
-    "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
   if (loadingEntity) {
     return <p className="text-sm text-tx-secondary">Loading entity info...</p>;
@@ -1324,6 +1336,35 @@ function InfoSection({
         </div>
       </div>
 
+      {/* Preparer Assignment (compact inline) */}
+      <div className="rounded-xl border border-border bg-card px-5 py-3 shadow-sm">
+        <h3 className="mb-2 text-sm font-bold text-tx">Preparer</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-0.5 block text-xs font-medium text-tx-secondary">Signing Preparer</label>
+            <select value={selectedPreparer} onChange={(e) => setSelectedPreparer(e.target.value)} className={inputClass}>
+              <option value="">— Select —</option>
+              {preparers.filter((p) => p.is_active).map((p) => (
+                <option key={p.id} value={p.id}>{p.name}{p.ptin ? ` (${p.ptin})` : ""}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-0.5 block text-xs font-medium text-tx-secondary">Staff Preparer</label>
+            <select value={staffPreparerId} onChange={(e) => setStaffPreparerId(e.target.value)} className={inputClass}>
+              <option value="">— Select —</option>
+              {preparers.filter((p) => p.is_active).map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-0.5 block text-xs font-medium text-tx-secondary">Signature Date</label>
+            <input type="date" value={signatureDate} onChange={(e) => setSignatureDate(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+      </div>
+
       {/* Officers */}
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
@@ -1639,7 +1680,7 @@ function PreparerSection({
   }
 
   const inputClass =
-    "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
   if (loading) return <p className="text-sm text-tx-secondary">Loading preparers...</p>;
 
@@ -1944,10 +1985,10 @@ function IncomeDeductionsSection({
     <div className="space-y-4">
       {/* ===== INCOME ===== */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
           Income
         </div>
-        <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
+        <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-1.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
           <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
@@ -1965,7 +2006,7 @@ function IncomeDeductionsSection({
       {/* ===== COST OF GOODS SOLD ===== */}
       {cogsFields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
             Cost of Goods Sold
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
@@ -1988,7 +2029,7 @@ function IncomeDeductionsSection({
           </button>
         </div>
         {/* Column header */}
-        <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-2.5">
+        <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-1.5">
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
           <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
@@ -2001,10 +2042,10 @@ function IncomeDeductionsSection({
           {mergedDeductions.map((item, idx) => {
             if (item.type === "form_line") {
               return (
-                <div key={item.field.id} className={`flex items-center gap-4 px-4 py-3 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
-                  <div className="w-14 shrink-0 text-sm font-medium text-tx-secondary">{item.field.line_number}</div>
+                <div key={item.field.id} className={`flex items-center gap-4 px-4 py-1.5 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
+                  <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">{item.field.line_number}</div>
                   <div className="flex-1">
-                    <span className="text-sm text-tx">{item.field.label}</span>
+                    <span className="text-xs text-tx">{item.field.label}</span>
                     {item.field.is_computed && <span className="ml-2 text-xs italic text-tx-muted">Calculated</span>}
                   </div>
                   <div className="w-36 shrink-0">
@@ -2019,11 +2060,11 @@ function IncomeDeductionsSection({
               const isStandard = row.source === "standard";
               const isEmptyStandard = isStandard && parseFloat(row.amount || "0") === 0;
               return (
-                <div key={row.id} className={`flex items-center gap-4 px-4 py-3 ${isEmptyStandard ? "opacity-70" : ""}`}>
-                  <div className="w-14 shrink-0 text-sm text-tx-muted">•</div>
+                <div key={row.id} className={`flex items-center gap-4 px-4 py-1.5 ${isEmptyStandard ? "opacity-70" : ""}`}>
+                  <div className="w-14 shrink-0 text-xs text-tx-muted">•</div>
                   <div className="flex-1">
                     {isStandard ? (
-                      <span className="inline-block px-3 py-1.5 text-sm text-tx">{row.description}</span>
+                      <span className="inline-block px-2 py-0.5 text-xs text-tx">{row.description}</span>
                     ) : (
                       <>
                         <input
@@ -2033,7 +2074,7 @@ function IncomeDeductionsSection({
                           value={row.description}
                           onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
                           onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
-                          className="w-full rounded-md border border-input-border bg-input px-3 py-1.5 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                          className="w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
                           placeholder="Enter or select deduction..."
                         />
                         <datalist id={`ded-cats-${row.id}`}>
@@ -2079,7 +2120,7 @@ function IncomeDeductionsSection({
       {/* ===== TAX & PAYMENTS ===== */}
       {taxFields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
             Tax and Payments
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
@@ -2380,7 +2421,7 @@ function ShareholdersSection({
   }, 0);
 
   const inputClass =
-    "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
@@ -2761,7 +2802,7 @@ function RentalPropertiesSection({
   const grandNetRent = properties.reduce((s, p) => s + (parseFloat(p.net_rent) || 0), 0);
 
   const inputClass =
-    "w-full rounded-md border border-input-border bg-input px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
@@ -2981,7 +3022,7 @@ function BalanceSheetsSection({
       <ScheduleLSection fields={schedLFields} onChange={onChange} />
       {m1Fields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
             Schedule M-1 — Reconciliation of Income (Loss)
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
@@ -2993,7 +3034,7 @@ function BalanceSheetsSection({
       )}
       {m2Fields.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
             Schedule M-2 — Analysis of AAA, OAA, and STPI
           </div>
           <div className="divide-y divide-border-subtle zebra-rows">
@@ -3296,9 +3337,9 @@ function ScheduleBSection({
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Header: Questions 1 & 2 (from return data, not form fields) */}
-      <div className="border-b border-border bg-surface-alt px-5 py-3">
-        <h3 className="text-sm font-semibold text-tx mb-2">Schedule B — Other Information</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="border-b border-border bg-surface-alt px-5 py-2">
+        <h3 className="text-xs font-semibold text-tx mb-1">Schedule B — Other Information</h3>
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
             <span className="text-tx-muted">1. Accounting method: </span>
             <span className="font-medium text-tx">
@@ -3333,18 +3374,18 @@ function ScheduleBSection({
           return (
             <div
               key={fv.id}
-              className={`flex items-start gap-4 px-5 py-3.5 ${
+              className={`flex items-start gap-4 px-5 py-1.5 ${
                 isSubQ ? "pl-12 bg-surface-alt/30" : ""
               }`}
             >
               {/* Question number */}
-              <div className="w-10 shrink-0 pt-0.5 text-sm font-medium text-tx-secondary">
+              <div className="w-10 shrink-0 pt-0.5 text-xs font-medium text-tx-secondary">
                 {fv.line_number.replace("B", "")}
               </div>
 
               {/* Question text */}
               <div className="flex-1 min-w-0 pt-0.5">
-                <span className="text-sm text-tx leading-relaxed">{fv.label}</span>
+                <span className="text-xs text-tx leading-snug">{fv.label}</span>
               </div>
 
               {/* Answer input */}
@@ -3403,7 +3444,7 @@ function StandardSection({
             {/* Section divider for multi-section tabs */}
             {sections.length > 1 && (
               <div
-                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt ${
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt ${
                   idx > 0 ? "border-t-2 border-border" : ""
                 }`}
               >
@@ -3416,7 +3457,7 @@ function StandardSection({
             )}
             {/* Column headers (first section only) */}
             {idx === 0 && (
-              <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
+              <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-1.5">
                 <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
                   Line
                 </div>
@@ -3505,7 +3546,7 @@ function ScheduleLSection({
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Column headers */}
-      <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-2.5">
+      <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-1.5">
         <div className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
           Line
         </div>
@@ -3536,27 +3577,27 @@ function ScheduleLSection({
           return (
             <div key={i}>
               {isFirstLiability && (
-                <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-t-2 border-border">
+                <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-t-2 border-border">
                   Liabilities
                 </div>
               )}
               {isFirstEquity && (
-                <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-t border-border">
+                <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-t border-border">
                   Equity
                 </div>
               )}
               <div
-                className={`flex items-center gap-4 px-4 py-3 ${
+                className={`flex items-center gap-4 px-4 py-1.5 ${
                   isComputed || isTotalAssets || isTotalLE
                     ? "bg-surface-alt/50 font-medium"
                     : ""
                 }`}
               >
-                <div className="w-10 shrink-0 text-sm text-tx-secondary">
+                <div className="w-10 shrink-0 text-xs text-tx-secondary">
                   {lineNum}
                 </div>
                 <div className="flex-1">
-                  <span className="text-sm text-tx">{g.label}</span>
+                  <span className="text-xs text-tx">{g.label}</span>
                   {isComputed && (
                     <span className="ml-2 text-xs italic text-tx-muted">
                       Calculated
@@ -3603,18 +3644,18 @@ function FieldRow({
 }) {
   return (
     <div
-      className={`flex items-center gap-4 px-4 py-3 ${
+      className={`flex items-center gap-4 px-4 py-1.5 ${
         field.is_computed ? "bg-surface-alt/50" : ""
       }`}
     >
       {/* Line number */}
-      <div className="w-14 shrink-0 text-sm font-medium text-tx-secondary">
+      <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">
         {field.line_number}
       </div>
 
       {/* Label */}
       <div className="flex-1">
-        <span className="text-sm text-tx">{field.label}</span>
+        <span className="text-xs text-tx">{field.label}</span>
         {field.is_computed && (
           <span className="ml-2 text-xs italic text-tx-muted">
             Calculated
@@ -3730,7 +3771,7 @@ function TextInput({
       onBlur={() => {
         if (local !== value) onChange(local);
       }}
-      className={`w-full rounded-md border border-input-border px-3 py-2 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
+      className={`w-full rounded-md border border-input-border px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
         readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
       }`}
     />
@@ -3760,7 +3801,7 @@ function IntegerInput({
       onBlur={() => {
         if (local !== value) onValueChange(local);
       }}
-      className={`w-full rounded-md border border-input-border px-3 py-2 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
+      className={`w-full rounded-md border border-input-border px-2 py-1 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
         readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
       }`}
     />
@@ -3791,7 +3832,7 @@ function PercentageInput({
         onBlur={() => {
           if (local !== value) onValueChange(local);
         }}
-        className={`w-full rounded-md border border-input-border px-3 py-2 pr-8 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
+        className={`w-full rounded-md border border-input-border px-2 py-1 pr-7 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
           readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
         }`}
       />
