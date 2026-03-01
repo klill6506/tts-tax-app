@@ -2976,8 +2976,29 @@ function TaxPaymentsSection({
     <div className="space-y-6">
       {/* Extension (Form 7004) Card */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border bg-surface-alt px-5 py-3">
+        <div className="flex items-center justify-between border-b border-border bg-surface-alt px-5 py-3">
           <h3 className="text-sm font-semibold text-tx">Extension (Form 7004)</h3>
+          <button
+            onClick={async () => {
+              try {
+                const r = await render7004(taxReturnId);
+                if (r?.pdfBase64) {
+                  const blob = new Blob(
+                    [Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))],
+                    { type: "application/pdf" }
+                  );
+                  window.open(URL.createObjectURL(blob), "_blank");
+                } else {
+                  alert(r?.error || "Failed to generate Form 7004.");
+                }
+              } catch {
+                alert("Failed to generate Form 7004.");
+              }
+            }}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+          >
+            Print Form 7004
+          </button>
         </div>
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-3">
@@ -2992,40 +3013,49 @@ function TaxPaymentsSection({
               Extension Filed
             </label>
           </div>
-          {extensionFiled && (
-            <div className="grid grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-tx-muted mb-1">Extension Date</label>
-                <input
-                  type="date"
-                  value={extensionDate}
-                  onChange={(e) => setExtensionDate(e.target.value)}
-                  className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-muted mb-1">Tentative Tax</label>
-                <CurrencyInput
-                  value={tentativeTax}
-                  onValueChange={setTentativeTax}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-muted mb-1">Total Payments</label>
-                <CurrencyInput
-                  value={totalPayments}
-                  onValueChange={setTotalPayments}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-muted mb-1">Balance Due</label>
-                <CurrencyInput
-                  value={balanceDue}
-                  onValueChange={setBalanceDue}
-                />
-              </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Extension Date</label>
+              <input
+                type="date"
+                value={extensionDate}
+                onChange={(e) => setExtensionDate(e.target.value)}
+                className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx focus:ring-2 focus:ring-primary"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Tentative Tax (Line 6)</label>
+              <CurrencyInput
+                value={tentativeTax}
+                onValueChange={(v) => {
+                  setTentativeTax(v);
+                  const t = parseFloat(v) || 0;
+                  const p = parseFloat(totalPayments) || 0;
+                  setBalanceDue(Math.max(0, t - p).toFixed(2));
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Total Payments (Line 7)</label>
+              <CurrencyInput
+                value={totalPayments}
+                onValueChange={(v) => {
+                  setTotalPayments(v);
+                  const t = parseFloat(tentativeTax) || 0;
+                  const p = parseFloat(v) || 0;
+                  setBalanceDue(Math.max(0, t - p).toFixed(2));
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-tx-muted mb-1">Balance Due (Line 8)</label>
+              <CurrencyInput
+                value={balanceDue}
+                onValueChange={setBalanceDue}
+                readOnly
+              />
+            </div>
+          </div>
         </div>
       </div>
 
