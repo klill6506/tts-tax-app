@@ -6,11 +6,8 @@ services:
     runtime: python
     region: virginia  # us-east-1, same region as Supabase
     plan: starter
-    buildCommand: |
-      cd client && npm install && npx vite build --config vite.config.web.ts &&
-      cd ../server && pip install poetry && poetry install --only main &&
-      poetry run python manage.py collectstatic --noinput
-    startCommand: cd server && poetry run gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    buildCommand: bash build.sh
+    startCommand: cd server && poetry run python manage.py migrate --noinput && poetry run gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.prod

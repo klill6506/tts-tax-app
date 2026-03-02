@@ -8,10 +8,17 @@ from django.urls import include, path, re_path
 
 
 def _serve_spa(request):
-    """Serve the React SPA index.html for any non-API route (production only)."""
+    """Serve the React SPA index.html for any non-API route (production only).
+
+    Cache-Control: no-cache ensures browsers always check for updated index.html.
+    The JS/CSS assets use content-hashed filenames (served by WhiteNoise with
+    far-future expires), so only index.html itself needs freshness validation.
+    """
     index = Path(getattr(settings, "SPA_DIR", "")) / "index.html"
     if index.exists():
-        return FileResponse(open(index, "rb"), content_type="text/html")
+        resp = FileResponse(open(index, "rb"), content_type="text/html")
+        resp["Cache-Control"] = "no-cache"
+        return resp
     return HttpResponseNotFound("SPA not built. Run: cd client && npm run build:web")
 
 
