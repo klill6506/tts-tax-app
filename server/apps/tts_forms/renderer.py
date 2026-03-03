@@ -398,11 +398,13 @@ def _build_header_data(tax_return) -> dict[str, str]:
     # Address fields from entity
     if entity.address_line1:
         header["address_street"] = entity.address_line1
-    city_state_zip = ", ".join(p for p in [entity.city, entity.state] if p)
+    # Split city, state, zip into separate fields for precise positioning
+    if entity.city:
+        header["address_city"] = entity.city
+    if entity.state:
+        header["address_state"] = entity.state
     if entity.zip_code:
-        city_state_zip += f" {entity.zip_code}"
-    if city_state_zip:
-        header["address_city_state_zip"] = city_state_zip
+        header["address_zip"] = entity.zip_code
 
     if entity.ein:
         header["ein"] = entity.ein
@@ -411,7 +413,7 @@ def _build_header_data(tax_return) -> dict[str, str]:
     if entity.state_incorporated:
         header["state_incorporated"] = entity.state_incorporated
 
-    # Tax year dates
+    # Tax year dates (used by 1065, 1120, K-1 — not rendered on 1120-S)
     if tax_return.tax_year_start:
         header["tax_year_begin"] = tax_return.tax_year_start.strftime("%m/%d/%Y")
     else:
@@ -421,13 +423,7 @@ def _build_header_data(tax_return) -> dict[str, str]:
     else:
         header["tax_year_end"] = f"12/31/{tax_year.year}"
 
-    # Phone
-    if getattr(entity, "phone", ""):
-        header["phone"] = entity.phone
-
     # Page 1 header checkboxes (render "X" if True)
-    if tax_return.is_initial_return:
-        header["chk_initial_return"] = "X"
     if tax_return.is_final_return:
         header["chk_final_return"] = "X"
     if tax_return.is_name_change:
@@ -453,11 +449,25 @@ def _build_header_data(tax_return) -> dict[str, str]:
     if tax_return.business_activity_code:
         header["business_activity_code"] = tax_return.business_activity_code
 
+    # Total assets — pull from balance sheet L15d (end-of-year total assets)
+    from apps.returns.models import FormFieldValue as _FFV
+
+    try:
+        l15d = _FFV.objects.filter(
+            tax_return=tax_return, form_line__line_number="L15d"
+        ).first()
+        if l15d and l15d.value:
+            header["total_assets"] = _format_currency(l15d.value)
+    except Exception:
+        pass
+
     # Preparer info (if exists)
     try:
         prep = tax_return.preparer_info
         if prep.preparer_name:
             header["preparer_name"] = prep.preparer_name
+            # IRS accepts printed preparer signature
+            header["preparer_signature"] = prep.preparer_name
         if prep.ptin:
             header["preparer_ptin"] = prep.ptin
         if prep.signature_date:
@@ -470,18 +480,22 @@ def _build_header_data(tax_return) -> dict[str, str]:
             header["firm_ein"] = prep.firm_ein
         if prep.firm_phone:
             header["firm_phone"] = prep.firm_phone
-        # Combine firm address
-        firm_addr_parts = [prep.firm_address]
-        firm_csz = ", ".join(p for p in [prep.firm_city, prep.firm_state] if p)
+        # Split firm address into separate fields for precise positioning
+        if prep.firm_address:
+            header["firm_street"] = prep.firm_address
+        if prep.firm_city:
+            header["firm_city"] = prep.firm_city
+        if prep.firm_state:
+            header["firm_state"] = prep.firm_state
         if prep.firm_zip:
-            firm_csz += f" {prep.firm_zip}"
-        if firm_csz:
-            firm_addr_parts.append(firm_csz)
-        firm_full = ", ".join(p for p in firm_addr_parts if p)
-        if firm_full:
-            header["firm_address"] = firm_full
+            header["firm_zip"] = prep.firm_zip
     except Exception:
         pass  # No preparer info yet
+
+    # Default: Yes, IRS may discuss with preparer (standard for most firms)
+    # TODO: Add model field to make this configurable per return
+    if "preparer_name" in header:
+        header["chk_discuss_yes"] = "X"
 
     return header
 
