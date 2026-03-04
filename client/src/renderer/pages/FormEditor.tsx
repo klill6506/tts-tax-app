@@ -455,6 +455,12 @@ export default function FormEditor() {
     if (!hasFilingStates) return SECTION_TABS.filter((t) => t.id !== "state");
     return SECTION_TABS;
   }, [isStateReturn, hasFilingStates]);
+
+  // Reset tab when switching between federal/state returns
+  useEffect(() => {
+    setActiveTab("info");
+  }, [taxReturnId]);
+
   const activeTabDef = sectionTabs.find((t) => t.id === activeTab);
 
   /** All fields for the active tab (flattened across its sections). */
@@ -590,7 +596,7 @@ export default function FormEditor() {
         <span className="mx-2">/</span>
         {returnData.federal_return_id ? (
           <>
-            <Link to={`/returns/${returnData.federal_return_id}`} className="text-primary hover:underline">
+            <Link to={`/tax-returns/${returnData.federal_return_id}/editor`} className="text-primary hover:underline">
               Federal Return
             </Link>
             <span className="mx-2">/</span>
@@ -4249,7 +4255,7 @@ function StateSection({
                   <div>
                     {sr ? (
                       <button
-                        onClick={() => navigate(`/returns/${sr.id}`)}
+                        onClick={() => navigate(`/tax-returns/${sr.id}/editor`)}
                         className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
                       >
                         Open {sr.form_code}
