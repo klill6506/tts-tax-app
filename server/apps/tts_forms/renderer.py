@@ -167,6 +167,29 @@ def _format_value(value: str, field_type: str) -> str:
     return value
 
 
+def _expand_yes_no(field_values: dict[str, tuple[str, str]]) -> None:
+    """Expand Schedule B boolean fields into _yes / _no coordinate keys.
+
+    The coordinate map uses suffixed keys (e.g. B3_yes, B3_no) so the "X"
+    lands in the correct column.  This mutates *field_values* in place:
+
+    - B3 = ("true", "boolean")  → B3_yes = ("X", "text")
+    - B3 = ("false", "boolean") → B3_no  = ("X", "text")
+
+    Non-boolean B-lines (like B8 currency) are left unchanged.
+    """
+    to_expand = [
+        (k, v) for k, v in field_values.items()
+        if k.startswith("B") and v[1] == "boolean"
+    ]
+    for key, (value, _ftype) in to_expand:
+        del field_values[key]
+        if value.lower() in ("true", "yes", "1", "x"):
+            field_values[f"{key}_yes"] = ("X", "text")
+        else:
+            field_values[f"{key}_no"] = ("X", "text")
+
+
 def _create_overlay(
     field_values: dict[str, tuple[str, str]],
     field_map: dict[str, FieldCoord],
@@ -352,6 +375,10 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
             fv.value,
             fv.form_line.field_type,
         )
+
+    # Expand Schedule B boolean fields into _yes / _no coordinate keys.
+    # E.g. B3="true" → B3_yes="X"; B3="false" → B3_no="X".
+    _expand_yes_no(field_values)
 
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)

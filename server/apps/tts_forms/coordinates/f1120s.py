@@ -401,12 +401,82 @@ SCHEDULE_M2: dict[str, FieldCoord] = {
 }
 
 # ---------------------------------------------------------------------------
+# Schedule B — Other Information (Yes/No questions)
+#
+# Pages 1-2.  Each boolean question has a "Yes" column and "No" column.
+# Coordinate keys use _yes / _no suffixes (e.g. B3_yes, B3_no).
+# The renderer expands boolean field values into the correct suffix.
+#
+# Yes column center: x≈533 (page 1) / x≈532 (page 2)
+# No  column center: x≈555 (page 1) / x≈554 (page 2)
+#
+# Y positions derived from dot-leader extraction on the official 2025 PDF.
+# B7 is a single "check this box" (no No column).
+# B8 is a currency amount field.
+# ---------------------------------------------------------------------------
+SCHEDULE_B: dict[str, FieldCoord] = {
+    # --- Page 1 ---
+    # Line 3
+    "B3_yes": FieldCoord(page=1, x=533, y=663, width=10, alignment="left", font_size=9),
+    "B3_no": FieldCoord(page=1, x=555, y=663, width=10, alignment="left", font_size=9),
+    # Line 4a
+    "B4a_yes": FieldCoord(page=1, x=533, y=612, width=10, alignment="left", font_size=9),
+    "B4a_no": FieldCoord(page=1, x=555, y=612, width=10, alignment="left", font_size=9),
+    # Line 4b
+    "B4b_yes": FieldCoord(page=1, x=533, y=496, width=10, alignment="left", font_size=9),
+    "B4b_no": FieldCoord(page=1, x=555, y=496, width=10, alignment="left", font_size=9),
+    # Line 5a
+    "B5a_yes": FieldCoord(page=1, x=533, y=405, width=10, alignment="left", font_size=9),
+    "B5a_no": FieldCoord(page=1, x=555, y=405, width=10, alignment="left", font_size=9),
+    # Line 5b
+    "B5b_yes": FieldCoord(page=1, x=533, y=359, width=10, alignment="left", font_size=9),
+    "B5b_no": FieldCoord(page=1, x=555, y=359, width=10, alignment="left", font_size=9),
+    # Line 6
+    "B6_yes": FieldCoord(page=1, x=533, y=303, width=10, alignment="left", font_size=9),
+    "B6_no": FieldCoord(page=1, x=555, y=303, width=10, alignment="left", font_size=9),
+    # Line 7 — single checkbox ("Check this box if …"), no Yes/No pair
+    "B7_yes": FieldCoord(page=1, x=533, y=287, width=10, alignment="left", font_size=9),
+    # Line 8 — currency amount (net unrealized built-in gain)
+    "B8": FieldCoord(page=1, x=555, y=245, width=50, alignment="right", font_size=9),
+    # Line 9
+    "B9_yes": FieldCoord(page=1, x=533, y=193, width=10, alignment="left", font_size=9),
+    "B9_no": FieldCoord(page=1, x=555, y=193, width=10, alignment="left", font_size=9),
+    # Line 10
+    "B10_yes": FieldCoord(page=1, x=533, y=181, width=10, alignment="left", font_size=9),
+    "B10_no": FieldCoord(page=1, x=555, y=181, width=10, alignment="left", font_size=9),
+    # Line 11
+    "B11_yes": FieldCoord(page=1, x=533, y=113, width=10, alignment="left", font_size=9),
+    "B11_no": FieldCoord(page=1, x=555, y=113, width=10, alignment="left", font_size=9),
+
+    # --- Page 2 (Schedule B continued) ---
+    # Line 12
+    "B12_yes": FieldCoord(page=2, x=532, y=703, width=10, alignment="left", font_size=9),
+    "B12_no": FieldCoord(page=2, x=554, y=703, width=10, alignment="left", font_size=9),
+    # Line 13
+    "B13_yes": FieldCoord(page=2, x=532, y=678, width=10, alignment="left", font_size=9),
+    "B13_no": FieldCoord(page=2, x=554, y=678, width=10, alignment="left", font_size=9),
+    # Line 14a
+    "B14a_yes": FieldCoord(page=2, x=532, y=666, width=10, alignment="left", font_size=9),
+    "B14a_no": FieldCoord(page=2, x=554, y=666, width=10, alignment="left", font_size=9),
+    # Line 14b
+    "B14b_yes": FieldCoord(page=2, x=532, y=655, width=10, alignment="left", font_size=9),
+    "B14b_no": FieldCoord(page=2, x=554, y=655, width=10, alignment="left", font_size=9),
+    # Line 15
+    "B15_yes": FieldCoord(page=2, x=532, y=643, width=10, alignment="left", font_size=9),
+    "B15_no": FieldCoord(page=2, x=554, y=643, width=10, alignment="left", font_size=9),
+    # Line 16
+    "B16_yes": FieldCoord(page=2, x=532, y=609, width=10, alignment="left", font_size=9),
+    "B16_no": FieldCoord(page=2, x=554, y=609, width=10, alignment="left", font_size=9),
+}
+
+# ---------------------------------------------------------------------------
 # Combined field map — used by the renderer
 # ---------------------------------------------------------------------------
 FIELD_MAP: dict[str, FieldCoord] = {
     **PAGE1_INCOME,
     **PAGE1_DEDUCTIONS,
     **PAGE1_TAX,
+    **SCHEDULE_B,
     **SCHEDULE_K,
     **SCHEDULE_L,
     **SCHEDULE_M1,

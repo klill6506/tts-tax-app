@@ -3395,7 +3395,7 @@ function ScheduleBSection({
               </div>
 
               {/* Answer input */}
-              <div className="w-28 shrink-0 flex justify-end pt-0.5">
+              <div className="w-36 shrink-0 flex justify-end pt-0.5">
                 {fv.field_type === "boolean" ? (
                   <BooleanField
                     value={fv.value}
@@ -3858,18 +3858,45 @@ function BooleanField({
   readOnly?: boolean;
   onChange: (v: string) => void;
 }) {
-  const checked = value === "true" || value === "1";
+  const isYes = value === "true" || value === "1";
+  const isNo = value === "false" || value === "0" || !value;
   return (
-    <label className="flex items-center justify-end gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
         disabled={readOnly}
-        onChange={(e) => onChange(e.target.checked ? "true" : "false")}
-        className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
-      />
-      <span className="text-sm text-tx-secondary">{checked ? "Yes" : "No"}</span>
-    </label>
+        onClick={() => onChange("true")}
+        className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border transition-colors ${
+          isYes
+            ? "border-primary bg-primary/10 text-primary"
+            : "border-border-subtle bg-transparent text-tx-muted hover:border-border hover:text-tx-secondary"
+        } ${readOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        <span className={`inline-block w-3 h-3 rounded-sm border ${
+          isYes ? "border-primary bg-primary text-white" : "border-border-subtle bg-white"
+        } flex items-center justify-center text-[8px] leading-none`}>
+          {isYes && "✓"}
+        </span>
+        Yes
+      </button>
+      <button
+        type="button"
+        disabled={readOnly}
+        onClick={() => onChange("false")}
+        className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border transition-colors ${
+          isNo
+            ? "border-primary bg-primary/10 text-primary"
+            : "border-border-subtle bg-transparent text-tx-muted hover:border-border hover:text-tx-secondary"
+        } ${readOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        <span className={`inline-block w-3 h-3 rounded-sm border ${
+          isNo ? "border-primary bg-primary text-white" : "border-border-subtle bg-white"
+        } flex items-center justify-center text-[8px] leading-none`}>
+          {isNo && "✓"}
+        </span>
+        No
+      </button>
+    </div>
   );
 }
 
