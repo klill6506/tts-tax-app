@@ -258,41 +258,41 @@ PAGE1_TAX: dict[str, FieldCoord] = {
 # ---------------------------------------------------------------------------
 SCHEDULE_K: dict[str, FieldCoord] = {
     # Page 2 — Schedule K lines 1 through 16
-    # coord_tool right edge = 550, width 113 → x = 550 − 113 = 437
-    # y net −5pt from coord tool (was −9, now +4 back)
-    "K1": FieldCoord(page=2, x=437, y=560, width=113),
-    "K2": FieldCoord(page=2, x=437, y=545, width=113),
-    "K3c": FieldCoord(page=2, x=437, y=516, width=113),
-    "K4": FieldCoord(page=2, x=437, y=500, width=113),
-    "K5a": FieldCoord(page=2, x=437, y=488, width=113),
-    "K6": FieldCoord(page=2, x=437, y=468, width=113),
-    "K7": FieldCoord(page=2, x=437, y=454, width=113),
-    "K8a": FieldCoord(page=2, x=437, y=440, width=113),
-    "K9": FieldCoord(page=2, x=437, y=412, width=113),
-    "K10": FieldCoord(page=2, x=437, y=397, width=113),
-    "K11": FieldCoord(page=2, x=437, y=384, width=113),
-    "K12a": FieldCoord(page=2, x=437, y=372, width=113),
-    "K12b": FieldCoord(page=2, x=437, y=361, width=113),
-    "K12c": FieldCoord(page=2, x=437, y=348, width=113),
-    "K12d": FieldCoord(page=2, x=438, y=337, width=113),
-    "K13a": FieldCoord(page=2, x=437, y=316, width=113),
-    "K13b": FieldCoord(page=2, x=437, y=302, width=113),
-    "K13c": FieldCoord(page=2, x=437, y=288, width=113),
-    "K13d": FieldCoord(page=2, x=437, y=278, width=113),
-    "K15a": FieldCoord(page=2, x=437, y=192, width=113),
-    "K15b": FieldCoord(page=2, x=437, y=179, width=113),
-    "K15c": FieldCoord(page=2, x=437, y=167, width=113),
-    "K15d": FieldCoord(page=2, x=437, y=154, width=113),
-    "K16a": FieldCoord(page=2, x=437, y=123, width=113),
-    "K16b": FieldCoord(page=2, x=437, y=110, width=113),
-    "K16c": FieldCoord(page=2, x=437, y=99, width=113),
-    "K16d": FieldCoord(page=2, x=437, y=87, width=113),
+    # Right edge shifted +28 to match page 1 alignment (550 → 578)
+    # x = 578 − 113 = 465
+    "K1": FieldCoord(page=2, x=465, y=560, width=113),
+    "K2": FieldCoord(page=2, x=465, y=545, width=113),
+    "K3c": FieldCoord(page=2, x=465, y=516, width=113),
+    "K4": FieldCoord(page=2, x=465, y=500, width=113),
+    "K5a": FieldCoord(page=2, x=465, y=488, width=113),
+    "K6": FieldCoord(page=2, x=465, y=468, width=113),
+    "K7": FieldCoord(page=2, x=465, y=454, width=113),
+    "K8a": FieldCoord(page=2, x=465, y=440, width=113),
+    "K9": FieldCoord(page=2, x=465, y=412, width=113),
+    "K10": FieldCoord(page=2, x=465, y=397, width=113),
+    "K11": FieldCoord(page=2, x=465, y=384, width=113),
+    "K12a": FieldCoord(page=2, x=465, y=372, width=113),
+    "K12b": FieldCoord(page=2, x=465, y=361, width=113),
+    "K12c": FieldCoord(page=2, x=465, y=348, width=113),
+    "K12d": FieldCoord(page=2, x=466, y=337, width=113),
+    "K13a": FieldCoord(page=2, x=465, y=316, width=113),
+    "K13b": FieldCoord(page=2, x=465, y=302, width=113),
+    "K13c": FieldCoord(page=2, x=465, y=288, width=113),
+    "K13d": FieldCoord(page=2, x=465, y=278, width=113),
+    "K15a": FieldCoord(page=2, x=465, y=192, width=113),
+    "K15b": FieldCoord(page=2, x=465, y=179, width=113),
+    "K15c": FieldCoord(page=2, x=465, y=167, width=113),
+    "K15d": FieldCoord(page=2, x=465, y=154, width=113),
+    "K16a": FieldCoord(page=2, x=465, y=123, width=113),
+    "K16b": FieldCoord(page=2, x=465, y=110, width=113),
+    "K16c": FieldCoord(page=2, x=465, y=99, width=113),
+    "K16d": FieldCoord(page=2, x=465, y=87, width=113),
     # Page 3 — Schedule K continued (lines 17-18)
-    # coord_tool right edge = 550, width 120 → x = 550 − 120 = 430
-    "K17a": FieldCoord(page=3, x=430, y=707, width=120),
-    "K17b": FieldCoord(page=3, x=430, y=694, width=120),
-    "K17c": FieldCoord(page=3, x=430, y=683, width=120),
-    "K18": FieldCoord(page=3, x=430, y=639, width=120),
+    # x = 578 − 120 = 458
+    "K17a": FieldCoord(page=3, x=458, y=707, width=120),
+    "K17b": FieldCoord(page=3, x=458, y=694, width=120),
+    "K17c": FieldCoord(page=3, x=458, y=683, width=120),
+    "K18": FieldCoord(page=3, x=458, y=639, width=120),
 }
 
 # ---------------------------------------------------------------------------
@@ -305,77 +305,76 @@ SCHEDULE_K: dict[str, FieldCoord] = {
 #   (d) End of year — net:        right edge ~567
 # ---------------------------------------------------------------------------
 SCHEDULE_L: dict[str, FieldCoord] = {
-    # Coord tool right-edge positions (width=75 for all L fields):
-    #   (a) col right edge: 308 → x = 308 − 75 = 233
-    #   (b) col right edge: 390 → x = 390 − 75 = 315
-    #   (c) col right edge: 470 → x = 470 − 75 = 395
-    #   (d) col right edge: 550 → x = 550 − 75 = 475
-    # y net −5pt from coord tool (was −9, now +4 back)
+    # All columns shifted +28 right to match page 1 alignment.
+    #   (a) col: x = 261,  right edge 336
+    #   (b) col: x = 343,  right edge 418
+    #   (c) col: x = 423,  right edge 498
+    #   (d) col: x = 503,  right edge 578
     #
     # Beginning of year — column (b) for simple lines, (a) for gross amounts
-    "L1a": FieldCoord(page=3, x=315, y=599, width=75),   # Cash — col (b)
-    "L2a": FieldCoord(page=3, x=233, y=587, width=75),   # Trade notes — col (a)
-    "L2b": FieldCoord(page=3, x=315, y=575, width=75),   # Less allowance — col (b)
-    "L3a": FieldCoord(page=3, x=315, y=561, width=75),   # Inventories — col (b)
-    "L4a": FieldCoord(page=3, x=315, y=548, width=75),   # U.S. govt obligations
-    "L5a": FieldCoord(page=3, x=315, y=537, width=75),   # Tax-exempt securities
-    "L6a": FieldCoord(page=3, x=315, y=527, width=75),   # Other current assets
-    "L7a": FieldCoord(page=3, x=315, y=515, width=75),   # Loans to shareholders
-    "L8a": FieldCoord(page=3, x=315, y=501, width=75),   # Mortgage/RE loans
-    "L9a": FieldCoord(page=3, x=315, y=489, width=75),   # Other investments
-    "L10a": FieldCoord(page=3, x=233, y=480, width=75),  # Buildings — col (a)
-    "L10b": FieldCoord(page=3, x=315, y=469, width=75),  # Less depreciation — col (b)
-    "L11a": FieldCoord(page=3, x=233, y=457, width=75),  # Depletable — col (a)
-    "L11b": FieldCoord(page=3, x=315, y=446, width=75),  # Less depletion — col (b)
-    "L12a": FieldCoord(page=3, x=315, y=433, width=75),  # Land
-    "L13a_gross": FieldCoord(page=3, x=233, y=422, width=75),  # Intangibles — col (a)
-    "L13b": FieldCoord(page=3, x=315, y=412, width=75),  # Less amortization — col (b)
-    "L14a": FieldCoord(page=3, x=315, y=400, width=75),  # Other assets
-    "L15a": FieldCoord(page=3, x=315, y=386, width=75),  # Total assets
-    "L16a": FieldCoord(page=3, x=315, y=364, width=75),  # Accounts payable
-    "L17a": FieldCoord(page=3, x=315, y=352, width=75),  # Mortgages <1yr
-    "L18a": FieldCoord(page=3, x=315, y=339, width=75),  # Other current liabilities
-    "L19a": FieldCoord(page=3, x=315, y=327, width=75),  # Loans from shareholders
-    "L20a": FieldCoord(page=3, x=315, y=315, width=75),  # Mortgages 1yr+
-    "L21a": FieldCoord(page=3, x=315, y=302, width=75),  # Other liabilities
-    "L22a": FieldCoord(page=3, x=315, y=291, width=75),  # Capital stock
-    "L23a": FieldCoord(page=3, x=315, y=280, width=75),  # Additional paid-in capital
-    "L24a": FieldCoord(page=3, x=315, y=268, width=75),  # Retained earnings
-    "L25a": FieldCoord(page=3, x=315, y=258, width=75),  # Adjustments to equity
-    "L26a": FieldCoord(page=3, x=316, y=244, width=75),  # Less treasury stock
-    "L27a": FieldCoord(page=3, x=315, y=231, width=75),  # Total liabilities + equity
+    "L1a": FieldCoord(page=3, x=343, y=599, width=75),   # Cash — col (b)
+    "L2a": FieldCoord(page=3, x=261, y=587, width=75),   # Trade notes — col (a)
+    "L2b": FieldCoord(page=3, x=343, y=575, width=75),   # Less allowance — col (b)
+    "L3a": FieldCoord(page=3, x=343, y=561, width=75),   # Inventories — col (b)
+    "L4a": FieldCoord(page=3, x=343, y=548, width=75),   # U.S. govt obligations
+    "L5a": FieldCoord(page=3, x=343, y=537, width=75),   # Tax-exempt securities
+    "L6a": FieldCoord(page=3, x=343, y=527, width=75),   # Other current assets
+    "L7a": FieldCoord(page=3, x=343, y=515, width=75),   # Loans to shareholders
+    "L8a": FieldCoord(page=3, x=343, y=501, width=75),   # Mortgage/RE loans
+    "L9a": FieldCoord(page=3, x=343, y=489, width=75),   # Other investments
+    "L10a": FieldCoord(page=3, x=261, y=480, width=75),  # Buildings — col (a)
+    "L10b": FieldCoord(page=3, x=343, y=469, width=75),  # Less depreciation — col (b)
+    "L11a": FieldCoord(page=3, x=261, y=457, width=75),  # Depletable — col (a)
+    "L11b": FieldCoord(page=3, x=343, y=446, width=75),  # Less depletion — col (b)
+    "L12a": FieldCoord(page=3, x=343, y=433, width=75),  # Land
+    "L13a_gross": FieldCoord(page=3, x=261, y=422, width=75),  # Intangibles — col (a)
+    "L13b": FieldCoord(page=3, x=343, y=412, width=75),  # Less amortization — col (b)
+    "L14a": FieldCoord(page=3, x=343, y=400, width=75),  # Other assets
+    "L15a": FieldCoord(page=3, x=343, y=386, width=75),  # Total assets
+    "L16a": FieldCoord(page=3, x=343, y=364, width=75),  # Accounts payable
+    "L17a": FieldCoord(page=3, x=343, y=352, width=75),  # Mortgages <1yr
+    "L18a": FieldCoord(page=3, x=343, y=339, width=75),  # Other current liabilities
+    "L19a": FieldCoord(page=3, x=343, y=327, width=75),  # Loans from shareholders
+    "L20a": FieldCoord(page=3, x=343, y=315, width=75),  # Mortgages 1yr+
+    "L21a": FieldCoord(page=3, x=343, y=302, width=75),  # Other liabilities
+    "L22a": FieldCoord(page=3, x=343, y=291, width=75),  # Capital stock
+    "L23a": FieldCoord(page=3, x=343, y=280, width=75),  # Additional paid-in capital
+    "L24a": FieldCoord(page=3, x=343, y=268, width=75),  # Retained earnings
+    "L25a": FieldCoord(page=3, x=343, y=258, width=75),  # Adjustments to equity
+    "L26a": FieldCoord(page=3, x=344, y=244, width=75),  # Less treasury stock
+    "L27a": FieldCoord(page=3, x=343, y=231, width=75),  # Total liabilities + equity
     # End of year — column (d) for simple lines, (c) for gross amounts
-    "L1d": FieldCoord(page=3, x=475, y=600, width=75),
-    "L2c": FieldCoord(page=3, x=395, y=587, width=75),   # Trade notes — col (c)
-    "L2d": FieldCoord(page=3, x=475, y=574, width=75),   # Less allowance — col (d)
-    "L3d": FieldCoord(page=3, x=475, y=562, width=75),
-    "L4d": FieldCoord(page=3, x=475, y=550, width=75),
-    "L5d": FieldCoord(page=3, x=475, y=538, width=75),
-    "L6d": FieldCoord(page=3, x=475, y=528, width=75),
-    "L7d": FieldCoord(page=3, x=475, y=517, width=75),
-    "L8d": FieldCoord(page=3, x=475, y=504, width=75),
-    "L9d": FieldCoord(page=3, x=475, y=491, width=75),
-    "L10c": FieldCoord(page=3, x=395, y=480, width=75),  # Buildings — col (c)
-    "L10d": FieldCoord(page=3, x=475, y=471, width=75),  # Less depreciation — col (d)
-    "L11c": FieldCoord(page=3, x=395, y=457, width=75),  # Depletable — col (c)
-    "L11d": FieldCoord(page=3, x=475, y=445, width=75),  # Less depletion — col (d)
-    "L12d": FieldCoord(page=3, x=475, y=433, width=75),
-    "L13c": FieldCoord(page=3, x=395, y=422, width=75),  # Intangibles — col (c)
-    "L13d": FieldCoord(page=3, x=475, y=410, width=75),  # Less amortization — col (d)
-    "L14d": FieldCoord(page=3, x=475, y=397, width=75),
-    "L15d": FieldCoord(page=3, x=475, y=385, width=75),
-    "L16d": FieldCoord(page=3, x=475, y=364, width=75),
-    "L17d": FieldCoord(page=3, x=475, y=350, width=75),
-    "L18d": FieldCoord(page=3, x=475, y=339, width=75),
-    "L19d": FieldCoord(page=3, x=475, y=326, width=75),
-    "L20d": FieldCoord(page=3, x=475, y=316, width=75),
-    "L21d": FieldCoord(page=3, x=475, y=304, width=75),
-    "L22d": FieldCoord(page=3, x=475, y=293, width=75),
-    "L23d": FieldCoord(page=3, x=475, y=281, width=75),
-    "L24d": FieldCoord(page=3, x=475, y=270, width=75),
-    "L25d": FieldCoord(page=3, x=475, y=257, width=75),
-    "L26d": FieldCoord(page=3, x=475, y=246, width=75),
-    "L27d": FieldCoord(page=3, x=475, y=232, width=75),
+    "L1d": FieldCoord(page=3, x=503, y=600, width=75),
+    "L2c": FieldCoord(page=3, x=423, y=587, width=75),   # Trade notes — col (c)
+    "L2d": FieldCoord(page=3, x=503, y=574, width=75),   # Less allowance — col (d)
+    "L3d": FieldCoord(page=3, x=503, y=562, width=75),
+    "L4d": FieldCoord(page=3, x=503, y=550, width=75),
+    "L5d": FieldCoord(page=3, x=503, y=538, width=75),
+    "L6d": FieldCoord(page=3, x=503, y=528, width=75),
+    "L7d": FieldCoord(page=3, x=503, y=517, width=75),
+    "L8d": FieldCoord(page=3, x=503, y=504, width=75),
+    "L9d": FieldCoord(page=3, x=503, y=491, width=75),
+    "L10c": FieldCoord(page=3, x=423, y=480, width=75),  # Buildings — col (c)
+    "L10d": FieldCoord(page=3, x=503, y=471, width=75),  # Less depreciation — col (d)
+    "L11c": FieldCoord(page=3, x=423, y=457, width=75),  # Depletable — col (c)
+    "L11d": FieldCoord(page=3, x=503, y=445, width=75),  # Less depletion — col (d)
+    "L12d": FieldCoord(page=3, x=503, y=433, width=75),
+    "L13c": FieldCoord(page=3, x=423, y=422, width=75),  # Intangibles — col (c)
+    "L13d": FieldCoord(page=3, x=503, y=410, width=75),  # Less amortization — col (d)
+    "L14d": FieldCoord(page=3, x=503, y=397, width=75),
+    "L15d": FieldCoord(page=3, x=503, y=385, width=75),
+    "L16d": FieldCoord(page=3, x=503, y=364, width=75),
+    "L17d": FieldCoord(page=3, x=503, y=350, width=75),
+    "L18d": FieldCoord(page=3, x=503, y=339, width=75),
+    "L19d": FieldCoord(page=3, x=503, y=326, width=75),
+    "L20d": FieldCoord(page=3, x=503, y=316, width=75),
+    "L21d": FieldCoord(page=3, x=503, y=304, width=75),
+    "L22d": FieldCoord(page=3, x=503, y=293, width=75),
+    "L23d": FieldCoord(page=3, x=503, y=281, width=75),
+    "L24d": FieldCoord(page=3, x=503, y=270, width=75),
+    "L25d": FieldCoord(page=3, x=503, y=257, width=75),
+    "L26d": FieldCoord(page=3, x=503, y=246, width=75),
+    "L27d": FieldCoord(page=3, x=503, y=232, width=75),
 }
 
 # ---------------------------------------------------------------------------
@@ -386,20 +385,18 @@ SCHEDULE_L: dict[str, FieldCoord] = {
 #   Right column (lines 5-8): subtractions.  Amount right edge ~x=588
 # ---------------------------------------------------------------------------
 SCHEDULE_M1: dict[str, FieldCoord] = {
-    # Left column: coord_tool right edge 290, width 70 → x = 220
-    # y net −5pt from coord tool (was −9, now +4 back)
-    "M1_1": FieldCoord(page=4, x=220, y=711, width=70),
-    "M1_2": FieldCoord(page=4, x=220, y=664, width=70),
-    # 3a: coord_tool 203, width 110 → x = 93
-    "M1_3a": FieldCoord(page=4, x=93, y=616, width=110),
-    # 3b: coord_tool 203, width 60 → x = 143
-    "M1_3b": FieldCoord(page=4, x=143, y=592, width=60),
-    "M1_4": FieldCoord(page=4, x=220, y=568, width=70),
-    # Right column: coord_tool right edge 570, width 88 → x = 482
-    "M1_5": FieldCoord(page=4, x=482, y=665, width=88),
-    "M1_6": FieldCoord(page=4, x=482, y=604, width=88),
-    "M1_7": FieldCoord(page=4, x=482, y=589, width=88),
-    "M1_8": FieldCoord(page=4, x=482, y=552, width=88),
+    # All fields shifted +8 right to better match page 1 column alignment
+    # Left column: right edge 290 → 298
+    "M1_1": FieldCoord(page=4, x=228, y=711, width=70),
+    "M1_2": FieldCoord(page=4, x=228, y=664, width=70),
+    "M1_3a": FieldCoord(page=4, x=101, y=616, width=110),
+    "M1_3b": FieldCoord(page=4, x=151, y=592, width=60),
+    "M1_4": FieldCoord(page=4, x=228, y=568, width=70),
+    # Right column: right edge 570 → 578 (matches page 1)
+    "M1_5": FieldCoord(page=4, x=490, y=665, width=88),
+    "M1_6": FieldCoord(page=4, x=490, y=604, width=88),
+    "M1_7": FieldCoord(page=4, x=490, y=589, width=88),
+    "M1_8": FieldCoord(page=4, x=490, y=552, width=88),
 }
 
 # ---------------------------------------------------------------------------
@@ -409,16 +406,16 @@ SCHEDULE_M1: dict[str, FieldCoord] = {
 # Lines 1-8 are vertically stacked with ~12pt spacing.
 # ---------------------------------------------------------------------------
 SCHEDULE_M2: dict[str, FieldCoord] = {
-    # coord_tool right edge 290, width 85 → x = 205
-    # y net −5pt from coord tool (was −9, now +4 back)
-    "M2_1": FieldCoord(page=4, x=205, y=481, width=85),
-    "M2_2": FieldCoord(page=4, x=207, y=469, width=85),
-    "M2_3": FieldCoord(page=4, x=205, y=456, width=85),
-    "M2_4": FieldCoord(page=4, x=205, y=443, width=85),
-    "M2_5": FieldCoord(page=4, x=205, y=433, width=85),
-    "M2_6": FieldCoord(page=4, x=205, y=421, width=85),
-    "M2_7": FieldCoord(page=4, x=205, y=410, width=85),
-    "M2_8": FieldCoord(page=4, x=205, y=388, width=85),
+    # All fields shifted +8 right to better match page 1 column alignment
+    # Right edge 290 → 298
+    "M2_1": FieldCoord(page=4, x=213, y=481, width=85),
+    "M2_2": FieldCoord(page=4, x=215, y=469, width=85),
+    "M2_3": FieldCoord(page=4, x=213, y=456, width=85),
+    "M2_4": FieldCoord(page=4, x=213, y=443, width=85),
+    "M2_5": FieldCoord(page=4, x=213, y=433, width=85),
+    "M2_6": FieldCoord(page=4, x=213, y=421, width=85),
+    "M2_7": FieldCoord(page=4, x=213, y=410, width=85),
+    "M2_8": FieldCoord(page=4, x=213, y=388, width=85),
 }
 
 # ---------------------------------------------------------------------------
