@@ -375,7 +375,8 @@ class TestCoordinates:
         preparer_keys = [
             "preparer_name", "preparer_date", "preparer_ptin",
             "preparer_self_employed", "firm_name", "firm_ein",
-            "firm_address", "firm_phone",
+            "firm_street", "firm_city", "firm_state", "firm_zip",
+            "firm_phone",
         ]
         for key in preparer_keys:
             assert key in HEADER_FIELDS, f"1120-S: preparer field {key} missing"
@@ -863,7 +864,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 13  # 10 form templates + 3 instruction PDFs
+        assert len(data["forms"]) == 14  # 11 form templates + 3 instruction PDFs
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (
