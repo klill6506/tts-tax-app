@@ -114,10 +114,17 @@ def fill_form(
         for widget in page.widgets():
             fname = widget.field_name
 
-            # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default)
+            # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default).
+            # Empty widgets need fill_color + empty value to force appearance rebuild.
             try:
-                widget.fill_color = None
+                widget.fill_color = (1, 1, 1)  # white background
                 if fname not in pending:
+                    if widget.field_type in (
+                        fitz.PDF_WIDGET_TYPE_TEXT,
+                        fitz.PDF_WIDGET_TYPE_COMBOBOX,
+                        fitz.PDF_WIDGET_TYPE_LISTBOX,
+                    ):
+                        widget.field_value = ""
                     widget.update()
                     continue
             except Exception:
