@@ -88,6 +88,8 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     )),
 
     # Schedule M-1
+    # Line 3b: non-deductible expenses (book expenses not on K lines 1-13a)
+    ("M1_3b", lambda v: _d(v, "K16c")),
     ("M1_4", lambda v: _sum(v, "M1_1", "M1_2", "M1_3a", "M1_3b")),
     ("M1_7", lambda v: _d(v, "M1_5") + _d(v, "M1_6")),
     ("M1_8", lambda v: _d(v, "M1_4") - _d(v, "M1_7")),

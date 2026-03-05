@@ -345,6 +345,7 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "rental", label: "Rental (8825)", sections: [] },
   { id: "tax_payments", label: "Tax & Payments", sections: ["page1_tax"] },
+  { id: "prior_year", label: "PY Compare", sections: [] },
   { id: "state", label: "State", sections: [] },
 ];
 
@@ -451,10 +452,13 @@ export default function FormEditor() {
   const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
   const sectionTabs = useMemo(() => {
     if (isStateReturn) return GA_SECTION_TABS;
+    let tabs = SECTION_TABS;
     // Hide State tab on federal returns if no filing states configured
-    if (!hasFilingStates) return SECTION_TABS.filter((t) => t.id !== "state");
-    return SECTION_TABS;
-  }, [isStateReturn, hasFilingStates]);
+    if (!hasFilingStates) tabs = tabs.filter((t) => t.id !== "state");
+    // Hide PY Compare tab if no prior year data
+    if (!priorYear) tabs = tabs.filter((t) => t.id !== "prior_year");
+    return tabs;
+  }, [isStateReturn, hasFilingStates, priorYear]);
 
   // Reset tab when switching between federal/state returns
   useEffect(() => {
@@ -723,6 +727,13 @@ export default function FormEditor() {
               fields={fieldsBySection["sched_b"] || []}
               returnData={returnData}
               onChange={handleFieldChange}
+            />
+          ) : activeTab === "prior_year" ? (
+            <PriorYearSummarySection
+              taxReturnId={taxReturnId!}
+              fieldsBySection={fieldsBySection}
+              priorYear={priorYear}
+              currentYear={returnData.year}
             />
           ) : activeTab === "state" ? (
             <StateSection
@@ -4320,6 +4331,237 @@ function StateSection({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Prior Year Summary Section — CY vs PY comparison
+// ---------------------------------------------------------------------------
+
+/** Groups of lines for the PY comparison view. */
+const PY_COMPARE_GROUPS: { title: string; lines: { ln: string; label: string }[] }[] = [
+  {
+    title: "Page 1 — Income",
+    lines: [
+      { ln: "1a", label: "Gross receipts or sales" },
+      { ln: "1b", label: "Returns and allowances" },
+      { ln: "1c", label: "Net receipts" },
+      { ln: "2", label: "Cost of goods sold" },
+      { ln: "3", label: "Gross profit" },
+      { ln: "4", label: "Net gain (loss) from Form 4797" },
+      { ln: "5", label: "Other income (loss)" },
+      { ln: "6", label: "Total income (loss)" },
+    ],
+  },
+  {
+    title: "Page 1 — Deductions",
+    lines: [
+      { ln: "7", label: "Compensation of officers" },
+      { ln: "8", label: "Salaries and wages" },
+      { ln: "9", label: "Repairs and maintenance" },
+      { ln: "10", label: "Bad debts" },
+      { ln: "11", label: "Rents" },
+      { ln: "12", label: "Taxes and licenses" },
+      { ln: "13", label: "Interest" },
+      { ln: "14", label: "Depreciation" },
+      { ln: "17", label: "Pension/profit-sharing plans" },
+      { ln: "18", label: "Employee benefit programs" },
+      { ln: "19", label: "Other deductions" },
+      { ln: "20", label: "Total deductions" },
+      { ln: "21", label: "Ordinary business income (loss)" },
+    ],
+  },
+  {
+    title: "Schedule K Highlights",
+    lines: [
+      { ln: "K1", label: "Ordinary business income (loss)" },
+      { ln: "K2", label: "Net rental real estate income (loss)" },
+      { ln: "K5a", label: "Net short-term capital gain (loss)" },
+      { ln: "K6", label: "Net long-term capital gain (loss)" },
+      { ln: "K11", label: "Section 179 deduction" },
+      { ln: "K12a", label: "Charitable contributions" },
+      { ln: "K16c", label: "Nondeductible expenses" },
+      { ln: "K16d", label: "Distributions" },
+      { ln: "K18", label: "Total income/loss reconciliation" },
+    ],
+  },
+  {
+    title: "Balance Sheet (EOY)",
+    lines: [
+      { ln: "L1d", label: "Cash" },
+      { ln: "L2d", label: "Trade notes and accounts receivable" },
+      { ln: "L3d", label: "Inventories" },
+      { ln: "L9d", label: "Buildings and other depreciable assets" },
+      { ln: "L14d", label: "Total assets" },
+      { ln: "L15d", label: "Accounts payable" },
+      { ln: "L20d", label: "Loans from shareholders" },
+      { ln: "L24d", label: "Retained earnings" },
+      { ln: "L27d", label: "Total liabilities and shareholders' equity" },
+    ],
+  },
+  {
+    title: "Schedule M-2 (AAA)",
+    lines: [
+      { ln: "M2_1", label: "Balance at beginning of year" },
+      { ln: "M2_2", label: "Ordinary income" },
+      { ln: "M2_5", label: "Other reductions" },
+      { ln: "M2_7", label: "Distributions" },
+      { ln: "M2_8", label: "Balance at end of year" },
+    ],
+  },
+];
+
+interface InterestTrendData {
+  form_code: string;
+  interest_line: string;
+  years: { year: number; amount: string | null }[];
+}
+
+function PriorYearSummarySection({
+  taxReturnId,
+  fieldsBySection,
+  priorYear,
+  currentYear,
+}: {
+  taxReturnId: string;
+  fieldsBySection: Record<string, FieldValue[]>;
+  priorYear: PriorYearData | null;
+  currentYear: number;
+}) {
+  const [interestTrend, setInterestTrend] = useState<InterestTrendData | null>(null);
+
+  useEffect(() => {
+    get(`/tax-returns/${taxReturnId}/interest-trend/`).then((res) => {
+      if (res.ok) setInterestTrend(res.data as InterestTrendData);
+    });
+  }, [taxReturnId]);
+
+  if (!priorYear) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+        <p className="text-sm text-tx-secondary">No prior year data available for comparison.</p>
+      </div>
+    );
+  }
+
+  // Build CY lookup: line_number → number
+  const cyLookup: Record<string, number> = {};
+  for (const fields of Object.values(fieldsBySection)) {
+    for (const f of fields) {
+      const num = parseFloat(f.value);
+      if (!isNaN(num)) cyLookup[f.line_number] = num;
+    }
+  }
+
+  const pyLines = priorYear.line_values ?? {};
+  const pyYear = priorYear.year;
+
+  const fmt = (n: number | undefined) =>
+    n !== undefined && n !== 0
+      ? n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      : "—";
+
+  const fmtPct = (cy: number, py: number) => {
+    if (!py) return "";
+    const pct = ((cy - py) / Math.abs(py)) * 100;
+    return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-tx">
+          Prior Year Comparison — {currentYear} vs {pyYear}
+        </h3>
+        <span className="text-xs text-tx-secondary">
+          Source: {priorYear.form_code}
+        </span>
+      </div>
+
+      {/* 3-Year Interest Expense Card */}
+      {interestTrend && interestTrend.years.length > 0 && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
+          <div className="border-b border-primary/20 bg-primary/10 px-4 py-2 rounded-t-xl">
+            <h4 className="text-sm font-semibold text-primary-text">
+              3-Year Interest Expense (Line {interestTrend.interest_line})
+            </h4>
+          </div>
+          <div className="flex divide-x divide-primary/20">
+            {interestTrend.years.map((yr) => {
+              const amt = yr.amount !== null ? parseFloat(yr.amount) : null;
+              return (
+                <div key={yr.year} className="flex-1 px-4 py-3 text-center">
+                  <div className="text-xs font-medium text-tx-secondary">{yr.year}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums font-mono text-tx">
+                    {amt !== null
+                      ? `$${amt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                      : "—"}
+                  </div>
+                  {yr.year === currentYear && (
+                    <div className="text-[10px] text-tx-muted">Current</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {PY_COMPARE_GROUPS.map((group) => {
+        // Only show groups that have at least some data
+        const hasData = group.lines.some(
+          (l) => (cyLookup[l.ln] ?? 0) !== 0 || (pyLines[l.ln] ?? 0) !== 0
+        );
+        if (!hasData) return null;
+
+        return (
+          <div key={group.title} className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border bg-slate-50 px-4 py-2 rounded-t-xl">
+              <h4 className="text-sm font-semibold text-tx">{group.title}</h4>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-tx-secondary">
+                  <th className="px-4 py-1.5 text-left font-medium">Line</th>
+                  <th className="px-4 py-1.5 text-left font-medium">Description</th>
+                  <th className="px-4 py-1.5 text-right font-medium">{currentYear} (CY)</th>
+                  <th className="px-4 py-1.5 text-right font-medium">{pyYear} (PY)</th>
+                  <th className="px-4 py-1.5 text-right font-medium">Change</th>
+                  <th className="px-4 py-1.5 text-right font-medium">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.lines.map((l) => {
+                  const cy = cyLookup[l.ln] ?? 0;
+                  const py = pyLines[l.ln] ?? 0;
+                  const diff = cy - py;
+                  const hasDiff = Math.abs(diff) >= 1;
+
+                  return (
+                    <tr key={l.ln} className="border-b border-border/50 hover:bg-slate-50/50">
+                      <td className="px-4 py-1 text-tx-secondary font-mono text-xs">{l.ln}</td>
+                      <td className="px-4 py-1 text-tx">{l.label}</td>
+                      <td className="px-4 py-1 text-right font-mono tabular-nums">{fmt(cy)}</td>
+                      <td className="px-4 py-1 text-right font-mono tabular-nums text-tx-secondary">{fmt(py)}</td>
+                      <td className={`px-4 py-1 text-right font-mono tabular-nums ${
+                        hasDiff ? (diff > 0 ? "text-success" : "text-danger") : "text-tx-muted"
+                      }`}>
+                        {hasDiff ? `${diff > 0 ? "+" : ""}${fmt(diff)}` : "—"}
+                      </td>
+                      <td className={`px-4 py-1 text-right text-xs ${
+                        hasDiff ? (diff > 0 ? "text-success" : "text-danger") : "text-tx-muted"
+                      }`}>
+                        {hasDiff ? fmtPct(cy, py) : ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
     </div>
   );
 }

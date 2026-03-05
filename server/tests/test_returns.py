@@ -866,8 +866,8 @@ class TestComputeOverride:
         )
         # Create remaining computed lines with empty values so compute doesn't crash
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "L14a", "L14d", "L27a", "L27d",
-                    "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_6", "M2_8"]:
+                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
+                    "M1_3b", "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]
             ).exists():
@@ -899,8 +899,8 @@ class TestComputeOverride:
         )
         # Create remaining computed lines
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "L14a", "L14d", "L27a", "L27d",
-                    "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_6", "M2_8"]:
+                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
+                    "M1_3b", "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]
             ).exists():

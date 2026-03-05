@@ -223,7 +223,7 @@ SECTIONS = [
             ("M1_1", "Net income (loss) per books", C, "1120S_M1_1", False, 10, DR),
             ("M1_2", "Income on Schedule K not on books", C, "1120S_M1_2", False, 20, DR),
             ("M1_3a", "Guaranteed payments", C, "1120S_M1_3a", False, 30, DR),
-            ("M1_3b", "Expenses on books not on Schedule K (travel & entertainment)", C, "1120S_M1_3b", False, 40, DR),
+            ("M1_3b", "Expenses on books not on Schedule K (travel & entertainment)", C, "1120S_M1_3b", True, 40, DR),
             ("M1_4", "Add lines 1 through 3b", C, "", True, 50, DR),
             ("M1_5", "Income on books not on Schedule K", C, "1120S_M1_5", False, 60, DR),
             ("M1_6", "Deductions on Schedule K not charged against books", C, "1120S_M1_6", False, 70, DR),

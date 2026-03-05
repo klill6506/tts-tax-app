@@ -1523,6 +1523,59 @@ class TaxReturnViewSet(
         serializer = PriorYearReturnSerializer(pyr)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="interest-trend")
+    def interest_trend(self, request, pk=None):
+        """
+        Return up to 3 years of interest expense for Section 163(j) tracking.
+
+        Returns current year + up to 2 prior years of Line 13 (interest)
+        and related interest line values.
+        """
+        tax_return = self.get_object()
+        entity = tax_return.tax_year.entity
+        current_year = tax_return.tax_year.year
+        form_code = tax_return.form_definition.code
+
+        # Interest line numbers by form type
+        interest_lines = {
+            "1120-S": "13",
+            "1065": "15",
+            "1120": "18",
+        }
+        interest_line = interest_lines.get(form_code, "13")
+
+        # Current year from field values
+        cy_val = Decimal("0.00")
+        try:
+            fv = FormFieldValue.objects.get(
+                tax_return=tax_return,
+                form_line__line_number=interest_line,
+            )
+            if fv.value:
+                cy_val = Decimal(fv.value)
+        except FormFieldValue.DoesNotExist:
+            pass
+
+        years = [{"year": current_year, "amount": str(cy_val)}]
+
+        # Prior years from PriorYearReturn
+        for offset in (1, 2):
+            yr = current_year - offset
+            pyr = PriorYearReturn.objects.filter(
+                entity=entity, year=yr
+            ).first()
+            if pyr:
+                amount = pyr.line_values.get(interest_line, 0)
+                years.append({"year": yr, "amount": str(amount)})
+            else:
+                years.append({"year": yr, "amount": None})
+
+        return Response({
+            "form_code": form_code,
+            "interest_line": interest_line,
+            "years": years,
+        })
+
     @action(detail=True, methods=["post"], url_path="populate-boy")
     def populate_boy(self, request, pk=None):
         """
