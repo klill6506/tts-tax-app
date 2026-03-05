@@ -70,14 +70,16 @@ from apps.tts_forms.coordinates.f8825 import (
     HEADER_FIELDS as F8825_HEADER_FIELDS,
     PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
 )
+from apps.tts_forms.formatting import (
+    format_currency as _format_currency,
+    format_value as _format_value,
+)
 from apps.tts_forms.renderer import (
     COORDINATE_REGISTRY,
     EXTENSION_FORM_CODES,
     HEADER_REGISTRY,
     SCHED_K_TO_K1_MAP,
     _create_overlay,
-    _format_currency,
-    _format_value,
     render,
     render_1125a,
     render_7004,

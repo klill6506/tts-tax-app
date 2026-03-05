@@ -1,9 +1,12 @@
 """
 IRS Form PDF Renderer.
 
-Renders tax return data onto official IRS PDF templates by creating
-transparent overlay pages with ReportLab and merging them with the
-template PDF using pypdf.
+Supports two rendering backends:
+1. AcroForm filling (preferred) — fills named fields in IRS fillable PDFs using pymupdf
+2. Coordinate overlay (legacy) — draws text at pixel positions using ReportLab + pypdf
+
+The renderer auto-selects the backend based on ACROFORM_REGISTRY. Forms registered
+there use AcroForm filling; all others fall back to coordinate overlay.
 
 Usage:
     from apps.tts_forms.renderer import render
@@ -24,12 +27,13 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch  # noqa: F401 — useful for callers
 from reportlab.pdfgen import canvas
 
+# Coordinate-based rendering (legacy fallback)
 from .coordinates.f1065 import FIELD_MAP as F1065_FIELD_MAP
 from .coordinates.f1065 import HEADER_FIELDS as F1065_HEADER_FIELDS
 from .coordinates.f1120 import FIELD_MAP as F1120_FIELD_MAP
 from .coordinates.f1120 import HEADER_FIELDS as F1120_HEADER_FIELDS
-from .coordinates.f1120s import FIELD_MAP as F1120S_FIELD_MAP
-from .coordinates.f1120s import HEADER_FIELDS as F1120S_HEADER_FIELDS
+from .coordinates.f1120s import FIELD_MAP as F1120S_COORD_FIELD_MAP
+from .coordinates.f1120s import HEADER_FIELDS as F1120S_COORD_HEADER_FIELDS
 from .coordinates.f1120s import FieldCoord
 from .coordinates.f1120sk1 import K1_FIELD_MAP as F1120SK1_FIELD_MAP
 from .coordinates.f1120sk1 import K1_HEADER as F1120SK1_HEADER
@@ -48,6 +52,14 @@ from .coordinates.f8825 import (
 )
 from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
 from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
+
+# AcroForm-based rendering (new, preferred)
+from .acroform_filler import fill_form as _acroform_fill
+from .field_maps import FieldMap as _FieldMap
+from .field_maps.f1120s import FIELD_MAP as F1120S_ACRO_FIELD_MAP
+from .field_maps.f1120s import HEADER_MAP as F1120S_ACRO_HEADER_MAP
+from .formatting import expand_yes_no, format_currency, format_value
+
 from .statements import render_statement_pages
 
 # ---------------------------------------------------------------------------
@@ -62,7 +74,7 @@ MANIFEST_PATH = RESOURCES_DIR / "forms_manifest.json"
 
 # Coordinate maps keyed by form_id
 COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
-    "f1120s": F1120S_FIELD_MAP,
+    "f1120s": F1120S_COORD_FIELD_MAP,
     "f1065": F1065_FIELD_MAP,
     "f1120": F1120_FIELD_MAP,
     "f1120sk1": F1120SK1_FIELD_MAP,
@@ -75,7 +87,7 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
-    "f1120s": F1120S_HEADER_FIELDS,
+    "f1120s": F1120S_COORD_HEADER_FIELDS,
     "f1065": F1065_HEADER_FIELDS,
     "f1120": F1120_HEADER_FIELDS,
     "f1120sk1": F1120SK1_HEADER,
@@ -85,6 +97,15 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f7203": F7203_HEADER_FIELDS,
     "f7004": F7004_HEADER_FIELDS,
     "fga600s": FGA600S_HEADER_FIELDS,
+}
+
+# AcroForm field maps keyed by form_id (preferred over coordinates)
+ACROFORM_REGISTRY: dict[str, _FieldMap] = {
+    "f1120s": F1120S_ACRO_FIELD_MAP,
+}
+
+ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
+    "f1120s": F1120S_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -134,61 +155,6 @@ def _get_template_path(form_id: str, tax_year: int) -> Path:
     )
 
 
-def _format_currency(value: str) -> str:
-    """Format a numeric string as currency for display on the form."""
-    if not value or value.strip() == "":
-        return ""
-    try:
-        d = Decimal(value)
-    except InvalidOperation:
-        return value
-    if d == 0:
-        return ""
-    # Negative amounts in parentheses per IRS convention
-    if d < 0:
-        return f"({abs(d):,.0f})"
-    return f"{d:,.0f}"
-
-
-def _format_value(value: str, field_type: str) -> str:
-    """Format a field value based on its type."""
-    if field_type == "currency":
-        return _format_currency(value)
-    if field_type == "boolean":
-        return "X" if value.lower() in ("true", "yes", "1", "x") else ""
-    if field_type == "percentage":
-        if not value:
-            return ""
-        try:
-            return f"{Decimal(value):.1f}%"
-        except InvalidOperation:
-            return value
-    # text, integer — return as-is
-    return value
-
-
-def _expand_yes_no(field_values: dict[str, tuple[str, str]]) -> None:
-    """Expand Schedule B boolean fields into _yes / _no coordinate keys.
-
-    The coordinate map uses suffixed keys (e.g. B3_yes, B3_no) so the "X"
-    lands in the correct column.  This mutates *field_values* in place:
-
-    - B3 = ("true", "boolean")  → B3_yes = ("X", "text")
-    - B3 = ("false", "boolean") → B3_no  = ("X", "text")
-
-    Non-boolean B-lines (like B8 currency) are left unchanged.
-    """
-    to_expand = [
-        (k, v) for k, v in field_values.items()
-        if k.startswith("B") and v[1] == "boolean"
-    ]
-    for key, (value, _ftype) in to_expand:
-        del field_values[key]
-        if value.lower() in ("true", "yes", "1", "x"):
-            field_values[f"{key}_yes"] = ("X", "text")
-        else:
-            field_values[f"{key}_no"] = ("X", "text")
-
 
 def _create_overlay(
     field_values: dict[str, tuple[str, str]],
@@ -236,7 +202,7 @@ def _create_overlay(
             if not entry:
                 continue
             raw_value, field_type = entry
-            text = _format_value(raw_value, field_type)
+            text = format_value(raw_value, field_type)
             if not text:
                 continue
 
@@ -272,6 +238,10 @@ def render(
     """
     Render a completed IRS form PDF.
 
+    Auto-selects the rendering backend:
+    - AcroForm filling (preferred): if the form is in ACROFORM_REGISTRY
+    - Coordinate overlay (legacy): fallback for forms without AcroForm maps
+
     Args:
         form_id: Manifest form identifier (e.g., "f1120s").
         tax_year: Tax year (e.g., 2025).
@@ -283,10 +253,6 @@ def render(
     Returns:
         PDF file content as bytes.
     """
-    field_map = COORDINATE_REGISTRY.get(form_id)
-    if not field_map:
-        raise ValueError(f"No coordinate map registered for form_id={form_id!r}")
-
     template_path = _get_template_path(form_id, tax_year)
     if not template_path.exists():
         raise FileNotFoundError(
@@ -294,43 +260,70 @@ def render(
             f"Run scripts/update_irs_forms.py to download."
         )
 
-    header_map = HEADER_REGISTRY.get(form_id)
+    # --- Try AcroForm path first (preferred) ---
+    acro_field_map = ACROFORM_REGISTRY.get(form_id)
+    if acro_field_map:
+        acro_header_map = ACROFORM_HEADER_REGISTRY.get(form_id)
+        form_bytes = _acroform_fill(
+            template_path=template_path,
+            field_values=field_values,
+            field_map=acro_field_map,
+            header_data=header_data,
+            header_map=acro_header_map,
+        )
+    else:
+        # --- Coordinate overlay fallback ---
+        coord_field_map = COORDINATE_REGISTRY.get(form_id)
+        if not coord_field_map:
+            raise ValueError(
+                f"No AcroForm or coordinate map registered for form_id={form_id!r}"
+            )
 
-    # Read template PDF and strip fillable form field widgets (purple backgrounds)
-    template_reader = _flatten_template(PdfReader(str(template_path)))
-    page_count = len(template_reader.pages)
+        header_map = HEADER_REGISTRY.get(form_id)
 
-    # Create overlay
-    overlay_buf = _create_overlay(
-        field_values=field_values,
-        field_map=field_map,
-        header_data=header_data,
-        header_map=header_map,
-        page_count=page_count,
-    )
-    overlay_reader = PdfReader(overlay_buf)
+        # Read template PDF and strip fillable form field widgets
+        template_reader = _flatten_template(PdfReader(str(template_path)))
+        page_count = len(template_reader.pages)
 
-    # Merge overlay onto template
-    writer = PdfWriter()
-    for i in range(page_count):
-        template_page = template_reader.pages[i]
-        if i < len(overlay_reader.pages):
-            overlay_page = overlay_reader.pages[i]
-            template_page.merge_page(overlay_page)
-        writer.add_page(template_page)
+        # Create overlay
+        overlay_buf = _create_overlay(
+            field_values=field_values,
+            field_map=coord_field_map,
+            header_data=header_data,
+            header_map=header_map,
+            page_count=page_count,
+        )
+        overlay_reader = PdfReader(overlay_buf)
 
-    # Append statement pages if provided
+        # Merge overlay onto template
+        writer = PdfWriter()
+        for i in range(page_count):
+            template_page = template_reader.pages[i]
+            if i < len(overlay_reader.pages):
+                overlay_page = overlay_reader.pages[i]
+                template_page.merge_page(overlay_page)
+            writer.add_page(template_page)
+
+        buf = io.BytesIO()
+        writer.write(buf)
+        form_bytes = buf.getvalue()
+
+    # Append statement pages if provided (works for both paths)
     if statement_pages:
         stmt_bytes = render_statement_pages(statement_pages)
         if stmt_bytes:
+            writer = PdfWriter()
+            form_reader = PdfReader(io.BytesIO(form_bytes))
+            for page in form_reader.pages:
+                writer.add_page(page)
             stmt_reader = PdfReader(io.BytesIO(stmt_bytes))
             for page in stmt_reader.pages:
                 writer.add_page(page)
+            output = io.BytesIO()
+            writer.write(output)
+            return output.getvalue()
 
-    # Write final PDF
-    output = io.BytesIO()
-    writer.write(output)
-    return output.getvalue()
+    return form_bytes
 
 
 def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
@@ -378,7 +371,7 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
 
     # Expand Schedule B boolean fields into _yes / _no coordinate keys.
     # E.g. B3="true" → B3_yes="X"; B3="false" → B3_no="X".
-    _expand_yes_no(field_values)
+    expand_yes_no(field_values)
 
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)
@@ -484,7 +477,7 @@ def _build_header_data(tax_return) -> dict[str, str]:
             tax_return=tax_return, form_line__line_number="L15d"
         ).first()
         if l15d and l15d.value:
-            header["total_assets"] = _format_currency(l15d.value)
+            header["total_assets"] = format_currency(l15d.value)
     except Exception:
         pass
 

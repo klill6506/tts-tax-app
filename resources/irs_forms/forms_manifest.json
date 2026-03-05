@@ -9,10 +9,11 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120s.pdf",
       "revision_date": "2024-12",
-      "sha256": "cbebad5922b5e457449024823a8976801ccc5d09d8363397f650527f2cb0b9c3",
+      "sha256": "c4b7cae7f2283a2e3225523ea001a710109fee34aad909461421025b287cd18d",
       "local_path": "2025/f1120s.pdf",
       "pages": 5,
-      "notes": "Extracted pages 1-5 from official IRS 1120-S booklet (print-quality, non-fillable, watermark removed)"
+      "has_acroform": true,
+      "notes": "Official IRS fillable PDF with AcroForm fields (390 fields: 336 text + 54 checkbox)"
     },
     {
       "form_id": "f1120sk1",

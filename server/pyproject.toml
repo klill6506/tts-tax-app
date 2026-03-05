@@ -16,6 +16,7 @@ dependencies = [
     "google-genai (>=1.64.0,<2.0.0)",
     "gunicorn>=22.0,<24.0",
     "whitenoise>=6.5,<7.0",
+    "pymupdf>=1.27.1,<2.0.0",
 ]
 
 [tool.poetry]
@@ -29,6 +30,7 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "pytest>=8.0,<10.0",
     "pytest-django>=4.9,<6.0",
+    "pillow (>=12.1.1,<13.0.0)",
 ]
 
 [tool.pytest.ini_options]
