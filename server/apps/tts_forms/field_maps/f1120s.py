@@ -75,13 +75,13 @@ HEADER_MAP: FieldMap = {
         acro_name="topmostSubform[0].Page1[0].Date_Name_ReadOrder[0].f1_8[0]",
         field_type="text", format="text",
     ),
-    # C -- ZIP code
-    "address_zip": AcroField(
+    # C -- Country (for foreign addresses; IRS order is City, State, Country, ZIP)
+    "address_country": AcroField(
         acro_name="topmostSubform[0].Page1[0].Date_Name_ReadOrder[0].f1_9[0]",
         field_type="text", format="text",
     ),
-    # C continued -- country (for foreign addresses)
-    "address_country": AcroField(
+    # C -- ZIP code (rightmost field on line C)
+    "address_zip": AcroField(
         acro_name="topmostSubform[0].Page1[0].Date_Name_ReadOrder[0].f1_10[0]",
         field_type="text", format="text",
     ),
@@ -1156,10 +1156,8 @@ FIELD_MAP: FieldMap = {
     # ======================================================================
 
     # --- Assets ---
-    # Line 1 -- Cash
-    "L1a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line1[0].f4_5[0]", field_type="text", format="currency"),
-    "L1b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line1[0].f4_6[0]", field_type="text", format="currency"),
-    "L1c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line1[0].f4_7[0]", field_type="text", format="currency"),
+    # Line 1 -- Cash (simple line: BOY in col b, EOY in col d)
+    "L1a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line1[0].f4_6[0]", field_type="text", format="currency"),
     "L1d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line1[0].f4_8[0]", field_type="text", format="currency"),
 
     # Line 2a -- Trade notes and accounts receivable (gross)
@@ -1174,46 +1172,32 @@ FIELD_MAP: FieldMap = {
     "L2b_c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line2b[0].f4_15[0]", field_type="text", format="currency"),
     "L2b_d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line2b[0].f4_16[0]", field_type="text", format="currency"),
 
-    # Line 3 -- Inventories
-    "L3a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line3[0].f4_17[0]", field_type="text", format="currency"),
-    "L3b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line3[0].f4_18[0]", field_type="text", format="currency"),
-    "L3c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line3[0].f4_19[0]", field_type="text", format="currency"),
+    # Line 3 -- Inventories (simple line: BOY in col b, EOY in col d)
+    "L3a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line3[0].f4_18[0]", field_type="text", format="currency"),
     "L3d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line3[0].f4_20[0]", field_type="text", format="currency"),
 
-    # Line 4 -- U.S. government obligations
-    "L4a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line4[0].f4_21[0]", field_type="text", format="currency"),
-    "L4b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line4[0].f4_22[0]", field_type="text", format="currency"),
-    "L4c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line4[0].f4_23[0]", field_type="text", format="currency"),
+    # Line 4 -- U.S. government obligations (simple line: BOY col b, EOY col d)
+    "L4a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line4[0].f4_22[0]", field_type="text", format="currency"),
     "L4d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line4[0].f4_24[0]", field_type="text", format="currency"),
 
-    # Line 5 -- Tax-exempt securities
-    "L5a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line5[0].f4_25[0]", field_type="text", format="currency"),
-    "L5b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line5[0].f4_26[0]", field_type="text", format="currency"),
-    "L5c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line5[0].f4_27[0]", field_type="text", format="currency"),
+    # Line 5 -- Tax-exempt securities (simple line: BOY col b, EOY col d)
+    "L5a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line5[0].f4_26[0]", field_type="text", format="currency"),
     "L5d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line5[0].f4_28[0]", field_type="text", format="currency"),
 
-    # Line 6 -- Other current assets
-    "L6a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line6[0].f4_29[0]", field_type="text", format="currency"),
-    "L6b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line6[0].f4_30[0]", field_type="text", format="currency"),
-    "L6c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line6[0].f4_31[0]", field_type="text", format="currency"),
+    # Line 6 -- Other current assets (simple line: BOY col b, EOY col d)
+    "L6a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line6[0].f4_30[0]", field_type="text", format="currency"),
     "L6d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line6[0].f4_32[0]", field_type="text", format="currency"),
 
-    # Line 7 -- Loans to shareholders
-    "L7a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line7[0].f4_33[0]", field_type="text", format="currency"),
-    "L7b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line7[0].f4_34[0]", field_type="text", format="currency"),
-    "L7c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line7[0].f4_35[0]", field_type="text", format="currency"),
+    # Line 7 -- Loans to shareholders (simple line: BOY col b, EOY col d)
+    "L7a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line7[0].f4_34[0]", field_type="text", format="currency"),
     "L7d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line7[0].f4_36[0]", field_type="text", format="currency"),
 
-    # Line 8 -- Mortgage and real estate loans
-    "L8a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line8[0].f4_37[0]", field_type="text", format="currency"),
-    "L8b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line8[0].f4_38[0]", field_type="text", format="currency"),
-    "L8c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line8[0].f4_39[0]", field_type="text", format="currency"),
+    # Line 8 -- Mortgage and real estate loans (simple line: BOY col b, EOY col d)
+    "L8a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line8[0].f4_38[0]", field_type="text", format="currency"),
     "L8d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line8[0].f4_40[0]", field_type="text", format="currency"),
 
-    # Line 9 -- Other investments
-    "L9a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line9[0].f4_41[0]", field_type="text", format="currency"),
-    "L9b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line9[0].f4_42[0]", field_type="text", format="currency"),
-    "L9c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line9[0].f4_43[0]", field_type="text", format="currency"),
+    # Line 9 -- Other investments (simple line: BOY col b, EOY col d)
+    "L9a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line9[0].f4_42[0]", field_type="text", format="currency"),
     "L9d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line9[0].f4_44[0]", field_type="text", format="currency"),
 
     # Line 10a -- Buildings and other depreciable assets (gross)
@@ -1240,10 +1224,8 @@ FIELD_MAP: FieldMap = {
     "L11b_c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line11b[0].f4_59[0]", field_type="text", format="currency"),
     "L11b_d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line11b[0].f4_60[0]", field_type="text", format="currency"),
 
-    # Line 12 -- Land (net of any amortization)
-    "L12a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line12[0].f4_61[0]", field_type="text", format="currency"),
-    "L12b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line12[0].f4_62[0]", field_type="text", format="currency"),
-    "L12c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line12[0].f4_63[0]", field_type="text", format="currency"),
+    # Line 12 -- Land (net of any amortization) (simple line: BOY col b, EOY col d)
+    "L12a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line12[0].f4_62[0]", field_type="text", format="currency"),
     "L12d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line12[0].f4_64[0]", field_type="text", format="currency"),
 
     # Line 13a -- Intangible assets (amortizable only, gross)
@@ -1258,89 +1240,63 @@ FIELD_MAP: FieldMap = {
     "L13b_c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line13b[0].f4_71[0]", field_type="text", format="currency"),
     "L13b_d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line13b[0].f4_72[0]", field_type="text", format="currency"),
 
-    # Line 14 -- Other assets
-    "L14a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line14[0].f4_73[0]", field_type="text", format="currency"),
-    "L14b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line14[0].f4_74[0]", field_type="text", format="currency"),
-    "L14c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line14[0].f4_75[0]", field_type="text", format="currency"),
+    # Line 14 -- Other assets (simple line: BOY col b, EOY col d)
+    "L14a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line14[0].f4_74[0]", field_type="text", format="currency"),
     "L14d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line14[0].f4_76[0]", field_type="text", format="currency"),
 
-    # Line 15 -- Total assets
-    "L15a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line15[0].f4_77[0]", field_type="text", format="currency"),
-    "L15b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line15[0].f4_78[0]", field_type="text", format="currency"),
-    "L15c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line15[0].f4_79[0]", field_type="text", format="currency"),
+    # Line 15 -- Total assets (simple line: BOY col b, EOY col d)
+    "L15a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line15[0].f4_78[0]", field_type="text", format="currency"),
     "L15d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Assets[0].Line15[0].f4_80[0]", field_type="text", format="currency"),
 
     # --- Liabilities and Shareholders' Equity ---
+    # All liability lines are simple: BOY in col (b), EOY in col (d)
+
     # Line 16 -- Accounts payable
-    "L16a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line16[0].f4_81[0]", field_type="text", format="currency"),
-    "L16b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line16[0].f4_82[0]", field_type="text", format="currency"),
-    "L16c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line16[0].f4_83[0]", field_type="text", format="currency"),
+    "L16a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line16[0].f4_82[0]", field_type="text", format="currency"),
     "L16d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line16[0].f4_84[0]", field_type="text", format="currency"),
 
     # Line 17 -- Mortgages, notes, bonds payable in less than 1 year
-    "L17a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line17[0].f4_85[0]", field_type="text", format="currency"),
-    "L17b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line17[0].f4_86[0]", field_type="text", format="currency"),
-    "L17c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line17[0].f4_87[0]", field_type="text", format="currency"),
+    "L17a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line17[0].f4_86[0]", field_type="text", format="currency"),
     "L17d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line17[0].f4_88[0]", field_type="text", format="currency"),
 
     # Line 18 -- Other current liabilities
-    "L18a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line18[0].f4_89[0]", field_type="text", format="currency"),
-    "L18b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line18[0].f4_90[0]", field_type="text", format="currency"),
-    "L18c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line18[0].f4_91[0]", field_type="text", format="currency"),
+    "L18a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line18[0].f4_90[0]", field_type="text", format="currency"),
     "L18d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line18[0].f4_92[0]", field_type="text", format="currency"),
 
     # Line 19 -- Loans from shareholders
-    "L19a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line19[0].f4_93[0]", field_type="text", format="currency"),
-    "L19b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line19[0].f4_94[0]", field_type="text", format="currency"),
-    "L19c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line19[0].f4_95[0]", field_type="text", format="currency"),
+    "L19a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line19[0].f4_94[0]", field_type="text", format="currency"),
     "L19d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line19[0].f4_96[0]", field_type="text", format="currency"),
 
     # Line 20 -- Mortgages, notes, bonds payable in 1 year or more
-    "L20a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line20[0].f4_97[0]", field_type="text", format="currency"),
-    "L20b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line20[0].f4_98[0]", field_type="text", format="currency"),
-    "L20c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line20[0].f4_99[0]", field_type="text", format="currency"),
+    "L20a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line20[0].f4_98[0]", field_type="text", format="currency"),
     "L20d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line20[0].f4_100[0]", field_type="text", format="currency"),
 
     # Line 21 -- Other liabilities
-    "L21a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line21[0].f4_101[0]", field_type="text", format="currency"),
-    "L21b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line21[0].f4_102[0]", field_type="text", format="currency"),
-    "L21c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line21[0].f4_103[0]", field_type="text", format="currency"),
+    "L21a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line21[0].f4_102[0]", field_type="text", format="currency"),
     "L21d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line21[0].f4_104[0]", field_type="text", format="currency"),
 
     # Line 22 -- Capital stock
-    "L22a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line22[0].f4_105[0]", field_type="text", format="currency"),
-    "L22b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line22[0].f4_106[0]", field_type="text", format="currency"),
-    "L22c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line22[0].f4_107[0]", field_type="text", format="currency"),
+    "L22a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line22[0].f4_106[0]", field_type="text", format="currency"),
     "L22d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line22[0].f4_108[0]", field_type="text", format="currency"),
 
     # Line 23 -- Additional paid-in capital
-    "L23a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line23[0].f4_109[0]", field_type="text", format="currency"),
-    "L23b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line23[0].f4_110[0]", field_type="text", format="currency"),
-    "L23c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line23[0].f4_111[0]", field_type="text", format="currency"),
+    "L23a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line23[0].f4_110[0]", field_type="text", format="currency"),
     "L23d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line23[0].f4_112[0]", field_type="text", format="currency"),
 
     # Line 24 -- Retained earnings
-    "L24a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line24[0].f4_113[0]", field_type="text", format="currency"),
-    "L24b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line24[0].f4_114[0]", field_type="text", format="currency"),
-    "L24c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line24[0].f4_115[0]", field_type="text", format="currency"),
+    "L24a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line24[0].f4_114[0]", field_type="text", format="currency"),
     "L24d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line24[0].f4_116[0]", field_type="text", format="currency"),
 
     # Line 25 -- Adjustments to shareholders' equity
-    "L25a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line25[0].f4_117[0]", field_type="text", format="currency"),
-    "L25b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line25[0].f4_118[0]", field_type="text", format="currency"),
-    "L25c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line25[0].f4_119[0]", field_type="text", format="currency"),
+    "L25a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line25[0].f4_118[0]", field_type="text", format="currency"),
     "L25d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line25[0].f4_120[0]", field_type="text", format="currency"),
 
     # Line 26 -- Less cost of treasury stock
-    "L26a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line26[0].f4_121[0]", field_type="text", format="currency"),
-    "L26b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line26[0].f4_122[0]", field_type="text", format="currency"),
-    "L26c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line26[0].f4_123[0]", field_type="text", format="currency"),
+    "L26a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line26[0].f4_122[0]", field_type="text", format="currency"),
     "L26d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line26[0].f4_124[0]", field_type="text", format="currency"),
 
     # Line 27 -- Total liabilities and shareholders' equity
-    "L27a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line27[0].f4_125[0]", field_type="text", format="currency"),
-    "L27b": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line27[0].f4_126[0]", field_type="text", format="currency"),
-    "L27c": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line27[0].f4_127[0]", field_type="text", format="currency"),
+    "L27a": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line27[0].f4_126[0]", field_type="text", format="currency"),
     "L27d": AcroField(acro_name="topmostSubform[0].Page4[0].Table_Liabilities[0].Line27[0].f4_128[0]", field_type="text", format="currency"),
 
     # ======================================================================
@@ -1380,17 +1336,17 @@ FIELD_MAP: FieldMap = {
         acro_name="topmostSubform[0].Page5[0].SchM-1_Left[0].f5_7[0]",
         field_type="text", format="currency",
     ),
-    # Line 4 description + amount
-    "M1_4_desc": AcroField(
+    # Line 3 other description + amount (f5_8 desc, f5_9 amount)
+    "M1_3c_desc": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Left[0].f5_8[0]",
         field_type="text", format="text",
     ),
-    "M1_4": AcroField(
+    "M1_3c": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Left[0].f5_9[0]",
         field_type="text", format="currency",
     ),
-    # Total left column (line 1 + 2 + 3 + 4)
-    "M1_total_left": AcroField(
+    # Line 4 -- Add lines 1 through 3 (bottom of left column)
+    "M1_4": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Left[0].f5_10[0]",
         field_type="text", format="currency",
     ),
@@ -1415,26 +1371,27 @@ FIELD_MAP: FieldMap = {
         field_type="text", format="currency",
     ),
     # Line 6 -- Deductions included on Schedule K not charged against book income
-    "M1_6": AcroField(
+    # f5_14 is description text, f5_16 is the amount (at x=496-576)
+    "M1_6_desc": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_14[0]",
+        field_type="text", format="text",
+    ),
+    "M1_6": AcroField(
+        acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_16[0]",
         field_type="text", format="currency",
     ),
-    # Line 7 description + amount
+    # Line 7 description (f5_15)
     "M1_7_desc": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_15[0]",
         field_type="text", format="text",
     ),
+    # Line 7 -- Add lines 5 and 6 (amount at f5_17)
     "M1_7": AcroField(
-        acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_16[0]",
-        field_type="text", format="currency",
-    ),
-    # Line 8 -- Income (loss) from Schedule K
-    "M1_8": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_17[0]",
         field_type="text", format="currency",
     ),
-    # Total right column
-    "M1_total_right": AcroField(
+    # Line 8 -- Income (loss) (Schedule K, line 18). Line 4 less line 7.
+    "M1_8": AcroField(
         acro_name="topmostSubform[0].Page5[0].SchM-1_Right[0].f5_18[0]",
         field_type="text", format="currency",
     ),
@@ -1498,4 +1455,16 @@ FIELD_MAP: FieldMap = {
     "M2_8b": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_48[0]", field_type="text", format="currency"),
     "M2_8c": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_49[0]", field_type="text", format="currency"),
     "M2_8d": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_50[0]", field_type="text", format="currency"),
+
+    # --- M-2 DB key aliases ---
+    # The compute engine stores M-2 values as M2_1..M2_8 (AAA column only).
+    # Map these DB keys to the column (a) = AAA AcroForm fields.
+    "M2_1": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line1[0].f5_19[0]", field_type="text", format="currency"),
+    "M2_2": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line2[0].f5_23[0]", field_type="text", format="currency"),
+    "M2_3": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line3[0].f5_27[0]", field_type="text", format="currency"),
+    "M2_4": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line4[0].f5_31[0]", field_type="text", format="currency"),
+    "M2_5": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line5[0].f5_35[0]", field_type="text", format="currency"),
+    "M2_6": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line6[0].f5_39[0]", field_type="text", format="currency"),
+    "M2_7": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line7[0].f5_43[0]", field_type="text", format="currency"),
+    "M2_8": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_47[0]", field_type="text", format="currency"),
 }

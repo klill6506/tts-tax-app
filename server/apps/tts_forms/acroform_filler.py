@@ -113,8 +113,16 @@ def fill_form(
     for page in doc:
         for widget in page.widgets():
             fname = widget.field_name
-            if fname not in pending:
-                continue
+
+            # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default)
+            try:
+                widget.fill_color = None
+                if fname not in pending:
+                    widget.update()
+                    continue
+            except Exception:
+                if fname not in pending:
+                    continue
 
             value, acro = pending[fname]
 

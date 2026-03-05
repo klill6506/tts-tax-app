@@ -433,11 +433,9 @@ def _build_header_data(tax_return) -> dict[str, str]:
     if entity.state_incorporated:
         header["state_incorporated"] = entity.state_incorporated
 
-    # Tax year dates (used by 1065, 1120, K-1 — not rendered on 1120-S)
-    if tax_return.tax_year_start:
-        header["tax_year_begin"] = tax_return.tax_year_start.strftime("%m/%d/%Y")
-    else:
-        header["tax_year_begin"] = f"01/01/{tax_year.year}"
+    # Tax year dates
+    # NOTE: tax_year_begin intentionally omitted — calendar year forms
+    # display "2025" pre-printed; only populate end date for fiscal year filers.
     if tax_return.tax_year_end:
         header["tax_year_end"] = tax_return.tax_year_end.strftime("%m/%d/%Y")
     else:
