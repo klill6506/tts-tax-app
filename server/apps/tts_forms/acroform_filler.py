@@ -115,21 +115,28 @@ def fill_form(
             fname = widget.field_name
 
             # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default).
-            # Empty widgets need fill_color + empty value to force appearance rebuild.
+            # Must set fill_color AND force update to rebuild the appearance stream.
             try:
                 widget.fill_color = (1, 1, 1)  # white background
-                if fname not in pending:
+                widget.border_color = (1, 1, 1)  # white border
+            except Exception:
+                pass
+
+            if fname not in pending:
+                # Empty widget — set to empty string to force appearance rebuild
+                try:
                     if widget.field_type in (
                         fitz.PDF_WIDGET_TYPE_TEXT,
                         fitz.PDF_WIDGET_TYPE_COMBOBOX,
                         fitz.PDF_WIDGET_TYPE_LISTBOX,
                     ):
                         widget.field_value = ""
+                    elif widget.field_type == fitz.PDF_WIDGET_TYPE_CHECKBOX:
+                        widget.field_value = "Off"
                     widget.update()
-                    continue
-            except Exception:
-                if fname not in pending:
-                    continue
+                except Exception:
+                    pass
+                continue
 
             value, acro = pending[fname]
 
@@ -165,12 +172,11 @@ def fill_form(
     else:
         logger.info("Filled %d fields (all matched)", filled_count)
 
-    # Flatten: set all filled widgets to read-only
+    # Flatten: set ALL widgets to read-only (prevents interactive blue highlight)
     if flatten:
         for page in doc:
             for widget in page.widgets():
-                if widget.field_value and widget.field_value != "Off":
-                    widget.field_flags = widget.field_flags | PDF_FIELD_IS_READ_ONLY
-                    widget.update()
+                widget.field_flags = widget.field_flags | PDF_FIELD_IS_READ_ONLY
+                widget.update()
 
     return doc.tobytes(deflate=True)

@@ -2566,10 +2566,6 @@ function ShareholdersSection({
                 <CurrencyInput value={s.distributions || "0"} onValueChange={(v) => updateField(s.id, "distributions", v)} />
               </div>
               <div>
-                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Health Ins. Premium</label>
-                <CurrencyInput value={s.health_insurance_premium || "0"} onValueChange={(v) => updateField(s.id, "health_insurance_premium", v)} />
-              </div>
-              <div>
                 <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Capital Contributed</label>
                 <CurrencyInput value={s.capital_contributions || "0"} onValueChange={(v) => updateField(s.id, "capital_contributions", v)} />
               </div>
@@ -3041,93 +3037,64 @@ function RentalPropertiesSection({
         </div>
       )}
 
-      {/* Vertical property cards — all expanded */}
-      {properties.map((prop) => (
-        <div key={prop.id} className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
-            <span className="text-xs font-bold text-tx">{prop.description || "(No description)"}</span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs tabular-nums text-tx-muted">Net: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-tx" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
+      {/* Side-by-side property columns (2 per row) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {properties.map((prop) => (
+          <div key={prop.id} className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center justify-between border-b border-border bg-surface-alt px-3 py-1.5 rounded-t-xl">
+              <span className="text-xs font-bold text-tx">{prop.description || "(No description)"}</span>
               <button
                 onClick={() => deleteProperty(prop.id)}
-                className="text-xs font-medium text-danger hover:underline"
+                className="text-[10px] font-medium text-danger hover:underline"
               >
                 Delete
               </button>
             </div>
-          </div>
-          <div className="px-4 py-3 space-y-3">
-            {/* Property info row */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-              <div className="lg:col-span-2">
-                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address / Description</label>
-                <input
-                  type="text"
-                  defaultValue={prop.description}
-                  onBlur={(e) => updateProperty(prop.id, { description: e.target.value })}
-                  className={inputClass + " text-xs"}
-                />
-              </div>
-              <div>
-                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Type</label>
-                <select
-                  defaultValue={prop.property_type}
-                  onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })}
-                  className={inputClass + " text-xs"}
-                >
-                  {Object.entries(PROPERTY_TYPES).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Rental Days</label>
-                <input
-                  type="number"
-                  defaultValue={prop.fair_rental_days}
-                  onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)}
-                  className={inputClass + " text-xs"}
-                />
-              </div>
-              <div>
-                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Personal Days</label>
-                <input
-                  type="number"
-                  defaultValue={prop.personal_use_days}
-                  onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)}
-                  className={inputClass + " text-xs"}
-                />
-              </div>
-            </div>
-            {/* Income + Expenses vertical */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 lg:grid-cols-3">
-              <div className="flex items-center gap-2">
-                <span className="w-40 shrink-0 text-xs font-semibold text-tx">Rents Received</span>
-                <div className="w-32">
-                  <CurrencyInput value={prop.rents_received} onValueChange={(v) => updateProperty(prop.id, { rents_received: v })} />
+            <div className="px-3 py-2 space-y-2">
+              {/* Property info */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2">
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address / Description</label>
+                  <input type="text" defaultValue={prop.description} onBlur={(e) => updateProperty(prop.id, { description: e.target.value })} className={inputClass + " text-xs"} />
                 </div>
-              </div>
-              <div /> {/* spacer */}
-              <div /> {/* spacer */}
-              {EXPENSE_FIELDS.map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="w-40 shrink-0 text-xs text-tx-secondary">{label}</span>
-                  <div className="w-32">
-                    <CurrencyInput
-                      value={prop[key] as string}
-                      onValueChange={(v) => updateProperty(prop.id, { [key]: v })}
-                    />
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Type</label>
+                  <select defaultValue={prop.property_type} onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })} className={inputClass + " text-xs"}>
+                    {Object.entries(PROPERTY_TYPES).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Rental Days</label>
+                    <input type="number" defaultValue={prop.fair_rental_days} onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-xs"} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Personal Days</label>
+                    <input type="number" defaultValue={prop.personal_use_days} onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-xs"} />
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex gap-6 border-t border-border-subtle pt-2">
-              <span className="text-xs text-tx-secondary">Total Expenses: <strong className="text-tx">{fmt(parseFloat(prop.total_expenses))}</strong></span>
-              <span className="text-xs text-tx-secondary">Net Rent: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-success" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
+              </div>
+              {/* Income + Expenses stacked */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-36 shrink-0 text-xs font-semibold text-tx">Rents Received</span>
+                  <CurrencyInput value={prop.rents_received} onValueChange={(v) => updateProperty(prop.id, { rents_received: v })} className="text-xs" />
+                </div>
+                {EXPENSE_FIELDS.map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="w-36 shrink-0 text-xs text-tx-secondary">{label}</span>
+                    <CurrencyInput value={prop[key] as string} onValueChange={(v) => updateProperty(prop.id, { [key]: v })} className="text-xs" />
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-4 border-t border-border-subtle pt-1.5">
+                <span className="text-[10px] text-tx-secondary">Expenses: <strong className="text-tx">{fmt(parseFloat(prop.total_expenses))}</strong></span>
+                <span className="text-[10px] text-tx-secondary">Net: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-success" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Grand totals */}
       {properties.length > 1 && (
@@ -3916,60 +3883,74 @@ function SubSchedulePanel({
   const [items, setItems] = useState<LineItemDetailRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    get(`/tax-returns/${taxReturnId}/line-details/?line_number=${lineNumber}`).then(async (res) => {
-      if (res.ok) {
-        const existing = res.data as LineItemDetailRow[];
-        if (existing.length > 0) {
-          setItems(existing);
-          setLoading(false);
-        } else {
-          // Auto-seed 4 blank rows on first open
-          const seeded: LineItemDetailRow[] = [];
-          for (let i = 1; i <= 4; i++) {
-            const r = await post(`/tax-returns/${taxReturnId}/line-details/`, {
-              line_number: lineNumber, description: "", amount: "0",
-              amount_boy: "0", amount_eoy: "0", sort_order: i,
-            });
-            if (r.ok) seeded.push(r.data as LineItemDetailRow);
-          }
-          setItems(seeded);
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    });
-  }, [taxReturnId, lineNumber]);
-
-  async function addItem() {
-    const res = await post(`/tax-returns/${taxReturnId}/line-details/`, {
+  // Create a local-only placeholder row (not yet saved to DB)
+  function makeBlankRow(sortOrder: number): LineItemDetailRow {
+    return {
+      id: `local-${crypto.randomUUID()}`,
       line_number: lineNumber,
       description: "",
       amount: "0",
       amount_boy: "0",
       amount_eoy: "0",
-      sort_order: items.length + 1,
+      sort_order: sortOrder,
+    };
+  }
+
+  useEffect(() => {
+    get(`/tax-returns/${taxReturnId}/line-details/?line_number=${lineNumber}`).then((res) => {
+      if (res.ok) {
+        const existing = res.data as LineItemDetailRow[];
+        if (existing.length > 0) {
+          setItems(existing);
+        } else {
+          // Show 4 blank local rows (no DB calls)
+          setItems([1, 2, 3, 4].map(makeBlankRow));
+        }
+      }
+      setLoading(false);
     });
-    if (res.ok) {
-      const newItem = res.data as LineItemDetailRow;
-      setItems([...items, newItem]);
-      // Focus the new description input
-      setTimeout(() => {
-        document.getElementById(`lid-desc-${newItem.id}`)?.focus();
-      }, 50);
+  }, [taxReturnId, lineNumber]);
+
+  // Save a local row to the server, replacing the local ID with the real one
+  async function ensureSaved(localId: string, field: string, value: string) {
+    const item = items.find((i) => i.id === localId);
+    if (!item) return;
+
+    if (localId.startsWith("local-")) {
+      // First edit — create on server
+      const payload = { ...item, [field]: value };
+      const res = await post(`/tax-returns/${taxReturnId}/line-details/`, {
+        line_number: lineNumber,
+        description: payload.description,
+        amount: payload.amount,
+        amount_boy: payload.amount_boy,
+        amount_eoy: payload.amount_eoy,
+        sort_order: payload.sort_order,
+      });
+      if (res.ok) {
+        const saved = res.data as LineItemDetailRow;
+        setItems((prev) => prev.map((i) => (i.id === localId ? saved : i)));
+        await onRefresh();
+      }
+    } else {
+      // Already saved — patch
+      await patch(`/tax-returns/${taxReturnId}/line-details/${localId}/`, { [field]: value });
+      await onRefresh();
     }
   }
 
-  async function updateItem(itemId: string, field: string, value: string) {
-    await patch(`/tax-returns/${taxReturnId}/line-details/${itemId}/`, { [field]: value });
-    await onRefresh();
+  async function addItem() {
+    setItems((prev) => [...prev, makeBlankRow(prev.length + 1)]);
   }
 
   async function deleteItem(itemId: string) {
-    await del(`/tax-returns/${taxReturnId}/line-details/${itemId}/`);
-    setItems(items.filter((i) => i.id !== itemId));
-    await onRefresh();
+    if (itemId.startsWith("local-")) {
+      setItems(items.filter((i) => i.id !== itemId));
+    } else {
+      await del(`/tax-returns/${taxReturnId}/line-details/${itemId}/`);
+      setItems(items.filter((i) => i.id !== itemId));
+      await onRefresh();
+    }
   }
 
   function handleLocalChange(itemId: string, field: string, value: string) {
@@ -3998,7 +3979,7 @@ function SubSchedulePanel({
             type="text"
             value={item.description}
             onChange={(e) => handleLocalChange(item.id, "description", e.target.value)}
-            onBlur={(e) => updateItem(item.id, "description", e.target.value)}
+            onBlur={(e) => ensureSaved(item.id, "description", e.target.value)}
             className={inputClass + (isBs ? " flex-1" : " w-48")}
             placeholder="Description"
           />
@@ -4007,14 +3988,14 @@ function SubSchedulePanel({
               <div className="w-28">
                 <CurrencyInput
                   value={item.amount_boy}
-                  onValueChange={(v) => { handleLocalChange(item.id, "amount_boy", v); updateItem(item.id, "amount_boy", v); }}
+                  onValueChange={(v) => { handleLocalChange(item.id, "amount_boy", v); ensureSaved(item.id, "amount_boy", v); }}
                   className="text-xs"
                 />
               </div>
               <div className="w-28">
                 <CurrencyInput
                   value={item.amount_eoy}
-                  onValueChange={(v) => { handleLocalChange(item.id, "amount_eoy", v); updateItem(item.id, "amount_eoy", v); }}
+                  onValueChange={(v) => { handleLocalChange(item.id, "amount_eoy", v); ensureSaved(item.id, "amount_eoy", v); }}
                   className="text-xs"
                 />
               </div>
@@ -4023,7 +4004,7 @@ function SubSchedulePanel({
             <div className="w-32">
               <CurrencyInput
                 value={item.amount}
-                onValueChange={(v) => { handleLocalChange(item.id, "amount", v); updateItem(item.id, "amount", v); }}
+                onValueChange={(v) => { handleLocalChange(item.id, "amount", v); ensureSaved(item.id, "amount", v); }}
                 className="text-xs"
               />
             </div>
@@ -4603,7 +4584,7 @@ function FormsTab({
   ].filter((g) => g.entries.length > 0);
 
   return (
-    <div className="flex gap-0 -mx-2" style={{ height: "calc(100vh - 14rem)" }}>
+    <div className="flex gap-0 -mx-6 -mb-6" style={{ height: "calc(100vh - 8rem)" }}>
       {/* Sidebar — form selector */}
       <div className="w-56 shrink-0 overflow-y-auto border-r border-border bg-card">
         {groups.map((group) => (
