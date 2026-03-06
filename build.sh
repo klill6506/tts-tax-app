@@ -21,6 +21,9 @@ cd server
 pip install poetry
 poetry install --only main
 
+echo "=== Running migrations ==="
+poetry run python manage.py migrate --noinput
+
 echo "=== Collecting Django static files ==="
 poetry run python manage.py collectstatic --noinput
 
