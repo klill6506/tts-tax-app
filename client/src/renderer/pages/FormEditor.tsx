@@ -1985,10 +1985,7 @@ function IncomeDeductionsSection({
   const deductionFields = fieldsBySection["page1_deductions"] || [];
   const taxFields = fieldsBySection[TAX_SECTION_CODE] || [];
 
-  // Split deductions: lines 7-18 (standard), line 19 (other), lines 20-21 (summary)
-  const stdDeductionItems = deductionFields
-    .filter((f) => DEDUCTION_LINE_RANGE.includes(f.line_number) && f.line_number !== "19")
-    .sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
+  // Separate line 19 and summary lines from the rest
   const otherDedLine = deductionFields.find((f) => f.line_number === "19");
   const summaryLines = deductionFields.filter(
     (f) => DEDUCTION_SUMMARY_LINES.includes(f.line_number)
@@ -1997,13 +1994,88 @@ function IncomeDeductionsSection({
   const pyLines = priorYear?.line_values ?? {};
   const hasPY = priorYear !== null;
 
-  // Split alphabetical deductions into two columns
-  const midpoint = Math.ceil(stdDeductionItems.length / 2);
-  const leftDeductions = stdDeductionItems.slice(0, midpoint);
-  const rightDeductions = stdDeductionItems.slice(midpoint);
+  // Build merged list: form lines 7-18 + other deduction rows, sorted alphabetically
+  type DeductionItem =
+    | { type: "form_line"; field: FieldValue }
+    | { type: "other_ded"; row: OtherDeductionRow };
 
-  // Other deductions detail expand/collapse
+  const allDeductions: DeductionItem[] = useMemo(() => {
+    const items: DeductionItem[] = [];
+    for (const f of deductionFields) {
+      if (f.line_number === "19" || DEDUCTION_SUMMARY_LINES.includes(f.line_number)) continue;
+      items.push({ type: "form_line", field: f });
+    }
+    for (const row of localOther) {
+      items.push({ type: "other_ded", row });
+    }
+    items.sort((a, b) => {
+      const labelA = a.type === "form_line" ? a.field.label : (a.row.description || "zzz");
+      const labelB = b.type === "form_line" ? b.field.label : (b.row.description || "zzz");
+      return labelA.localeCompare(labelB, "en", { sensitivity: "base" });
+    });
+    return items;
+  }, [deductionFields, localOther]);
+
+  // Split into two columns
+  const midpoint = Math.ceil(allDeductions.length / 2);
+  const leftDeductions = allDeductions.slice(0, midpoint);
+  const rightDeductions = allDeductions.slice(midpoint);
+
+  // Detail expand for adding more other deductions
   const [otherDedExpanded, setOtherDedExpanded] = useState(false);
+
+  function renderDeductionItem(item: DeductionItem) {
+    if (item.type === "form_line") {
+      return (
+        <div key={item.field.id} className={`flex items-center gap-2 px-3 py-1 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-tx truncate">{item.field.label}</span>
+          </div>
+          <div className="w-32 shrink-0">
+            <FieldInput field={item.field} onChange={onChange} />
+          </div>
+        </div>
+      );
+    }
+    const row = item.row;
+    const isStandard = row.source === "standard";
+    return (
+      <div key={row.id} className="flex items-center gap-2 px-3 py-1">
+        <div className="flex-1 min-w-0">
+          {isStandard ? (
+            <span className="text-xs text-tx">{row.description}</span>
+          ) : (
+            <>
+              <input
+                id={`ded-desc-${row.id}`}
+                type="text"
+                list={`ded-cats-${row.id}`}
+                value={row.description}
+                onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
+                onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
+                className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                placeholder="Enter deduction..."
+              />
+              <datalist id={`ded-cats-${row.id}`}>
+                {categories.map((cat) => <option key={cat} value={cat} />)}
+              </datalist>
+            </>
+          )}
+        </div>
+        <div className="w-32 shrink-0">
+          <CurrencyInput
+            value={row.amount}
+            onValueChange={(v) => { handleLocalOtherChange(row.id, "amount", v); updateDeduction(row.id, "amount", v); }}
+          />
+        </div>
+        <div className="w-8 shrink-0 text-center">
+          {!isStandard && (
+            <button onClick={() => deleteDeduction(row.id)} className="text-xs font-medium text-danger hover:text-danger-hover">×</button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -2034,43 +2106,24 @@ function IncomeDeductionsSection({
         )}
       </div>
 
-      {/* ===== DEDUCTIONS — 2 columns alphabetical, Other at bottom, then totals ===== */}
+      {/* ===== DEDUCTIONS — all items (form lines + other ded) merged alphabetically in 2 cols ===== */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
           Deductions
         </div>
-        {/* Standard deduction lines (7-18) in 2 columns alphabetically */}
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
           <div className="divide-y divide-border-subtle">
-            {leftDeductions.map((fv) => (
-              <div key={fv.id} className={`flex items-center gap-2 px-3 py-1 ${fv.is_computed ? "bg-surface-alt/50" : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs text-tx truncate">{fv.label}</span>
-                </div>
-                <div className="w-32 shrink-0">
-                  <FieldInput field={fv} onChange={onChange} />
-                </div>
-              </div>
-            ))}
+            {leftDeductions.map(renderDeductionItem)}
           </div>
           <div className="divide-y divide-border-subtle">
-            {rightDeductions.map((fv) => (
-              <div key={fv.id} className={`flex items-center gap-2 px-3 py-1 ${fv.is_computed ? "bg-surface-alt/50" : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs text-tx truncate">{fv.label}</span>
-                </div>
-                <div className="w-32 shrink-0">
-                  <FieldInput field={fv} onChange={onChange} />
-                </div>
-              </div>
-            ))}
+            {rightDeductions.map(renderDeductionItem)}
           </div>
         </div>
 
-        {/* Line 19: Other deductions — with expandable detail */}
+        {/* Last row: Other deductions total + Detail button to add more */}
         {otherDedLine && (
           <div className="border-t border-border-subtle">
-            <div className={`flex items-center gap-2 px-3 py-1 ${otherDedLine.is_computed ? "bg-surface-alt/50" : ""}`}>
+            <div className="flex items-center gap-2 px-3 py-1">
               <div className="flex-1 min-w-0 flex items-center gap-1">
                 <span className="text-xs text-tx">{otherDedLine.label}</span>
                 <button
@@ -2086,6 +2139,9 @@ function IncomeDeductionsSection({
             </div>
             {otherDedExpanded && (
               <div className="bg-surface-alt/30 border-t border-border-subtle px-4 py-2 space-y-1">
+                {localOther.length === 0 && (
+                  <div className="text-xs text-tx-muted py-1">No detail rows yet. Click "Add" to create one.</div>
+                )}
                 {localOther.map((row) => {
                   const isStandard = row.source === "standard";
                   return (
@@ -2129,7 +2185,7 @@ function IncomeDeductionsSection({
                   onClick={addDeduction}
                   className="mt-1 rounded-lg bg-success px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
                 >
-                  Add Deduction
+                  Add
                 </button>
               </div>
             )}
