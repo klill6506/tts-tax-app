@@ -33,6 +33,16 @@ interface OtherDeductionRow {
   source: string;
 }
 
+interface LineItemDetailRow {
+  id: string;
+  line_number: string;
+  description: string;
+  amount: string;
+  amount_boy: string;
+  amount_eoy: string;
+  sort_order: number;
+}
+
 interface OfficerRow {
   id: string;
   name: string;
@@ -3259,7 +3269,7 @@ function BalanceSheetsSection({
           Populate BOY from Prior Year
         </button>
       </div>
-      <ScheduleLSection fields={schedLFields} onChange={onChange} />
+      <ScheduleLSection fields={schedLFields} onChange={onChange} taxReturnId={taxReturnId} onRefresh={onRefresh} />
       {m1Fields.length > 0 && (() => {
         // M-1 two-column layout: Lines 1-4 on left, Lines 5-8 on right (like the IRS form)
         const leftLines = m1Fields.filter((f) => ["M1_1","M1_2","M1_3a","M1_3b","M1_3c","M1_4"].includes(f.line_number));
@@ -3272,12 +3282,12 @@ function BalanceSheetsSection({
             <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
               <div className="divide-y divide-border-subtle">
                 {leftLines.map((fv) => (
-                  <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
+                  <FieldRowWithSub key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} taxReturnId={taxReturnId} onRefresh={onRefresh} />
                 ))}
               </div>
               <div className="divide-y divide-border-subtle">
                 {rightLines.map((fv) => (
-                  <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
+                  <FieldRowWithSub key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} taxReturnId={taxReturnId} onRefresh={onRefresh} />
                 ))}
               </div>
             </div>
@@ -3810,10 +3820,23 @@ function isBOY(lineNum: string): boolean {
 function ScheduleLSection({
   fields,
   onChange,
+  taxReturnId,
+  onRefresh,
 }: {
   fields: FieldValue[];
   onChange: (formLineId: string, value: string) => void;
+  taxReturnId: string;
+  onRefresh: () => Promise<void>;
 }) {
+  const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
+  function toggleSub(ln: string) {
+    setExpandedSubs((prev) => {
+      const next = new Set(prev);
+      next.has(ln) ? next.delete(ln) : next.add(ln);
+      return next;
+    });
+  }
+
   // Group fields into pairs: [BOY, EOY] by category
   const groups: { label: string; boy?: FieldValue; eoy?: FieldValue }[] = [];
   const seen = new Set<string>();
@@ -3893,12 +3916,21 @@ function ScheduleLSection({
                 <div className="w-10 shrink-0 text-xs text-tx-secondary">
                   {lineNum}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 flex items-center gap-1">
                   <span className="text-xs text-tx">{g.label}</span>
                   {isComputed && (
-                    <span className="ml-2 text-xs italic text-tx-muted">
+                    <span className="ml-1 text-xs italic text-tx-muted">
                       Calculated
                     </span>
+                  )}
+                  {lineNum in SUBSCHEDULE_LINES && (
+                    <button
+                      onClick={() => toggleSub(lineNum)}
+                      className="ml-1 text-[10px] font-medium text-primary hover:underline"
+                      title="Show/hide detail breakdown"
+                    >
+                      {expandedSubs.has(lineNum) ? "▾ Hide detail" : "▸ Detail"}
+                    </button>
                   )}
                 </div>
                 <div className="w-36 shrink-0">
@@ -3916,6 +3948,15 @@ function ScheduleLSection({
                   )}
                 </div>
               </div>
+              {lineNum in SUBSCHEDULE_LINES && expandedSubs.has(lineNum) && (
+                <div className="px-4 pb-2">
+                  <SubSchedulePanel
+                    taxReturnId={taxReturnId}
+                    lineNumber={lineNum}
+                    onRefresh={onRefresh}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -3927,6 +3968,141 @@ function ScheduleLSection({
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+// Lines that support sub-schedule drill-downs
+const SUBSCHEDULE_LINES: Record<string, { type: "single" | "balance_sheet"; label: string }> = {
+  M1_2: { type: "single", label: "Income on books not on return" },
+  M1_3c: { type: "single", label: "Other M-1 additions" },
+  M1_5b: { type: "single", label: "Other M-1 income on return not on books" },
+  M1_6b: { type: "single", label: "Other M-1 deductions on books not on return" },
+  L6: { type: "balance_sheet", label: "Other current assets" },
+  L9: { type: "balance_sheet", label: "Other investments" },
+  L14: { type: "balance_sheet", label: "Other assets" },
+  L18: { type: "balance_sheet", label: "Other current liabilities" },
+  L21: { type: "balance_sheet", label: "Other liabilities" },
+};
+
+function SubSchedulePanel({
+  taxReturnId,
+  lineNumber,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  lineNumber: string;
+  onRefresh: () => Promise<void>;
+}) {
+  const config = SUBSCHEDULE_LINES[lineNumber];
+  const isBs = config?.type === "balance_sheet";
+
+  const [items, setItems] = useState<LineItemDetailRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    get(`/tax-returns/${taxReturnId}/line-details/?line_number=${lineNumber}`).then((res) => {
+      if (res.ok) setItems(res.data as LineItemDetailRow[]);
+      setLoading(false);
+    });
+  }, [taxReturnId, lineNumber]);
+
+  async function addItem() {
+    const res = await post(`/tax-returns/${taxReturnId}/line-details/`, {
+      line_number: lineNumber,
+      description: "",
+      amount: "0",
+      amount_boy: "0",
+      amount_eoy: "0",
+      sort_order: items.length + 1,
+    });
+    if (res.ok) {
+      const newItem = res.data as LineItemDetailRow;
+      setItems([...items, newItem]);
+      await onRefresh();
+      // Focus the new description input
+      setTimeout(() => {
+        document.getElementById(`lid-desc-${newItem.id}`)?.focus();
+      }, 50);
+    }
+  }
+
+  async function updateItem(itemId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/line-details/${itemId}/`, { [field]: value });
+    await onRefresh();
+  }
+
+  async function deleteItem(itemId: string) {
+    await del(`/tax-returns/${taxReturnId}/line-details/${itemId}/`);
+    setItems(items.filter((i) => i.id !== itemId));
+    await onRefresh();
+  }
+
+  function handleLocalChange(itemId: string, field: string, value: string) {
+    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, [field]: value } : i)));
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus-ring";
+
+  if (loading) return <div className="px-4 py-2 text-xs text-tx-muted">Loading...</div>;
+
+  return (
+    <div className="border border-border-subtle rounded-lg bg-surface-alt/20 p-2 mt-1 space-y-1">
+      {items.length === 0 && (
+        <p className="text-[10px] text-tx-muted px-1">No detail items. Click + to add.</p>
+      )}
+      {items.map((item) => (
+        <div key={item.id} className="flex items-center gap-1.5">
+          <input
+            id={`lid-desc-${item.id}`}
+            type="text"
+            value={item.description}
+            onChange={(e) => handleLocalChange(item.id, "description", e.target.value)}
+            onBlur={(e) => updateItem(item.id, "description", e.target.value)}
+            className={inputClass + (isBs ? " flex-1" : " w-48")}
+            placeholder="Description"
+          />
+          {isBs ? (
+            <>
+              <div className="w-28">
+                <CurrencyInput
+                  value={item.amount_boy}
+                  onValueChange={(v) => { handleLocalChange(item.id, "amount_boy", v); updateItem(item.id, "amount_boy", v); }}
+                  className="text-xs"
+                />
+              </div>
+              <div className="w-28">
+                <CurrencyInput
+                  value={item.amount_eoy}
+                  onValueChange={(v) => { handleLocalChange(item.id, "amount_eoy", v); updateItem(item.id, "amount_eoy", v); }}
+                  className="text-xs"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="w-32">
+              <CurrencyInput
+                value={item.amount}
+                onValueChange={(v) => { handleLocalChange(item.id, "amount", v); updateItem(item.id, "amount", v); }}
+                className="text-xs"
+              />
+            </div>
+          )}
+          <button
+            onClick={() => deleteItem(item.id)}
+            className="text-[10px] text-danger hover:underline shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={addItem}
+        className="text-[10px] font-medium text-primary hover:underline px-1"
+      >
+        + Add detail
+      </button>
+    </div>
+  );
+}
 
 function FieldRow({
   field,
@@ -3973,6 +4149,67 @@ function FieldRow({
 
       {/* Prior year */}
       {showPY && <PriorYearCell value={pyValue} />}
+    </div>
+  );
+}
+
+function FieldRowWithSub({
+  field,
+  onChange,
+  pyValue,
+  showPY = false,
+  taxReturnId,
+  onRefresh,
+}: {
+  field: FieldValue;
+  onChange: (formLineId: string, value: string) => void;
+  pyValue?: number;
+  showPY?: boolean;
+  taxReturnId: string;
+  onRefresh: () => Promise<void>;
+}) {
+  const hasSub = field.line_number in SUBSCHEDULE_LINES;
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <div
+        className={`flex items-center gap-4 px-4 py-1.5 ${
+          field.is_computed ? "bg-surface-alt/50" : ""
+        }`}
+      >
+        <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">
+          {field.line_number}
+        </div>
+        <div className="flex-1 flex items-center gap-1">
+          <span className="text-xs text-tx">{field.label}</span>
+          {field.is_computed && (
+            <span className="ml-1 text-xs italic text-tx-muted">Calculated</span>
+          )}
+          {hasSub && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="ml-1 text-[10px] font-medium text-primary hover:underline"
+              title="Show/hide detail breakdown"
+            >
+              {expanded ? "▾ Hide detail" : "▸ Detail"}
+            </button>
+          )}
+        </div>
+        <div className="w-36 shrink-0">
+          <FieldInput field={field} onChange={onChange} />
+        </div>
+        {showPY && <PriorYearCell value={pyValue} />}
+      </div>
+      {hasSub && expanded && (
+        <div className="px-4 pb-2">
+          <SubSchedulePanel
+            taxReturnId={taxReturnId}
+            lineNumber={field.line_number}
+            onRefresh={onRefresh}
+          />
+        </div>
+      )}
     </div>
   );
 }

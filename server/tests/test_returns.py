@@ -548,6 +548,127 @@ class TestOtherDeductions:
 
 
 # ---------------------------------------------------------------------------
+# Line Item Details (Sub-schedules)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestLineItemDetails:
+    def _setup_return(self, http, seeded, tax_year):
+        resp = _create_return(http, tax_year.id)
+        return resp.json()["id"]
+
+    def test_list_empty(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        resp = http.get(f"/api/v1/tax-returns/{rid}/line-details/?line_number=M1_2")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_create_single_type(self, user_and_http, seeded, tax_year):
+        """Create a detail item for an M-1 line (single amount type)."""
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        resp = http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={"line_number": "M1_2", "description": "Meals", "amount": "500.00"},
+            content_type="application/json",
+        )
+        assert resp.status_code == 201
+        assert resp.json()["description"] == "Meals"
+        assert resp.json()["amount"] == "500.00"
+
+    def test_single_rollup(self, user_and_http, seeded, tax_year):
+        """Detail items should sum into the parent M-1 line."""
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={"line_number": "M1_2", "description": "Meals", "amount": "500.00"},
+            content_type="application/json",
+        )
+        http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={"line_number": "M1_2", "description": "Entertainment", "amount": "300.00"},
+            content_type="application/json",
+        )
+        fv = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__line_number="M1_2",
+        )
+        assert fv.value == "800.00"
+
+    def test_balance_sheet_rollup(self, user_and_http, seeded, tax_year):
+        """Balance-sheet detail items roll BOY/EOY into the correct L-lines."""
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={
+                "line_number": "L6",
+                "description": "Security deposits",
+                "amount_boy": "1000.00",
+                "amount_eoy": "1200.00",
+            },
+            content_type="application/json",
+        )
+        http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={
+                "line_number": "L6",
+                "description": "Prepaid expenses",
+                "amount_boy": "500.00",
+                "amount_eoy": "800.00",
+            },
+            content_type="application/json",
+        )
+        boy_fv = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__line_number="L6a",
+        )
+        eoy_fv = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__line_number="L6d",
+        )
+        assert boy_fv.value == "1500.00"
+        assert eoy_fv.value == "2000.00"
+
+    def test_update_detail(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        resp = http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={"line_number": "M1_2", "description": "Meals", "amount": "500.00"},
+            content_type="application/json",
+        )
+        item_id = resp.json()["id"]
+        resp2 = http.patch(
+            f"/api/v1/tax-returns/{rid}/line-details/{item_id}/",
+            data={"amount": "750.00"},
+            content_type="application/json",
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["amount"] == "750.00"
+        fv = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__line_number="M1_2",
+        )
+        assert fv.value == "750.00"
+
+    def test_delete_detail(self, user_and_http, seeded, tax_year):
+        _, http = user_and_http
+        rid = self._setup_return(http, seeded, tax_year)
+        resp = http.post(
+            f"/api/v1/tax-returns/{rid}/line-details/",
+            data={"line_number": "M1_2", "description": "Meals", "amount": "500.00"},
+            content_type="application/json",
+        )
+        item_id = resp.json()["id"]
+        del_resp = http.delete(f"/api/v1/tax-returns/{rid}/line-details/{item_id}/")
+        assert del_resp.status_code == 204
+        fv = FormFieldValue.objects.get(
+            tax_return_id=rid, form_line__line_number="M1_2",
+        )
+        assert fv.value == "0.00"
+
+
+# ---------------------------------------------------------------------------
 # Officers CRUD
 # ---------------------------------------------------------------------------
 

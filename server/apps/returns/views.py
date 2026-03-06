@@ -19,6 +19,7 @@ from .models import (
     FormDefinition,
     FormFieldValue,
     FormLine,
+    LineItemDetail,
     Officer,
     OtherDeduction,
     PreparerInfo,
@@ -32,6 +33,7 @@ from .serializers import (
     CreateReturnSerializer,
     FormDefinitionListSerializer,
     FormDefinitionSerializer,
+    LineItemDetailSerializer,
     OfficerSerializer,
     OtherDeductionSerializer,
     PreparerInfoSerializer,
@@ -522,6 +524,68 @@ def _write_schedule_k_line(tax_return, mapping_key, total):
 
 # Need this import for the aggregate
 from django.db.models import Sum as models_Sum
+
+
+# ---------------------------------------------------------------------------
+# Line Item Detail rollup (sub-schedules for M-1, Schedule L, etc.)
+# ---------------------------------------------------------------------------
+
+# Which parent lines support sub-schedules, and which form line(s) to write to.
+# M-1 lines: single amount → writes to the line_number directly
+# Schedule L lines: BOY → "{line}a" or "{line}b", EOY → "{line}d" or "{line}e"
+SUBSCHEDULE_CONFIG = {
+    # M-1 sub-schedules (single amount)
+    "M1_2": {"type": "single"},
+    "M1_3c": {"type": "single"},
+    "M1_5b": {"type": "single"},
+    "M1_6b": {"type": "single"},
+    # Schedule L sub-schedules (BOY + EOY)
+    "L6": {"type": "balance_sheet", "boy_line": "L6a", "eoy_line": "L6d"},
+    "L9": {"type": "balance_sheet", "boy_line": "L9a", "eoy_line": "L9d"},
+    "L14": {"type": "balance_sheet", "boy_line": "L14a", "eoy_line": "L14d"},
+    "L18": {"type": "balance_sheet", "boy_line": "L18a", "eoy_line": "L18d"},
+    "L21": {"type": "balance_sheet", "boy_line": "L21a", "eoy_line": "L21d"},
+}
+
+
+def _rollup_line_item_details(tax_return, line_number):
+    """Sum LineItemDetail rows and write totals back to the parent form line(s)."""
+    config = SUBSCHEDULE_CONFIG.get(line_number)
+    if not config:
+        return
+
+    details = LineItemDetail.objects.filter(
+        tax_return=tax_return, line_number=line_number
+    )
+
+    if config["type"] == "single":
+        total = details.aggregate(total=models_Sum("amount"))["total"] or Decimal("0.00")
+        _write_line_value(tax_return, line_number, total)
+    elif config["type"] == "balance_sheet":
+        boy_total = details.aggregate(total=models_Sum("amount_boy"))["total"] or Decimal("0.00")
+        eoy_total = details.aggregate(total=models_Sum("amount_eoy"))["total"] or Decimal("0.00")
+        _write_line_value(tax_return, config["boy_line"], boy_total)
+        _write_line_value(tax_return, config["eoy_line"], eoy_total)
+
+    compute_return(tax_return)
+
+
+def _write_line_value(tax_return, line_number, total):
+    """Write a total to a form line by line_number, respecting is_overridden."""
+    try:
+        fl = FormLine.objects.get(
+            section__form=tax_return.form_definition,
+            line_number=line_number,
+        )
+        fv, _ = FormFieldValue.objects.get_or_create(
+            tax_return=tax_return,
+            form_line=fl,
+        )
+        if not fv.is_overridden:
+            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.save(update_fields=["value", "updated_at"])
+    except FormLine.DoesNotExist:
+        pass
 
 
 class FormDefinitionViewSet(
@@ -1023,6 +1087,61 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         ser.save()
         _rollup_other_deductions(tax_return)
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Line Item Details CRUD (generic sub-schedules)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="line-details")
+    def line_details(self, request, pk=None):
+        """
+        List or create LineItemDetail rows.
+
+        GET: ?line_number=M1_2 — returns detail rows for that line.
+        POST: { line_number, description, amount, ... } — creates a row.
+        """
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            line_number = request.query_params.get("line_number", "")
+            qs = LineItemDetail.objects.filter(
+                tax_return=tax_return, line_number=line_number
+            )
+            return Response(LineItemDetailSerializer(qs, many=True).data)
+
+        # POST — create
+        ser = LineItemDetailSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        _rollup_line_item_details(tax_return, ser.validated_data["line_number"])
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="line-details/(?P<detail_id>[^/.]+)",
+    )
+    def line_detail_item(self, request, pk=None, detail_id=None):
+        """Update or delete a single LineItemDetail row."""
+        tax_return = self.get_object()
+        try:
+            item = LineItemDetail.objects.get(id=detail_id, tax_return=tax_return)
+        except LineItemDetail.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        line_number = item.line_number
+
+        if request.method == "DELETE":
+            item.delete()
+            _rollup_line_item_details(tax_return, line_number)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PATCH
+        ser = LineItemDetailSerializer(item, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        _rollup_line_item_details(tax_return, line_number)
         return Response(ser.data)
 
     # ------------------------------------------------------------------

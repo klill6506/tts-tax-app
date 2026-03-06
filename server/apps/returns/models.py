@@ -342,6 +342,56 @@ class OtherDeduction(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Line Item Detail — generic sub-schedule for M-1, Schedule L, etc.
+# ---------------------------------------------------------------------------
+
+
+class LineItemDetail(models.Model):
+    """
+    A detail row for any form line that needs a sub-schedule breakdown.
+
+    Used for:
+    - M-1 lines (M1_2, M1_3c, M1_5b, M1_6b): description + amount
+    - Schedule L lines (L6, L9, L14, L18, L21): description + amount_boy + amount_eoy
+
+    The total of all detail items rolls up into the parent form line value.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="line_item_details",
+    )
+    line_number = models.CharField(
+        max_length=20,
+        help_text="Parent form line (e.g., 'M1_2', 'L6').",
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Amount (for single-column lines like M-1).",
+    )
+    amount_boy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Beginning of year amount (for Schedule L lines).",
+    )
+    amount_eoy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="End of year amount (for Schedule L lines).",
+    )
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["line_number", "sort_order", "description"]
+
+    def __str__(self):
+        return f"{self.line_number}: {self.description}"
+
+
+# ---------------------------------------------------------------------------
 # Officer (per return)
 # ---------------------------------------------------------------------------
 

@@ -5,6 +5,7 @@ from .models import (
     FormFieldValue,
     FormLine,
     FormSection,
+    LineItemDetail,
     Officer,
     OtherDeduction,
     PreparerInfo,
@@ -74,6 +75,23 @@ class OtherDeductionSerializer(serializers.ModelSerializer):
             "category",
             "sort_order",
             "source",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class LineItemDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LineItemDetail
+        fields = (
+            "id",
+            "line_number",
+            "description",
+            "amount",
+            "amount_boy",
+            "amount_eoy",
+            "sort_order",
             "created_at",
             "updated_at",
         )
