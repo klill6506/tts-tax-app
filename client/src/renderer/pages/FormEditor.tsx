@@ -2130,27 +2130,32 @@ function IncomeDeductionsSection({
           </div>
         </div>
 
-        {/* Other Deductions sub-section at the bottom */}
-        <div className="border-t border-border">
-          <div className="flex items-center justify-between bg-surface-alt/50 px-4 py-1.5">
-            <span className="text-xs font-semibold text-tx-secondary">Other Deductions</span>
-            <button
-              onClick={addDeduction}
-              className="rounded-lg bg-success px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
-            >
-              Add
-            </button>
-          </div>
-          <div className="divide-y divide-border-subtle">
-            {otherDeductionsOnly.map(renderDeductionItem)}
-          </div>
-        </div>
-
         {/* Summary lines: Total Deductions + Ordinary Business Income */}
         <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
           {summaryLines.map((fv) => (
             <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
           ))}
+        </div>
+      </div>
+
+      {/* ===== OTHER DEDUCTIONS — separate section at bottom ===== */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between bg-surface-alt px-4 py-1.5 rounded-t-xl">
+          <span className="text-xs font-bold uppercase tracking-wider text-tx-secondary">Other Deductions (Line 19 Detail)</span>
+          <button
+            onClick={addDeduction}
+            className="rounded-lg bg-success px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
+          >
+            Add Deduction
+          </button>
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {otherDeductionsOnly.length === 0 && (
+            <div className="px-4 py-3 text-xs text-tx-muted text-center">
+              No other deductions. Click "Add Deduction" to create one.
+            </div>
+          )}
+          {otherDeductionsOnly.map(renderDeductionItem)}
         </div>
       </div>
 
@@ -3037,58 +3042,41 @@ function RentalPropertiesSection({
         </div>
       )}
 
-      {/* Side-by-side property columns (2 per row) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Side-by-side property columns (4 across) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {properties.map((prop) => (
           <div key={prop.id} className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b border-border bg-surface-alt px-3 py-1.5 rounded-t-xl">
-              <span className="text-xs font-bold text-tx">{prop.description || "(No description)"}</span>
-              <button
-                onClick={() => deleteProperty(prop.id)}
-                className="text-[10px] font-medium text-danger hover:underline"
-              >
-                Delete
-              </button>
+            <div className="flex items-center justify-between border-b border-border bg-surface-alt px-2 py-1 rounded-t-xl">
+              <span className="text-[10px] font-bold text-tx truncate">{prop.description || "(No description)"}</span>
+              <button onClick={() => deleteProperty(prop.id)} className="text-[10px] text-danger hover:underline shrink-0 ml-1">Del</button>
             </div>
-            <div className="px-3 py-2 space-y-2">
+            <div className="px-2 py-1.5 space-y-1.5">
               {/* Property info */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address / Description</label>
-                  <input type="text" defaultValue={prop.description} onBlur={(e) => updateProperty(prop.id, { description: e.target.value })} className={inputClass + " text-xs"} />
-                </div>
-                <div>
-                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Type</label>
-                  <select defaultValue={prop.property_type} onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })} className={inputClass + " text-xs"}>
-                    {Object.entries(PROPERTY_TYPES).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Rental Days</label>
-                    <input type="number" defaultValue={prop.fair_rental_days} onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-xs"} />
-                  </div>
-                  <div>
-                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Personal Days</label>
-                    <input type="number" defaultValue={prop.personal_use_days} onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-xs"} />
-                  </div>
-                </div>
+              <div>
+                <input type="text" defaultValue={prop.description} onBlur={(e) => updateProperty(prop.id, { description: e.target.value })} className={inputClass + " text-[10px] py-0.5"} placeholder="Address / Description" />
               </div>
-              {/* Income + Expenses stacked */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-36 shrink-0 text-xs font-semibold text-tx">Rents Received</span>
-                  <CurrencyInput value={prop.rents_received} onValueChange={(v) => updateProperty(prop.id, { rents_received: v })} className="text-xs" />
+              <div className="grid grid-cols-3 gap-1">
+                <select defaultValue={prop.property_type} onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })} className={inputClass + " text-[10px] py-0.5"}>
+                  {Object.entries(PROPERTY_TYPES).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+                </select>
+                <input type="number" defaultValue={prop.fair_rental_days} onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-[10px] py-0.5"} placeholder="Rent days" title="Rental days" />
+                <input type="number" defaultValue={prop.personal_use_days} onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)} className={inputClass + " text-[10px] py-0.5"} placeholder="Pers days" title="Personal days" />
+              </div>
+              {/* Income + Expenses stacked — compact */}
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1">
+                  <span className="w-24 shrink-0 text-[10px] font-semibold text-tx truncate">Rents Received</span>
+                  <CurrencyInput value={prop.rents_received} onValueChange={(v) => updateProperty(prop.id, { rents_received: v })} className="text-[10px]" />
                 </div>
                 {EXPENSE_FIELDS.map(({ key, label }) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="w-36 shrink-0 text-xs text-tx-secondary">{label}</span>
-                    <CurrencyInput value={prop[key] as string} onValueChange={(v) => updateProperty(prop.id, { [key]: v })} className="text-xs" />
+                  <div key={key} className="flex items-center gap-1">
+                    <span className="w-24 shrink-0 text-[10px] text-tx-secondary truncate" title={label}>{label}</span>
+                    <CurrencyInput value={prop[key] as string} onValueChange={(v) => updateProperty(prop.id, { [key]: v })} className="text-[10px]" />
                   </div>
                 ))}
               </div>
-              <div className="flex gap-4 border-t border-border-subtle pt-1.5">
-                <span className="text-[10px] text-tx-secondary">Expenses: <strong className="text-tx">{fmt(parseFloat(prop.total_expenses))}</strong></span>
+              <div className="flex gap-2 border-t border-border-subtle pt-1">
+                <span className="text-[10px] text-tx-secondary">Exp: <strong className="text-tx">{fmt(parseFloat(prop.total_expenses))}</strong></span>
                 <span className="text-[10px] text-tx-secondary">Net: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-success" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
               </div>
             </div>
@@ -3159,7 +3147,8 @@ function BalanceSheetsSection({
       {m1Fields.length > 0 && (() => {
         // M-1 two-column layout: Lines 1-4 on left, Lines 5-8 on right (like the IRS form)
         const leftLines = m1Fields.filter((f) => ["M1_1","M1_2","M1_3a","M1_3b","M1_3c","M1_4"].includes(f.line_number));
-        const rightLines = m1Fields.filter((f) => ["M1_5a","M1_5b","M1_6a","M1_6b","M1_7","M1_8"].includes(f.line_number));
+        const rightLineNums = ["M1_5a","M1_5b","M1_6a","M1_6b","M1_7","M1_8"];
+        const rightLines = m1Fields.filter((f) => rightLineNums.includes(f.line_number));
         return (
           <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
@@ -3180,7 +3169,15 @@ function BalanceSheetsSection({
           </div>
         );
       })()}
-      {m2Fields.length > 0 && (() => {
+      {(() => {
+        if (m2Fields.length === 0) return (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+              Schedule M-2 — Analysis of AAA, OAA, and STPI
+            </div>
+            <div className="px-4 py-3 text-xs text-tx-muted">No M-2 fields found. Delete and recreate this return to populate M-2.</div>
+          </div>
+        );
         // Build lookup: line_number -> FieldValue
         const m2 = Object.fromEntries(m2Fields.map((f) => [f.line_number, f]));
         const M2_ROWS = [
