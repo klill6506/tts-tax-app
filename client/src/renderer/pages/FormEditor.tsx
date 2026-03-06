@@ -1904,7 +1904,8 @@ function PreparerSection({
 /** Lines 7-19 that are standard deduction lines (not computed totals). */
 const DEDUCTION_LINE_RANGE = ["7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
 /** Computed summary lines shown after deductions. */
-const DEDUCTION_SUMMARY_LINES = ["20", "21"];
+const DEDUCTION_SUMMARY_LINES = ["19", "20", "21"];
+const FREE_FORM_DEDUCTION_PAIRS = ["D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6"];
 /** Tax & Payments section shown at the bottom. */
 const TAX_SECTION_CODE = "page1_tax";
 
@@ -1927,8 +1928,6 @@ function IncomeDeductionsSection({
   const deductionFields = fieldsBySection["page1_deductions"] || [];
   const taxFields = fieldsBySection[TAX_SECTION_CODE] || [];
 
-  // Separate line 19 and summary lines from the rest
-  const otherDedLine = deductionFields.find((f) => f.line_number === "19");
   const summaryLines = deductionFields.filter(
     (f) => DEDUCTION_SUMMARY_LINES.includes(f.line_number)
   );
@@ -1936,33 +1935,34 @@ function IncomeDeductionsSection({
   const pyLines = priorYear?.line_values ?? {};
   const hasPY = priorYear !== null;
 
-  // Build form-line deductions (lines 7-18), sorted alphabetically in 2 columns
-  const sortedDeductions = useMemo(() => {
-    const items = deductionFields.filter(
-      (f) => f.line_number !== "19" && !DEDUCTION_SUMMARY_LINES.includes(f.line_number)
-    );
-    items.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
-    return items;
+  // Separate deduction fields into: named (label + amount), free-form pairs, summary
+  const { namedDeductions, freeFormPairs } = useMemo(() => {
+    const named: FieldValue[] = [];
+    const freeDescs = new Map<string, FieldValue>();  // e.g. D_FREE1_DESC -> field
+    const freeAmts = new Map<string, FieldValue>();   // e.g. D_FREE1 -> field
+    for (const f of deductionFields) {
+      if (DEDUCTION_SUMMARY_LINES.includes(f.line_number)) continue;
+      if (f.line_number.endsWith("_DESC")) {
+        freeDescs.set(f.line_number.replace("_DESC", ""), f);
+      } else if (FREE_FORM_DEDUCTION_PAIRS.includes(f.line_number)) {
+        freeAmts.set(f.line_number, f);
+      } else {
+        named.push(f);
+      }
+    }
+    named.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
+    const pairs = FREE_FORM_DEDUCTION_PAIRS.map((ln) => ({
+      desc: freeDescs.get(ln),
+      amt: freeAmts.get(ln),
+    })).filter((p) => p.desc && p.amt) as { desc: FieldValue; amt: FieldValue }[];
+    return { namedDeductions: named, freeFormPairs: pairs };
   }, [deductionFields]);
 
-  const midpoint = Math.ceil(sortedDeductions.length / 2);
-  const leftDeductions = sortedDeductions.slice(0, midpoint);
-  const rightDeductions = sortedDeductions.slice(midpoint);
-
-  const [otherDedExpanded, setOtherDedExpanded] = useState(false);
-
-  function renderDeductionField(field: FieldValue) {
-    return (
-      <div key={field.id} className={`flex items-center gap-2 px-3 py-1 ${field.is_computed ? "bg-surface-alt/50" : ""}`}>
-        <div className="flex-1 min-w-0">
-          <span className="text-xs text-tx truncate">{field.label}</span>
-        </div>
-        <div className="w-32 shrink-0">
-          <FieldInput field={field} onChange={onChange} />
-        </div>
-      </div>
-    );
-  }
+  // Balance columns: left gets enough named to match right (remaining named + free-form)
+  const rightNamedCount = namedDeductions.length - Math.ceil((namedDeductions.length + freeFormPairs.length) / 2);
+  const leftCount = namedDeductions.length - rightNamedCount;
+  const leftDeductions = namedDeductions.slice(0, leftCount);
+  const rightDeductions = namedDeductions.slice(leftCount);
 
   return (
     <div className="space-y-4">
@@ -2012,50 +2012,60 @@ function IncomeDeductionsSection({
         )}
       </div>
 
-      {/* ===== DEDUCTIONS — all items (form lines + other ded) merged alphabetically in 2 cols ===== */}
+      {/* ===== DEDUCTIONS — flat 2-column grid, alphabetical ===== */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
           Deductions
         </div>
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
+          {/* Left column: named deductions A–O */}
           <div className="divide-y divide-border-subtle">
-            {leftDeductions.map(renderDeductionField)}
+            {leftDeductions.map((field) => (
+              <div key={field.id} className="flex items-center gap-2 px-3 py-1">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs text-tx truncate">{field.label}</span>
+                </div>
+                <div className="w-28 shrink-0">
+                  <FieldInput field={field} onChange={onChange} />
+                </div>
+              </div>
+            ))}
           </div>
+          {/* Right column: named deductions O–W + 6 free-form rows */}
           <div className="divide-y divide-border-subtle">
-            {rightDeductions.map(renderDeductionField)}
+            {rightDeductions.map((field) => (
+              <div key={field.id} className="flex items-center gap-2 px-3 py-1">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs text-tx truncate">{field.label}</span>
+                </div>
+                <div className="w-28 shrink-0">
+                  <FieldInput field={field} onChange={onChange} />
+                </div>
+              </div>
+            ))}
+            {freeFormPairs.map(({ desc, amt }) => (
+              <div key={amt.id} className="flex items-center gap-2 px-3 py-1">
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    value={desc.value || ""}
+                    onChange={(e) => onChange(desc.form_line, e.target.value)}
+                    className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus-ring"
+                    placeholder="Description"
+                  />
+                </div>
+                <div className="w-28 shrink-0">
+                  <CurrencyInput
+                    value={amt.value}
+                    onValueChange={(v) => onChange(amt.form_line, v)}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Last row: Other deductions total + Detail button (SubSchedulePanel) */}
-        {otherDedLine && (
-          <div className="border-t border-border-subtle">
-            <div className="flex items-center gap-2 px-3 py-1">
-              <div className="flex-1 min-w-0 flex items-center gap-1">
-                <span className="text-xs text-tx">{otherDedLine.label}</span>
-                <button
-                  onClick={() => setOtherDedExpanded(!otherDedExpanded)}
-                  className="ml-1 text-[10px] font-medium text-primary hover:underline"
-                >
-                  {otherDedExpanded ? "▾ Hide detail" : "▸ Detail"}
-                </button>
-              </div>
-              <div className="w-32 shrink-0">
-                <FieldInput field={otherDedLine} onChange={onChange} />
-              </div>
-            </div>
-            {otherDedExpanded && (
-              <div className="px-4 pb-2">
-                <SubSchedulePanel
-                  taxReturnId={taxReturnId}
-                  lineNumber="19"
-                  onRefresh={onRefresh}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Summary lines: Total Deductions + Ordinary Business Income */}
+        {/* Summary lines: Other Deductions, Total Deductions, Ordinary Business Income */}
         <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
           {summaryLines.map((fv) => (
             <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
@@ -3563,7 +3573,6 @@ const SUBSCHEDULE_LINES: Record<string, { type: "single" | "balance_sheet"; labe
   M1_3c: { type: "single", label: "Other M-1 additions" },
   M1_5b: { type: "single", label: "Other M-1 income on return not on books" },
   M1_6b: { type: "single", label: "Other M-1 deductions on books not on return" },
-  "19": { type: "single", label: "Other deductions" },
   L6: { type: "balance_sheet", label: "Other current assets" },
   L9: { type: "balance_sheet", label: "Other investments" },
   L14: { type: "balance_sheet", label: "Other assets" },

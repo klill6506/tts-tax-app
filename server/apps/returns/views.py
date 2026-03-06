@@ -539,8 +539,6 @@ SUBSCHEDULE_CONFIG = {
     "M1_3c": {"type": "single"},
     "M1_5b": {"type": "single"},
     "M1_6b": {"type": "single"},
-    # Page 1 deductions sub-schedules
-    "19": {"type": "single"},  # Other deductions detail
     # Schedule L sub-schedules (BOY + EOY)
     "L6": {"type": "balance_sheet", "boy_line": "L6a", "eoy_line": "L6d"},
     "L9": {"type": "balance_sheet", "boy_line": "L9a", "eoy_line": "L9d"},

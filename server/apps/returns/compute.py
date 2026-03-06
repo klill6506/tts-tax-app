@@ -44,6 +44,16 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("6", lambda v: _d(v, "3") + _d(v, "4") + _d(v, "5")),
 
     # Page 1 — Deductions
+    # Line 19 = sum of named "other deductions" (D_*) + free-form rows
+    ("19", lambda v: _sum(
+        v,
+        "D_ACCT", "D_ANSW", "D_AUTO", "D_BANK", "D_COMM", "D_DELI",
+        "D_DUES", "D_GIFT", "D_INSU", "D_JANI", "D_LAUN", "D_LEGA",
+        "D_MEAL", "D_MISC", "D_OFFI", "D_ORGN", "D_OUTS", "D_PARK",
+        "D_POST", "D_PRNT", "D_SECU", "D_SUPP", "D_TELE", "D_TOOL",
+        "D_TRAV", "D_UNIF", "D_UTIL", "D_WAST",
+        "D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6",
+    )),
     ("20", lambda v: _sum(
         v, "7", "8", "9", "10", "11", "12", "13",
         "14", "15", "16", "17", "18", "19",
