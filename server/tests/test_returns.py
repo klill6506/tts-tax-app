@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 138
+        assert lines.count() == 195
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -85,7 +85,7 @@ class TestSeed:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 138
+        assert FormLine.objects.filter(section__form=seeded).count() == 195
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
@@ -138,7 +138,7 @@ class TestTaxReturnEndpoints:
         assert data["form_code"] == "1120-S"
         assert data["status"] == "draft"
         # All form lines should have field values (113 non-B + 17 Schedule B = 130)
-        assert len(data["field_values"]) == 138
+        assert len(data["field_values"]) == 195
 
     def test_create_duplicate_returns_409(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -866,8 +866,10 @@ class TestComputeOverride:
         )
         # Create remaining computed lines with empty values so compute doesn't crash
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
-                    "M1_3b", "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8"]:
+                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L15a", "L15d", "L28a", "L28d",
+                    "M1_3b", "M1_4", "M1_7", "M1_8",
+                    "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+                    "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]
             ).exists():
@@ -899,8 +901,10 @@ class TestComputeOverride:
         )
         # Create remaining computed lines
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
-                    "M1_3b", "M1_4", "M1_7", "M1_8", "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8"]:
+                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L15a", "L15d", "L28a", "L28d",
+                    "M1_3b", "M1_4", "M1_7", "M1_8",
+                    "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+                    "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]
             ).exists():

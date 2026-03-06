@@ -130,32 +130,55 @@ def _populate_m2_boy_from_prior_year(tax_return):
     if not m2:
         return 0
 
-    # M2_8 is the ending balance on the 1120-S M-2
-    # (1065 uses M2_9, 1120 uses M2_8 as well)
-    ending_key = "M2_8"
-    if pyr.form_code == "1065":
-        ending_key = "M2_9"
-    ending_balance = m2.get(ending_key)
-    if ending_balance is None:
-        return 0
+    form_code = tax_return.form_definition.code
 
-    # Set M2_1 (beginning balance) on the current year return
-    try:
-        m2_1_fv = FormFieldValue.objects.get(
-            tax_return=tax_return,
-            form_line__line_number="M2_1",
-            form_line__section__code="sched_m2",
-        )
-    except FormFieldValue.DoesNotExist:
-        return 0
+    # 1120-S has 4 M-2 columns (a-d); 1065 and 1120 have single column
+    if form_code == "1120-S":
+        count = 0
+        for col in ("a", "b", "c", "d"):
+            # Try column-suffixed key first, fall back to old single-column key
+            ending_key = f"M2_8{col}"
+            ending_balance = m2.get(ending_key) or (m2.get("M2_8") if col == "a" else None)
+            if ending_balance is None:
+                continue
+            try:
+                m2_1_fv = FormFieldValue.objects.get(
+                    tax_return=tax_return,
+                    form_line__line_number=f"M2_1{col}",
+                    form_line__section__code="sched_m2",
+                )
+            except FormFieldValue.DoesNotExist:
+                continue
+            if m2_1_fv.is_overridden:
+                continue
+            m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
+            m2_1_fv.save(update_fields=["value", "updated_at"])
+            count += 1
+        if count:
+            compute_return(tax_return)
+        return count
+    else:
+        ending_key = "M2_9" if form_code == "1065" else "M2_8"
+        ending_balance = m2.get(ending_key)
+        if ending_balance is None:
+            return 0
 
-    if m2_1_fv.is_overridden:
-        return 0
+        try:
+            m2_1_fv = FormFieldValue.objects.get(
+                tax_return=tax_return,
+                form_line__line_number="M2_1",
+                form_line__section__code="sched_m2",
+            )
+        except FormFieldValue.DoesNotExist:
+            return 0
 
-    m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
-    m2_1_fv.save(update_fields=["value", "updated_at"])
-    compute_return(tax_return)
-    return 1
+        if m2_1_fv.is_overridden:
+            return 0
+
+        m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
+        m2_1_fv.save(update_fields=["value", "updated_at"])
+        compute_return(tax_return)
+        return 1
 
 
 def _populate_shareholders_from_prior_year(tax_return):
@@ -1522,6 +1545,43 @@ class TaxReturnViewSet(
 
         serializer = PriorYearReturnSerializer(pyr)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["patch"], url_path="prior-year/update-line")
+    def prior_year_update_line(self, request, pk=None):
+        """
+        Update a single line value in the prior year return.
+
+        Expects JSON: { "line_number": "1c", "value": 12345 }
+        """
+        tax_return = self.get_object()
+        entity = tax_return.tax_year.entity
+        prior_year = tax_return.tax_year.year - 1
+
+        try:
+            pyr = PriorYearReturn.objects.get(entity=entity, year=prior_year)
+        except PriorYearReturn.DoesNotExist:
+            return Response(
+                {"error": "No prior year data found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        line_number = request.data.get("line_number")
+        value = request.data.get("value")
+        if not line_number:
+            return Response(
+                {"error": "line_number is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        line_values = pyr.line_values or {}
+        if value is None or value == "" or value == 0:
+            line_values.pop(line_number, None)
+        else:
+            line_values[line_number] = float(value)
+        pyr.line_values = line_values
+        pyr.save(update_fields=["line_values", "updated_at"])
+
+        return Response({"ok": True, "line_number": line_number, "value": value})
 
     @action(detail=True, methods=["get"], url_path="interest-trend")
     def interest_trend(self, request, pk=None):

@@ -390,16 +390,15 @@ SCHEDULE_M1: dict[str, FieldCoord] = {
 # Lines 1-8 are vertically stacked with ~12pt spacing.
 # ---------------------------------------------------------------------------
 SCHEDULE_M2: dict[str, FieldCoord] = {
-    # All fields shifted +4 from previous
-    # Right edge 298 → 302
-    "M2_1": FieldCoord(page=4, x=217, y=481, width=85),
-    "M2_2": FieldCoord(page=4, x=219, y=469, width=85),
-    "M2_3": FieldCoord(page=4, x=217, y=456, width=85),
-    "M2_4": FieldCoord(page=4, x=217, y=443, width=85),
-    "M2_5": FieldCoord(page=4, x=217, y=433, width=85),
-    "M2_6": FieldCoord(page=4, x=217, y=421, width=85),
-    "M2_7": FieldCoord(page=4, x=217, y=410, width=85),
-    "M2_8": FieldCoord(page=4, x=217, y=388, width=85),
+    # Column (a) AAA — coordinate overlay only fills AAA column
+    "M2_1a": FieldCoord(page=4, x=217, y=481, width=85),
+    "M2_2a": FieldCoord(page=4, x=219, y=469, width=85),
+    "M2_3a": FieldCoord(page=4, x=217, y=456, width=85),
+    "M2_4a": FieldCoord(page=4, x=217, y=443, width=85),
+    "M2_5a": FieldCoord(page=4, x=217, y=433, width=85),
+    "M2_6a": FieldCoord(page=4, x=217, y=421, width=85),
+    "M2_7a": FieldCoord(page=4, x=217, y=410, width=85),
+    "M2_8a": FieldCoord(page=4, x=217, y=388, width=85),
 }
 
 # ---------------------------------------------------------------------------

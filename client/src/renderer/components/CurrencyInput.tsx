@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 function formatCurrency(raw: string): string {
   if (!raw || raw === "" || raw === "-") return "";
   const num = parseFloat(raw);
-  if (isNaN(num)) return raw;
+  if (isNaN(num) || num === 0) return "";
   const abs = Math.abs(num);
   const formatted = abs.toLocaleString("en-US", {
     minimumFractionDigits: 2,

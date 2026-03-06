@@ -220,7 +220,7 @@ class TestMathDiagnostics:
     def test_m2_check_passes_when_matching(self, rules, tax_return_1120s, tax_year):
         from apps.diagnostics.rules import math_m2_check
 
-        _set_line(tax_return_1120s, "M2_8", "50000")
+        _set_line(tax_return_1120s, "M2_8a", "50000")
         _set_line(tax_return_1120s, "L24d", "50000")
         findings = math_m2_check(tax_year)
         assert len(findings) == 0
@@ -228,7 +228,7 @@ class TestMathDiagnostics:
     def test_m2_check_fails_when_mismatched(self, rules, tax_return_1120s, tax_year):
         from apps.diagnostics.rules import math_m2_check
 
-        _set_line(tax_return_1120s, "M2_8", "50000")
+        _set_line(tax_return_1120s, "M2_8a", "50000")
         _set_line(tax_return_1120s, "L24d", "40000")
         findings = math_m2_check(tax_year)
         assert len(findings) == 1
@@ -394,7 +394,8 @@ class TestM1_3bCompute:
             "1c", "2", "3", "6", "20", "21", "22c", "23d", "25", "26",
             "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
             "M1_3b", "M1_4", "M1_7", "M1_8",
-            "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8",
+            "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+            "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d",
         ]
         for ln in computed_lines:
             if ln in lines and not FormFieldValue.objects.filter(
@@ -431,7 +432,8 @@ class TestM1_3bCompute:
             "1c", "2", "3", "6", "20", "21", "22c", "23d", "25", "26",
             "A6", "A8", "K1", "K18", "L3a", "L3d", "L14a", "L14d", "L27a", "L27d",
             "M1_3b", "M1_4", "M1_7", "M1_8",
-            "M2_2", "M2_4", "M2_5", "M2_6", "M2_7", "M2_8",
+            "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+            "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d",
         ]
         for ln in computed_lines:
             if ln in lines and not FormFieldValue.objects.filter(

@@ -229,19 +229,37 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Schedule L — Balance Sheet (inventory flows from COGS)
   ["L3a", (v) => val(v, "A1")],
   ["L3d", (v) => val(v, "A7")],
-  ["L14a", (v) => sumLines(v, "L1a","L2a","L3a","L5a","L7a") + val(v, "L9a") - val(v, "L9b")],
-  ["L14d", (v) => sumLines(v, "L1d","L2d","L3d","L5d","L7d") + val(v, "L9d") - val(v, "L9e")],
-  ["L27a", (v) => sumLines(v, "L15a","L17a","L18a","L20a","L21a","L23a","L24a","L25a")],
-  ["L27d", (v) => sumLines(v, "L15d","L17d","L18d","L20d","L21d","L23d","L24d","L25d")],
+  ["L15a", (v) => sumLines(v, "L1a","L3a","L4a","L5a","L6a","L7a","L8a","L9a","L12a","L14a")
+    + val(v, "L2a") - val(v, "L2b")
+    + val(v, "L10a") - val(v, "L10b")
+    + val(v, "L11a") - val(v, "L11b")
+    + val(v, "L13a") - val(v, "L13b")],
+  ["L15d", (v) => sumLines(v, "L1d","L3d","L4d","L5d","L6d","L7d","L8d","L9d","L12d","L14d")
+    + val(v, "L2d") - val(v, "L2e")
+    + val(v, "L10d") - val(v, "L10e")
+    + val(v, "L11d") - val(v, "L11e")
+    + val(v, "L13d") - val(v, "L13e")],
+  ["L28a", (v) => sumLines(v, "L16a","L17a","L18a","L19a","L20a","L21a","L22a","L23a","L24a","L25a","L27a") - val(v, "L26a")],
+  ["L28d", (v) => sumLines(v, "L16d","L17d","L18d","L19d","L20d","L21d","L22d","L23d","L24d","L25d","L27d") - val(v, "L26d")],
   // Schedule M-1
-  ["M1_4", (v) => sumLines(v, "M1_1","M1_2","M1_3a","M1_3b")],
-  ["M1_7", (v) => val(v, "M1_5") + val(v, "M1_6")],
+  ["M1_4", (v) => sumLines(v, "M1_1","M1_2","M1_3a","M1_3b","M1_3c")],
+  ["M1_7", (v) => sumLines(v, "M1_5a","M1_5b","M1_6a","M1_6b")],
   ["M1_8", (v) => val(v, "M1_4") - val(v, "M1_7")],
-  // Schedule M-2
-  ["M2_2", (v) => Math.max(0, val(v, "21"))],
-  ["M2_4", (v) => Math.max(0, -val(v, "21"))],
-  ["M2_6", (v) => val(v, "M2_1") + val(v, "M2_2") + val(v, "M2_3") - val(v, "M2_4") - val(v, "M2_5")],
-  ["M2_8", (v) => val(v, "M2_6") - val(v, "M2_7")],
+  // Schedule M-2 — 4 columns: (a) AAA, (b) OAA, (c) STPI, (d) Accu E&P
+  // Column (a) AAA
+  ["M2_2a", (v) => Math.max(0, val(v, "21"))],
+  ["M2_4a", (v) => Math.max(0, -val(v, "21"))],
+  ["M2_6a", (v) => val(v, "M2_1a") + val(v, "M2_2a") + val(v, "M2_3a") - val(v, "M2_4a") - val(v, "M2_5a")],
+  ["M2_8a", (v) => val(v, "M2_6a") - val(v, "M2_7a")],
+  // Column (b) OAA
+  ["M2_6b", (v) => val(v, "M2_1b") + val(v, "M2_2b") + val(v, "M2_3b") - val(v, "M2_4b") - val(v, "M2_5b")],
+  ["M2_8b", (v) => val(v, "M2_6b") - val(v, "M2_7b")],
+  // Column (c) STPI
+  ["M2_6c", (v) => val(v, "M2_1c") + val(v, "M2_2c") + val(v, "M2_3c") - val(v, "M2_4c") - val(v, "M2_5c")],
+  ["M2_8c", (v) => val(v, "M2_6c") - val(v, "M2_7c")],
+  // Column (d) Accu E&P
+  ["M2_6d", (v) => val(v, "M2_1d") + val(v, "M2_2d") + val(v, "M2_3d") - val(v, "M2_4d") - val(v, "M2_5d")],
+  ["M2_8d", (v) => val(v, "M2_6d") - val(v, "M2_7d")],
 ];
 
 /** GA-600S compute formulas (mirrors server compute.py GA section). */
@@ -337,14 +355,15 @@ function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue
 
 /** Each tab can show one or more section codes. */
 const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
-  { id: "info", label: "Info", sections: [] },
+  { id: "info", label: "Client Info", sections: [] },
   { id: "shareholders", label: "Shareholders", sections: [] },
   { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions"] },
   { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
   { id: "balance_sheets", label: "Balance Sheet", sections: ["sched_l", "sched_m1", "sched_m2"] },
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
+  { id: "basis_7203", label: "Form 7203", sections: [] },
   { id: "rental", label: "Rental (8825)", sections: [] },
-  { id: "tax_payments", label: "Tax & Payments", sections: ["page1_tax"] },
+  { id: "tax_payments", label: "Extensions", sections: ["page1_tax"] },
   { id: "prior_year", label: "PY Compare", sections: [] },
   { id: "state", label: "State", sections: [] },
 ];
@@ -700,6 +719,13 @@ export default function FormEditor() {
               onRefresh={refreshReturn}
               priorYear={priorYear}
             />
+          ) : activeTab === "basis_7203" ? (
+            <Form7203Section
+              taxReturnId={taxReturnId!}
+              shareholders={returnData.shareholders || []}
+              fieldValues={returnData.field_values || []}
+              onRefresh={refreshReturn}
+            />
           ) : activeTab === "rental" ? (
             <RentalPropertiesSection
               taxReturnId={taxReturnId!}
@@ -734,6 +760,7 @@ export default function FormEditor() {
               fieldsBySection={fieldsBySection}
               priorYear={priorYear}
               currentYear={returnData.year}
+              onRefresh={refreshReturn}
             />
           ) : activeTab === "state" ? (
             <StateSection
@@ -949,6 +976,37 @@ function InfoSection({
     }
   }
 
+  // Autosave entity (debounced)
+  const entityTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!entity || loadingEntity) return;
+    if (entityTimerRef.current) clearTimeout(entityTimerRef.current);
+    entityTimerRef.current = window.setTimeout(() => { saveEntity(); }, 800);
+    return () => { if (entityTimerRef.current) clearTimeout(entityTimerRef.current); };
+  }, [entity]);
+
+  // Autosave return info (debounced)
+  const returnTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (loadingEntity) return; // don't fire on initial load
+    if (returnTimerRef.current) clearTimeout(returnTimerRef.current);
+    returnTimerRef.current = window.setTimeout(() => { saveReturnInfo(); }, 800);
+    return () => { if (returnTimerRef.current) clearTimeout(returnTimerRef.current); };
+  }, [accountingMethod, taxYearStart, taxYearEnd, isInitialReturn, isFinalReturn,
+      isNameChange, isAddressChange, isAmendedReturn, sElectionDate,
+      numberOfShareholders, productOrService, businessActivityCode,
+      selectedPreparer, staffPreparerId, signatureDate]);
+
+  // Officer inline edit (debounced save on blur)
+  async function updateOfficerField(officerId: string, field: string, value: string) {
+    await patch(`/tax-returns/${returnData.id}/officers/${officerId}/`, { [field]: value });
+    await onRefresh();
+  }
+
+  function handleOfficerLocalChange(officerId: string, field: string, value: string) {
+    setOfficers((prev) => prev.map((o) => (o.id === officerId ? { ...o, [field]: value } : o)));
+  }
+
   // Officer CRUD
   async function saveOfficer() {
     if (!editingOfficer) return;
@@ -1156,24 +1214,6 @@ function InfoSection({
                   className={inputClass}
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                  NAICS Code
-                </label>
-                <input
-                  type="text"
-                  value={entity.naics_code || ""}
-                  onChange={(e) => handleEntityChange("naics_code", e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <button
-                onClick={saveEntity}
-                disabled={saving}
-                className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Save Entity"}
-              </button>
             </div>
           ) : (
             <p className="text-sm text-tx-muted">No entity data available.</p>
@@ -1339,13 +1379,6 @@ function InfoSection({
                 {returnData.status}
               </p>
             </div>
-            <button
-              onClick={saveReturnInfo}
-              disabled={saving}
-              className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Return Info"}
-            </button>
           </div>
           {saveMsg && (
             <p className="mt-3 text-sm font-medium text-success">{saveMsg}</p>
@@ -1432,38 +1465,14 @@ function InfoSection({
               <tbody className="divide-y divide-border-subtle zebra-rows">
                 {officers.map((o) => (
                   <tr key={o.id}>
-                    <td className="py-2 pr-4 text-tx">{o.name}</td>
-                    <td className="py-2 pr-4 text-tx">{o.title}</td>
-                    <td className="py-2 pr-4 text-tx">{o.ssn}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-tx">
-                      {o.percent_time ? `${o.percent_time}%` : ""}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-tx">
-                      {o.percent_ownership ? `${o.percent_ownership}%` : ""}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-tx">
-                      {o.compensation
-                        ? parseFloat(o.compensation).toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })
-                        : ""}
-                    </td>
-                    <td className="py-2">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingOfficer({ ...o })}
-                          className="text-xs font-medium text-primary-text hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteOfficer(o.id)}
-                          className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                    <td className="py-1 pr-2"><input type="text" value={o.name} onChange={(e) => handleOfficerLocalChange(o.id, "name", e.target.value)} onBlur={(e) => updateOfficerField(o.id, "name", e.target.value)} className={inputClass} /></td>
+                    <td className="py-1 pr-2"><input type="text" value={o.title} onChange={(e) => handleOfficerLocalChange(o.id, "title", e.target.value)} onBlur={(e) => updateOfficerField(o.id, "title", e.target.value)} className={inputClass} /></td>
+                    <td className="py-1 pr-2"><input type="text" value={o.ssn} onChange={(e) => handleOfficerLocalChange(o.id, "ssn", formatSSN(e.target.value))} onBlur={(e) => updateOfficerField(o.id, "ssn", e.target.value)} className={inputClass} placeholder="XXX-XX-XXXX" /></td>
+                    <td className="py-1 pr-2"><input type="text" value={o.percent_time} onChange={(e) => handleOfficerLocalChange(o.id, "percent_time", e.target.value)} onBlur={(e) => updateOfficerField(o.id, "percent_time", e.target.value || "0")} className={`${inputClass} text-right`} /></td>
+                    <td className="py-1 pr-2"><input type="text" value={o.percent_ownership} onChange={(e) => handleOfficerLocalChange(o.id, "percent_ownership", e.target.value)} onBlur={(e) => updateOfficerField(o.id, "percent_ownership", e.target.value || "0")} className={`${inputClass} text-right`} /></td>
+                    <td className="py-1 pr-2"><input type="text" value={o.compensation} onChange={(e) => handleOfficerLocalChange(o.id, "compensation", e.target.value)} onBlur={(e) => updateOfficerField(o.id, "compensation", e.target.value || "0")} className={`${inputClass} text-right`} /></td>
+                    <td className="py-1">
+                      <button onClick={() => deleteOfficer(o.id)} className="text-xs font-medium text-danger hover:text-danger-hover hover:underline">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -1998,155 +2007,134 @@ function IncomeDeductionsSection({
   const pyOther = priorYear?.other_deductions ?? {};
   const hasPY = priorYear !== null;
 
+  // Split deductions into two columns (first half left, second half right)
+  const formDeductionsOnly = mergedDeductions.filter((d) => d.type === "form_line");
+  const otherDeductionsOnly = mergedDeductions.filter((d) => d.type === "other_ded");
+  const midpoint = Math.ceil(formDeductionsOnly.length / 2);
+  const leftDeductions = formDeductionsOnly.slice(0, midpoint);
+  const rightDeductions = formDeductionsOnly.slice(midpoint);
+
+  function renderDeductionItem(item: DeductionItem) {
+    if (item.type === "form_line") {
+      return (
+        <div key={item.field.id} className={`flex items-center gap-2 px-3 py-1 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-tx truncate">{item.field.label}</span>
+          </div>
+          <div className="w-32 shrink-0">
+            <FieldInput field={item.field} onChange={onChange} />
+          </div>
+        </div>
+      );
+    } else {
+      const row = item.row;
+      const isStandard = row.source === "standard";
+      return (
+        <div key={row.id} className="flex items-center gap-2 px-3 py-1">
+          <div className="flex-1 min-w-0">
+            {isStandard ? (
+              <span className="text-xs text-tx">{row.description}</span>
+            ) : (
+              <>
+                <input
+                  id={`ded-desc-${row.id}`}
+                  type="text"
+                  list={`ded-cats-${row.id}`}
+                  value={row.description}
+                  onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
+                  onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
+                  className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                  placeholder="Enter deduction..."
+                />
+                <datalist id={`ded-cats-${row.id}`}>
+                  {categories.map((cat) => <option key={cat} value={cat} />)}
+                </datalist>
+              </>
+            )}
+          </div>
+          <div className="w-32 shrink-0">
+            <CurrencyInput
+              value={row.amount}
+              onValueChange={(v) => { handleLocalOtherChange(row.id, "amount", v); updateDeduction(row.id, "amount", v); }}
+            />
+          </div>
+          <div className="w-10 shrink-0 text-center">
+            {!isStandard && (
+              <button onClick={() => deleteDeduction(row.id)} className="text-xs font-medium text-danger hover:text-danger-hover">x</button>
+            )}
+          </div>
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {/* ===== INCOME ===== */}
-      <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
-          Income
-        </div>
-        <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-1.5">
-          <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
-          <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
-          <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
-          {hasPY && (
-            <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
-          )}
-        </div>
-        <div className="divide-y divide-border-subtle zebra-rows">
-          {incomeFields.map((fv) => (
-            <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
-          ))}
-        </div>
-      </div>
-
-      {/* ===== COST OF GOODS SOLD ===== */}
-      {cogsFields.length > 0 && (
+      {/* ===== INCOME (left) + COGS (right) side by side ===== */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
-            Cost of Goods Sold
+            Income
           </div>
-          <div className="divide-y divide-border-subtle zebra-rows">
-            {cogsFields.map((fv) => (
+          <div className="divide-y divide-border-subtle">
+            {incomeFields.map((fv) => (
               <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
             ))}
           </div>
         </div>
-      )}
 
-      {/* ===== DEDUCTIONS (merged & alphabetical) ===== */}
+        {cogsFields.length > 0 && (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+              Cost of Goods Sold
+            </div>
+            <div className="divide-y divide-border-subtle">
+              {cogsFields.map((fv) => (
+                <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ===== DEDUCTIONS — 2 columns, no line numbers ===== */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
-          <span className="text-xs font-bold uppercase tracking-wider text-tx-secondary">Deductions</span>
-          <button
-            onClick={addDeduction}
-            className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
-          >
-            Add Deduction
-          </button>
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Deductions
         </div>
-        {/* Column header */}
-        <div className="flex items-center gap-4 border-b border-border bg-surface-alt/50 px-4 py-1.5">
-          <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
-          <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
-          <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
-          {hasPY && (
-            <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>
-          )}
-          <div className="w-16 shrink-0" />
+        <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
+          <div className="divide-y divide-border-subtle">
+            {leftDeductions.map(renderDeductionItem)}
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {rightDeductions.map(renderDeductionItem)}
+          </div>
         </div>
-        <div className="divide-y divide-border-subtle zebra-rows">
-          {mergedDeductions.map((item, idx) => {
-            if (item.type === "form_line") {
-              return (
-                <div key={item.field.id} className={`flex items-center gap-4 px-4 py-1.5 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
-                  <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">{item.field.line_number}</div>
-                  <div className="flex-1">
-                    <span className="text-xs text-tx">{item.field.label}</span>
-                    {item.field.is_computed && <span className="ml-2 text-xs italic text-tx-muted">Calculated</span>}
-                  </div>
-                  <div className="w-36 shrink-0">
-                    <FieldInput field={item.field} onChange={onChange} />
-                  </div>
-                  {hasPY && <PriorYearCell value={pyLines[item.field.line_number]} />}
-                  <div className="w-16 shrink-0" />
-                </div>
-              );
-            } else {
-              const row = item.row;
-              const isStandard = row.source === "standard";
-              const isEmptyStandard = isStandard && parseFloat(row.amount || "0") === 0;
-              return (
-                <div key={row.id} className={`flex items-center gap-4 px-4 py-1.5 ${isEmptyStandard ? "opacity-70" : ""}`}>
-                  <div className="w-14 shrink-0 text-xs text-tx-muted">•</div>
-                  <div className="flex-1">
-                    {isStandard ? (
-                      <span className="inline-block px-2 py-0.5 text-xs text-tx">{row.description}</span>
-                    ) : (
-                      <>
-                        <input
-                          id={`ded-desc-${row.id}`}
-                          type="text"
-                          list={`ded-cats-${row.id}`}
-                          value={row.description}
-                          onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
-                          onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
-                          className="w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                          placeholder="Enter or select deduction..."
-                        />
-                        <datalist id={`ded-cats-${row.id}`}>
-                          {categories.map((cat) => (
-                            <option key={cat} value={cat} />
-                          ))}
-                        </datalist>
-                      </>
-                    )}
-                  </div>
-                  <div className="w-36 shrink-0">
-                    <CurrencyInput
-                      value={row.amount}
-                      onValueChange={(v) => {
-                        handleLocalOtherChange(row.id, "amount", v);
-                        updateDeduction(row.id, "amount", v);
-                      }}
-                    />
-                  </div>
-                  {hasPY && <PriorYearCell value={pyOther[row.description]} />}
-                  <div className="w-16 shrink-0 text-center">
-                    {!isStandard && (
-                      <button
-                        onClick={() => deleteDeduction(row.id)}
-                        className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-          })}
 
-          {/* Summary lines: Total Deductions + Ordinary Business Income */}
+        {/* Other Deductions sub-section at the bottom */}
+        <div className="border-t border-border">
+          <div className="flex items-center justify-between bg-surface-alt/50 px-4 py-1.5">
+            <span className="text-xs font-semibold text-tx-secondary">Other Deductions</span>
+            <button
+              onClick={addDeduction}
+              className="rounded-lg bg-success px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
+            >
+              Add
+            </button>
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {otherDeductionsOnly.map(renderDeductionItem)}
+          </div>
+        </div>
+
+        {/* Summary lines: Total Deductions + Ordinary Business Income */}
+        <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
           {summaryLines.map((fv) => (
             <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
           ))}
         </div>
       </div>
 
-      {/* ===== TAX & PAYMENTS ===== */}
-      {taxFields.length > 0 && (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
-            Tax and Payments
-          </div>
-          <div className="divide-y divide-border-subtle zebra-rows">
-            {taxFields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2503,7 +2491,7 @@ function ShareholdersSection({
                 <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">City, State</th>
                 <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Ownership %</th>
                 <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Distributions</th>
-                <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Health Ins.</th>
+                <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Capital Contributed</th>
                 <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">Actions</th>
               </tr>
             </thead>
@@ -2529,7 +2517,7 @@ function ShareholdersSection({
                     {parseFloat(s.distributions || "0") > 0 ? Number(s.distributions).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : ""}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-tx">
-                    {parseFloat(s.health_insurance_premium || "0") > 0 ? Number(s.health_insurance_premium).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : ""}
+                    {parseFloat(s.capital_contributions || "0") > 0 ? Number(s.capital_contributions).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : ""}
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex flex-wrap gap-1.5">
@@ -2650,69 +2638,9 @@ function ShareholdersSection({
               <CurrencyInput value={editing.distributions || "0"} onValueChange={(v) => setEditing({ ...editing, distributions: v })} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Health Insurance Premium</label>
-              <CurrencyInput value={editing.health_insurance_premium || "0"} onValueChange={(v) => setEditing({ ...editing, health_insurance_premium: v })} />
+              <label className="mb-1 block text-xs font-medium text-tx-secondary">Capital Contributed</label>
+              <CurrencyInput value={editing.capital_contributions || "0"} onValueChange={(v) => setEditing({ ...editing, capital_contributions: v })} />
             </div>
-          </div>
-          {/* Form 7203 Basis Tracking (collapsible) */}
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={() => setShowBasis(!showBasis)}
-              className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover"
-            >
-              <span className="text-[10px]">{showBasis ? "\u25BC" : "\u25B6"}</span>
-              Basis Tracking (Form 7203)
-            </button>
-            {showBasis && (
-              <div className="mt-2 rounded-lg border border-border-subtle bg-card p-3">
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Stock Basis BOY</label>
-                    <CurrencyInput value={editing.stock_basis_boy || "0"} onValueChange={(v) => setEditing({ ...editing, stock_basis_boy: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Capital Contributions</label>
-                    <CurrencyInput value={editing.capital_contributions || "0"} onValueChange={(v) => setEditing({ ...editing, capital_contributions: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Depletion</label>
-                    <CurrencyInput value={editing.depletion || "0"} onValueChange={(v) => setEditing({ ...editing, depletion: v })} />
-                  </div>
-                </div>
-                <p className="mt-3 mb-1 text-xs font-semibold text-tx-muted uppercase">Suspended Prior Year Losses</p>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Ordinary Loss</label>
-                    <CurrencyInput value={editing.suspended_ordinary_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_ordinary_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Rental RE Loss</label>
-                    <CurrencyInput value={editing.suspended_rental_re_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_rental_re_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Other Rental Loss</label>
-                    <CurrencyInput value={editing.suspended_other_rental_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_other_rental_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">ST Capital Loss</label>
-                    <CurrencyInput value={editing.suspended_st_capital_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_st_capital_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">LT Capital Loss</label>
-                    <CurrencyInput value={editing.suspended_lt_capital_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_lt_capital_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Section 1231 Loss</label>
-                    <CurrencyInput value={editing.suspended_1231_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_1231_loss: v })} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-tx-secondary">Other Loss</label>
-                    <CurrencyInput value={editing.suspended_other_loss || "0"} onValueChange={(v) => setEditing({ ...editing, suspended_other_loss: v })} />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           {/* Cross-link checkbox — only show for new shareholders */}
           {!editing.id && (
@@ -2738,6 +2666,353 @@ function ShareholdersSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Form 7203 — Shareholder Stock and Debt Basis (separate tab)
+// ---------------------------------------------------------------------------
+
+function Form7203Section({
+  taxReturnId,
+  shareholders,
+  fieldValues,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  shareholders: ShareholderRow[];
+  fieldValues: FieldValue[];
+  onRefresh: () => Promise<void>;
+}) {
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const sh = shareholders[selectedIdx] || null;
+
+  // Build K-value lookup for current year income items (flow to 7203)
+  const kValues: Record<string, number> = {};
+  for (const fv of fieldValues) {
+    const n = parseFloat(fv.value);
+    if (!isNaN(n)) kValues[fv.line_number] = n;
+  }
+
+  // Save shareholder field on blur
+  async function saveSHField(shId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/shareholders/${shId}/`, { [field]: value });
+    await onRefresh();
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  if (shareholders.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-tx-muted">
+        Add shareholders on the Shareholders tab to use Form 7203 basis tracking.
+      </div>
+    );
+  }
+
+  // Compute 7203 values from K-1 items * ownership %
+  const pct = sh ? (parseFloat(sh.ownership_percentage) || 0) / 100 : 0;
+  const kLine = (k: string) => (kValues[k] ?? 0) * pct;
+
+  const stockBasisBOY = parseFloat(sh?.stock_basis_boy || "0");
+  const capitalContributions = parseFloat(sh?.capital_contributions || "0");
+  const ordinaryIncome = kLine("K1") > 0 ? kLine("K1") : 0;
+  const rentalREIncome = kLine("K2") > 0 ? kLine("K2") : 0;
+  const otherRentalIncome = kLine("K3") > 0 ? kLine("K3") : 0;
+  const interestIncome = kLine("K4");
+  const ordinaryDividends = kLine("K5a");
+  const royalties = kLine("K6");
+  const netCapitalGains = (kLine("K7") > 0 ? kLine("K7") : 0) + (kLine("K8a") > 0 ? kLine("K8a") : 0);
+  const net1231Gain = kLine("K9") > 0 ? kLine("K9") : 0;
+  const otherIncome = kLine("K10") > 0 ? kLine("K10") : 0;
+  const taxExemptIncome = kLine("K16a") + kLine("K16b");
+  const otherBasisIncrease = 0; // placeholder
+
+  const totalIncreases = ordinaryIncome + rentalREIncome + otherRentalIncome +
+    interestIncome + ordinaryDividends + royalties + netCapitalGains +
+    net1231Gain + otherIncome + taxExemptIncome + otherBasisIncrease;
+
+  const line5 = stockBasisBOY + capitalContributions + totalIncreases;
+  const distributions = parseFloat(sh?.distributions || "0");
+  const stockAfterDist = Math.max(0, line5 - distributions);
+
+  const nondeductible = kLine("K16c");
+  const businessCredits = 0;
+  const totalReductions = nondeductible + businessCredits;
+  const stockBeforeLoss = Math.max(0, stockAfterDist - totalReductions);
+
+  // Losses that reduce basis
+  const ordinaryLoss = kLine("K1") < 0 ? -kLine("K1") : 0;
+  const rentalRELoss = kLine("K2") < 0 ? -kLine("K2") : 0;
+  const otherRentalLoss = kLine("K3") < 0 ? -kLine("K3") : 0;
+  const sec1231Loss = kLine("K9") < 0 ? -kLine("K9") : 0;
+  const stCapitalLoss = kLine("K7") < 0 ? -kLine("K7") : 0;
+  const ltCapitalLoss = kLine("K8a") < 0 ? -kLine("K8a") : 0;
+  const totalLossItems = ordinaryLoss + rentalRELoss + otherRentalLoss + sec1231Loss + stCapitalLoss + ltCapitalLoss;
+  const allowableLoss = Math.min(totalLossItems, stockBeforeLoss);
+  const stockBasisEOY = Math.max(0, stockBeforeLoss - allowableLoss);
+
+  const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+  function BasisRow({ label, value, bold }: { label: string; value: number; bold?: boolean }) {
+    return (
+      <div className={`flex items-center justify-between px-4 py-1 ${bold ? "bg-surface-alt font-semibold" : ""}`}>
+        <span className="text-xs text-tx">{label}</span>
+        <span className="text-xs tabular-nums text-tx">{fmt(value)}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Shareholder selector */}
+      <div className="flex items-center gap-3">
+        <label className="text-xs font-medium text-tx-secondary">Shareholder:</label>
+        <select
+          value={selectedIdx}
+          onChange={(e) => setSelectedIdx(Number(e.target.value))}
+          className={inputClass + " max-w-xs"}
+        >
+          {shareholders.map((s, i) => (
+            <option key={s.id} value={i}>{s.name} ({s.ownership_percentage}%)</option>
+          ))}
+        </select>
+        <button
+          onClick={async () => {
+            const r = await render7203(taxReturnId, sh?.id);
+            if (r?.pdfBase64) {
+              const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+              window.open(URL.createObjectURL(blob), "_blank");
+            } else alert(r?.error || "Failed to generate Form 7203.");
+          }}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+        >
+          Print 7203
+        </button>
+      </div>
+
+      {sh && (
+        <div className="space-y-4">
+          {/* Stock Basis Calculation (vertical, full width) */}
+          <div className="rounded-xl border border-border bg-card shadow-sm max-w-2xl">
+            <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl border-b border-border">
+              Part I — Stock Basis Calculation
+            </div>
+            <div className="divide-y divide-border-subtle">
+              <div className="flex items-center justify-between px-4 py-1.5">
+                <span className="text-xs text-tx">1. Stock Basis BOY</span>
+                <div className="w-36">
+                  <CurrencyInput value={sh.stock_basis_boy || "0"} onValueChange={(v) => saveSHField(sh.id, "stock_basis_boy", v)} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between px-4 py-1.5">
+                <span className="text-xs text-tx">2. Capital Contributions</span>
+                <div className="w-36">
+                  <CurrencyInput value={sh.capital_contributions || "0"} onValueChange={(v) => saveSHField(sh.id, "capital_contributions", v)} />
+                </div>
+              </div>
+              <BasisRow label="3a. Ordinary Income" value={ordinaryIncome} />
+              <BasisRow label="3b. Net Rental RE Income" value={rentalREIncome} />
+              <BasisRow label="3c. Other Net Rental Income" value={otherRentalIncome} />
+              <BasisRow label="3d. Interest Income" value={interestIncome} />
+              <BasisRow label="3e. Ordinary Dividends" value={ordinaryDividends} />
+              <BasisRow label="3f. Royalties" value={royalties} />
+              <BasisRow label="3g. Net Capital Gains" value={netCapitalGains} />
+              <BasisRow label="3h. Net Section 1231 Gain" value={net1231Gain} />
+              <BasisRow label="3i. Other Income" value={otherIncome} />
+              <BasisRow label="3j. Excess depletion adjustment" value={0} />
+              <BasisRow label="3k. Tax-exempt Income" value={taxExemptIncome} />
+              <BasisRow label="3l. Recapture of business credits" value={0} />
+              <BasisRow label="3m. Other items that increase basis" value={otherBasisIncrease} />
+              <BasisRow label="4. Total of 3a through 3m" value={totalIncreases} bold />
+              <BasisRow label="5. Total of lines 1, 2, and 4" value={line5} bold />
+              <div className="flex items-center justify-between px-4 py-1.5">
+                <span className="text-xs text-tx">6. Distributions</span>
+                <div className="w-36">
+                  <CurrencyInput value={sh.distributions || "0"} onValueChange={(v) => saveSHField(sh.id, "distributions", v)} />
+                </div>
+              </div>
+              <BasisRow label="7. Stock basis after distributions (6 minus 5, not less than 0)" value={stockAfterDist} bold />
+              <BasisRow label="8a. Nondeductible expenses" value={nondeductible} />
+              <BasisRow label="8b. Depletion (oil and gas)" value={0} />
+              <BasisRow label="8c. Business credits" value={businessCredits} />
+              <BasisRow label="9. Add lines 8a through 8c" value={totalReductions} />
+              <BasisRow label="10. Stock basis before loss and deduction items (7 minus 9, not less than 0)" value={stockBeforeLoss} bold />
+              <BasisRow label="11. Allowable loss and deduction items" value={allowableLoss} />
+              <BasisRow label="12. Debt basis restoration" value={0} />
+              <BasisRow label="13. Other items that decrease stock basis" value={0} />
+              <BasisRow label="14. Add lines 11, 12, and 13" value={allowableLoss} />
+              <BasisRow label="15. Stock basis at end of year (line 10 minus line 14, not less than 0)" value={stockBasisEOY} bold />
+            </div>
+          </div>
+
+          {/* Debt Basis Calculation */}
+          <div className="rounded-xl border border-border bg-card shadow-sm max-w-2xl">
+            <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl border-b border-border">
+              Part II — Debt Basis Calculation
+            </div>
+            <ShareholderLoansPanel taxReturnId={taxReturnId} shareholder={sh} onRefresh={onRefresh} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Shareholder Loans sub-panel for Form 7203 Debt Basis
+function ShareholderLoansPanel({
+  taxReturnId,
+  shareholder,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  shareholder: ShareholderRow;
+  onRefresh: () => Promise<void>;
+}) {
+  const [loans, setLoans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    get(`/tax-returns/${taxReturnId}/shareholders/${shareholder.id}/loans/`).then((res) => {
+      if (res.ok) setLoans(res.data as any[]);
+      setLoading(false);
+    });
+  }, [shareholder.id]);
+
+  async function addLoan() {
+    const res = await post(`/tax-returns/${taxReturnId}/shareholders/${shareholder.id}/loans/`, {
+      description: `Loan ${loans.length + 1}`,
+      loan_balance_boy: "0",
+      additional_loans: "0",
+      loan_repayments: "0",
+    });
+    if (res.ok) {
+      setLoans([...loans, res.data]);
+    }
+  }
+
+  async function updateLoan(loanId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/shareholders/${shareholder.id}/loans/${loanId}/`, { [field]: value });
+    // Refresh loans
+    const res = await get(`/tax-returns/${taxReturnId}/shareholders/${shareholder.id}/loans/`);
+    if (res.ok) setLoans(res.data as any[]);
+  }
+
+  async function deleteLoan(loanId: string) {
+    if (!confirm("Delete this loan?")) return;
+    await del(`/tax-returns/${taxReturnId}/shareholders/${shareholder.id}/loans/${loanId}/`);
+    setLoans(loans.filter((l) => l.id !== loanId));
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  if (loading) return <div className="p-4 text-xs text-tx-muted">Loading loans...</div>;
+
+  return (
+    <div className="p-4 space-y-3">
+      {loans.length === 0 && (
+        <p className="text-xs text-tx-muted">No shareholder loans. Add a loan to track debt basis.</p>
+      )}
+      {loans.map((loan) => {
+        const balBefore = (parseFloat(loan.loan_balance_boy) || 0) + (parseFloat(loan.additional_loans) || 0);
+        const balEOY = balBefore - (parseFloat(loan.loan_repayments) || 0);
+        return (
+          <div key={loan.id} className="rounded-lg border border-border-subtle bg-surface-alt/30 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <input
+                type="text"
+                value={loan.description}
+                onChange={(e) => setLoans(loans.map((l) => l.id === loan.id ? { ...l, description: e.target.value } : l))}
+                onBlur={(e) => updateLoan(loan.id, "description", e.target.value)}
+                className={inputClass + " max-w-xs text-xs font-medium"}
+                placeholder="Loan description"
+              />
+              <button onClick={() => deleteLoan(loan.id)} className="text-xs text-danger hover:underline">Delete</button>
+            </div>
+            {/* Loan detail fields */}
+            <div className="grid grid-cols-4 gap-2">
+              <div>
+                <label className="text-[10px] text-tx-muted">Original Loan Amt</label>
+                <CurrencyInput value={loan.original_loan_amount || "0"} onValueChange={(v) => {
+                  setLoans(loans.map((l) => l.id === loan.id ? { ...l, original_loan_amount: v } : l));
+                  updateLoan(loan.id, "original_loan_amount", v);
+                }} />
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">Interest Rate (%)</label>
+                <input
+                  type="text"
+                  value={loan.interest_rate || ""}
+                  onChange={(e) => setLoans(loans.map((l) => l.id === loan.id ? { ...l, interest_rate: e.target.value } : l))}
+                  onBlur={(e) => updateLoan(loan.id, "interest_rate", e.target.value || "0")}
+                  className={inputClass + " text-right text-xs"}
+                  placeholder="e.g. 5.24"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">Payment Amt</label>
+                <CurrencyInput value={loan.payment_amount || "0"} onValueChange={(v) => {
+                  setLoans(loans.map((l) => l.id === loan.id ? { ...l, payment_amount: v } : l));
+                  updateLoan(loan.id, "payment_amount", v);
+                }} />
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">Maturity Date</label>
+                <input
+                  type="date"
+                  value={loan.maturity_date || ""}
+                  onChange={(e) => {
+                    setLoans(loans.map((l) => l.id === loan.id ? { ...l, maturity_date: e.target.value } : l));
+                    updateLoan(loan.id, "maturity_date", e.target.value || null);
+                  }}
+                  className={inputClass + " text-xs"}
+                />
+              </div>
+            </div>
+            {/* Balance calculation */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-tx-muted">16. Loan Balance BOY</label>
+                <CurrencyInput value={loan.loan_balance_boy || "0"} onValueChange={(v) => {
+                  setLoans(loans.map((l) => l.id === loan.id ? { ...l, loan_balance_boy: v } : l));
+                  updateLoan(loan.id, "loan_balance_boy", v);
+                }} />
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">17. Additional Loans</label>
+                <CurrencyInput value={loan.additional_loans || "0"} onValueChange={(v) => {
+                  setLoans(loans.map((l) => l.id === loan.id ? { ...l, additional_loans: v } : l));
+                  updateLoan(loan.id, "additional_loans", v);
+                }} />
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">18. Balance Before Repayment</label>
+                <div className="text-sm tabular-nums text-tx py-1">{balBefore.toLocaleString("en-US", { style: "currency", currency: "USD" })}</div>
+              </div>
+              <div>
+                <label className="text-[10px] text-tx-muted">19. Principal Repayment</label>
+                <CurrencyInput value={loan.loan_repayments || "0"} onValueChange={(v) => {
+                  setLoans(loans.map((l) => l.id === loan.id ? { ...l, loan_repayments: v } : l));
+                  updateLoan(loan.id, "loan_repayments", v);
+                }} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-tx-muted">20. Loan Balance EOY</label>
+                <div className="text-sm font-medium tabular-nums text-tx py-1">{balEOY.toLocaleString("en-US", { style: "currency", currency: "USD" })}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <button
+        onClick={addLoan}
+        className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
+      >
+        Add Loan
+      </button>
     </div>
   );
 }
@@ -2780,8 +3055,6 @@ function RentalPropertiesSection({
   properties: RentalPropertyRow[];
   onRefresh: () => Promise<void>;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Partial<RentalPropertyRow> | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function addProperty() {
@@ -2792,14 +3065,8 @@ function RentalPropertiesSection({
       property_type: "6",
       rents_received: "0",
     });
-    if (res.ok) {
-      await onRefresh();
-      // Auto-expand the newly created property
-      const newProp = res.data as RentalPropertyRow;
-      if (newProp?.id) setExpandedId(newProp.id);
-    } else {
-      alert("Failed to add property. Please try again.");
-    }
+    if (res.ok) await onRefresh();
+    else alert("Failed to add property.");
     setSaving(false);
   }
 
@@ -2821,9 +3088,11 @@ function RentalPropertiesSection({
   const inputClass =
     "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
+  const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-tx">Rental Real Estate — Form 8825</h3>
           <p className="text-xs text-tx-muted">Net rental income flows to Schedule K, line 2.</p>
@@ -2838,153 +3107,107 @@ function RentalPropertiesSection({
       </div>
 
       {properties.length === 0 && (
-        <div className="px-4 py-8 text-center text-sm text-tx-muted">
+        <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
           No rental properties. Click "Add Property" to create one.
         </div>
       )}
 
-      {properties.length > 0 && (
-        <div className="divide-y divide-border-subtle zebra-rows">
-          {properties.map((prop) => {
-            const isExpanded = expandedId === prop.id;
-            return (
-              <div key={prop.id}>
-                {/* Summary row */}
-                <div
-                  className="flex cursor-pointer items-center gap-4 px-4 py-3 hover:bg-surface-alt/50"
-                  onClick={() => setExpandedId(isExpanded ? null : prop.id)}
-                >
-                  <span className="text-tx-secondary">{isExpanded ? "\u25BC" : "\u25B6"}</span>
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-tx">
-                      {prop.description || "(No description)"}
-                    </span>
-                    <span className="ml-2 text-xs text-tx-muted">
-                      {PROPERTY_TYPES[prop.property_type] || "Other"}
-                    </span>
-                  </div>
-                  <div className="w-32 text-right text-sm tabular-nums text-tx">
-                    {parseFloat(prop.rents_received).toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                  </div>
-                  <div className="w-32 text-right text-sm tabular-nums text-tx">
-                    ({parseFloat(prop.total_expenses).toLocaleString("en-US", { style: "currency", currency: "USD" })})
-                  </div>
-                  <div className={`w-32 text-right text-sm font-medium tabular-nums ${parseFloat(prop.net_rent) >= 0 ? "text-tx" : "text-danger"}`}>
-                    {parseFloat(prop.net_rent).toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteProperty(prop.id); }}
-                    className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                {/* Expanded detail */}
-                {isExpanded && (
-                  <div className="border-t border-border bg-surface-alt/30 px-6 py-4">
-                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                      <div className="col-span-2">
-                        <label className="mb-1 block text-xs font-medium text-tx-secondary">Property Address / Description</label>
-                        <input
-                          type="text"
-                          defaultValue={prop.description}
-                          onBlur={(e) => updateProperty(prop.id, { description: e.target.value })}
-                          className={inputClass}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-tx-secondary">Property Type</label>
-                        <select
-                          defaultValue={prop.property_type}
-                          onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })}
-                          className={inputClass}
-                        >
-                          {Object.entries(PROPERTY_TYPES).map(([k, v]) => (
-                            <option key={k} value={k}>{v}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-tx-secondary">Rental Days</label>
-                          <input
-                            type="number"
-                            defaultValue={prop.fair_rental_days}
-                            onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-tx-secondary">Personal Days</label>
-                          <input
-                            type="number"
-                            defaultValue={prop.personal_use_days}
-                            onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Income */}
-                    <div className="mt-4">
-                      <label className="mb-1 block text-xs font-medium text-tx-secondary">Rents Received</label>
-                      <div className="w-48">
-                        <CurrencyInput
-                          value={prop.rents_received}
-                          onValueChange={(v) => updateProperty(prop.id, { rents_received: v })}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Expenses grid */}
-                    <h5 className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-tx-secondary">Expenses</h5>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-3">
-                      {EXPENSE_FIELDS.map(({ key, label }) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <span className="w-40 shrink-0 text-xs text-tx-secondary">{label}</span>
-                          <div className="w-32">
-                            <CurrencyInput
-                              value={prop[key] as string}
-                              onValueChange={(v) => updateProperty(prop.id, { [key]: v })}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Totals */}
-                    <div className="mt-3 flex gap-6 border-t border-border pt-3">
-                      <span className="text-sm text-tx-secondary">
-                        Total Expenses: <strong className="text-tx">{parseFloat(prop.total_expenses).toLocaleString("en-US", { style: "currency", currency: "USD" })}</strong>
-                      </span>
-                      <span className="text-sm text-tx-secondary">
-                        Net Rent: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-success" : "text-danger"}>
-                          {parseFloat(prop.net_rent).toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                )}
+      {/* Vertical property cards — all expanded */}
+      {properties.map((prop) => (
+        <div key={prop.id} className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
+            <span className="text-xs font-bold text-tx">{prop.description || "(No description)"}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs tabular-nums text-tx-muted">Net: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-tx" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
+              <button
+                onClick={() => deleteProperty(prop.id)}
+                className="text-xs font-medium text-danger hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+          <div className="px-4 py-3 space-y-3">
+            {/* Property info row */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <div className="lg:col-span-2">
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address / Description</label>
+                <input
+                  type="text"
+                  defaultValue={prop.description}
+                  onBlur={(e) => updateProperty(prop.id, { description: e.target.value })}
+                  className={inputClass + " text-xs"}
+                />
               </div>
-            );
-          })}
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Type</label>
+                <select
+                  defaultValue={prop.property_type}
+                  onChange={(e) => updateProperty(prop.id, { property_type: e.target.value })}
+                  className={inputClass + " text-xs"}
+                >
+                  {Object.entries(PROPERTY_TYPES).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Rental Days</label>
+                <input
+                  type="number"
+                  defaultValue={prop.fair_rental_days}
+                  onBlur={(e) => updateProperty(prop.id, { fair_rental_days: parseInt(e.target.value) || 0 } as any)}
+                  className={inputClass + " text-xs"}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Personal Days</label>
+                <input
+                  type="number"
+                  defaultValue={prop.personal_use_days}
+                  onBlur={(e) => updateProperty(prop.id, { personal_use_days: parseInt(e.target.value) || 0 } as any)}
+                  className={inputClass + " text-xs"}
+                />
+              </div>
+            </div>
+            {/* Income + Expenses vertical */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 lg:grid-cols-3">
+              <div className="flex items-center gap-2">
+                <span className="w-40 shrink-0 text-xs font-semibold text-tx">Rents Received</span>
+                <div className="w-32">
+                  <CurrencyInput value={prop.rents_received} onValueChange={(v) => updateProperty(prop.id, { rents_received: v })} />
+                </div>
+              </div>
+              <div /> {/* spacer */}
+              <div /> {/* spacer */}
+              {EXPENSE_FIELDS.map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="w-40 shrink-0 text-xs text-tx-secondary">{label}</span>
+                  <div className="w-32">
+                    <CurrencyInput
+                      value={prop[key] as string}
+                      onValueChange={(v) => updateProperty(prop.id, { [key]: v })}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-6 border-t border-border-subtle pt-2">
+              <span className="text-xs text-tx-secondary">Total Expenses: <strong className="text-tx">{fmt(parseFloat(prop.total_expenses))}</strong></span>
+              <span className="text-xs text-tx-secondary">Net Rent: <strong className={parseFloat(prop.net_rent) >= 0 ? "text-success" : "text-danger"}>{fmt(parseFloat(prop.net_rent))}</strong></span>
+            </div>
+          </div>
+        </div>
+      ))}
 
-          {/* Grand totals */}
-          <div className="flex items-center gap-4 bg-surface-alt px-4 py-3 font-medium">
-            <span className="text-tx-secondary">&nbsp;</span>
-            <div className="flex-1 text-sm text-tx">Totals (all properties)</div>
-            <div className="w-32 text-right text-sm tabular-nums text-tx">
-              {grandTotalRents.toLocaleString("en-US", { style: "currency", currency: "USD" })}
-            </div>
-            <div className="w-32 text-right text-sm tabular-nums text-tx">
-              ({grandTotalExpenses.toLocaleString("en-US", { style: "currency", currency: "USD" })})
-            </div>
-            <div className={`w-32 text-right text-sm font-bold tabular-nums ${grandNetRent >= 0 ? "text-success" : "text-danger"}`}>
-              {grandNetRent.toLocaleString("en-US", { style: "currency", currency: "USD" })}
-            </div>
-            <div className="w-12" />
+      {/* Grand totals */}
+      {properties.length > 1 && (
+        <div className="rounded-xl border border-border bg-surface-alt px-4 py-3">
+          <div className="flex gap-6">
+            <span className="text-xs font-bold text-tx">All Properties Total</span>
+            <span className="text-xs text-tx-secondary">Rents: <strong className="text-tx">{fmt(grandTotalRents)}</strong></span>
+            <span className="text-xs text-tx-secondary">Expenses: <strong className="text-tx">{fmt(grandTotalExpenses)}</strong></span>
+            <span className="text-xs text-tx-secondary">Net: <strong className={grandNetRent >= 0 ? "text-success" : "text-danger"}>{fmt(grandNetRent)}</strong></span>
           </div>
         </div>
       )}
@@ -3037,30 +3260,87 @@ function BalanceSheetsSection({
         </button>
       </div>
       <ScheduleLSection fields={schedLFields} onChange={onChange} />
-      {m1Fields.length > 0 && (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
-            Schedule M-1 — Reconciliation of Income (Loss)
+      {m1Fields.length > 0 && (() => {
+        // M-1 two-column layout: Lines 1-4 on left, Lines 5-8 on right (like the IRS form)
+        const leftLines = m1Fields.filter((f) => ["M1_1","M1_2","M1_3a","M1_3b","M1_3c","M1_4"].includes(f.line_number));
+        const rightLines = m1Fields.filter((f) => ["M1_5a","M1_5b","M1_6a","M1_6b","M1_7","M1_8"].includes(f.line_number));
+        return (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+              Schedule M-1 — Reconciliation of Income (Loss)
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
+              <div className="divide-y divide-border-subtle">
+                {leftLines.map((fv) => (
+                  <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
+                ))}
+              </div>
+              <div className="divide-y divide-border-subtle">
+                {rightLines.map((fv) => (
+                  <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="divide-y divide-border-subtle zebra-rows">
-            {m1Fields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
-            ))}
+        );
+      })()}
+      {m2Fields.length > 0 && (() => {
+        // Build lookup: line_number -> FieldValue
+        const m2 = Object.fromEntries(m2Fields.map((f) => [f.line_number, f]));
+        const M2_ROWS = [
+          { row: 1, label: "Balance at beginning of tax year" },
+          { row: 2, label: "Ordinary income from page 1, line 21" },
+          { row: 3, label: "Other additions" },
+          { row: 4, label: "Loss from page 1, line 21" },
+          { row: 5, label: "Other reductions" },
+          { row: 6, label: "Combine lines 1 through 5" },
+          { row: 7, label: "Distributions" },
+          { row: 8, label: "Balance at end of tax year" },
+        ];
+        const COLS = ["a", "b", "c", "d"] as const;
+        const COL_HEADERS = ["(a) AAA", "(b) OAA", "(c) STPI", "(d) Accu E&P"];
+        return (
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
+              Schedule M-2 — Analysis of AAA, OAA, and STPI
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface-alt">
+                  <th className="px-3 py-1.5 text-left text-xs font-semibold text-tx-secondary w-8">#</th>
+                  <th className="px-3 py-1.5 text-left text-xs font-semibold text-tx-secondary">Description</th>
+                  {COL_HEADERS.map((h) => (
+                    <th key={h} className="px-2 py-1.5 text-right text-xs font-semibold text-tx-secondary w-36">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {M2_ROWS.map(({ row, label }) => (
+                  <tr key={row} className="hover:bg-surface-alt/50">
+                    <td className="px-3 py-1 text-xs text-tx-muted">{row}</td>
+                    <td className="px-3 py-1 text-xs text-tx">{label}</td>
+                    {COLS.map((col) => {
+                      const ln = `M2_${row}${col}`;
+                      const fv = m2[ln];
+                      if (!fv) return <td key={col} className="px-2 py-1" />;
+                      return (
+                        <td key={col} className="px-2 py-1">
+                          <CurrencyInput
+                            value={fv.value}
+                            onValueChange={(v) => onChange(fv.form_line, v)}
+                            readOnly={fv.is_computed && !fv.is_overridden}
+                            className={`text-xs ${fv.is_computed && !fv.is_overridden ? "bg-surface-alt text-tx-secondary cursor-default" : ""}`}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
-      {m2Fields.length > 0 && (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt border-b border-border">
-            Schedule M-2 — Analysis of AAA, OAA, and STPI
-          </div>
-          <div className="divide-y divide-border-subtle zebra-rows">
-            {m2Fields.map((fv) => (
-              <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={bsPyLines[fv.line_number]} showPY={bsHasPY} />
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -3132,6 +3412,15 @@ function TaxPaymentsSection({
     }
   }
 
+  // Autosave extension/payment info (debounced)
+  const paymentTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (paymentTimerRef.current) clearTimeout(paymentTimerRef.current);
+    paymentTimerRef.current = window.setTimeout(() => { savePaymentInfo(); }, 800);
+    return () => { if (paymentTimerRef.current) clearTimeout(paymentTimerRef.current); };
+  }, [extensionFiled, extensionDate, tentativeTax, totalPayments, balanceDue,
+      bankRouting, bankAccount, bankType]);
+
   const taxFields = fieldsBySection["page1_tax"] || [];
 
   return (
@@ -3139,7 +3428,7 @@ function TaxPaymentsSection({
       {/* Extension (Form 7004) Card */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-surface-alt px-5 py-3">
-          <h3 className="text-sm font-semibold text-tx">Extension (Form 7004)</h3>
+          <h3 className="text-sm font-semibold text-tx">Extensions & Tax Payments</h3>
           <button
             onClick={async () => {
               try {
@@ -3172,7 +3461,7 @@ function TaxPaymentsSection({
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label htmlFor="extension_filed" className="text-sm font-medium text-tx">
-              Extension Filed
+              File Automatic Extension (Form 7004)
             </label>
           </div>
           <div className="grid grid-cols-4 gap-4">
@@ -3265,21 +3554,6 @@ function TaxPaymentsSection({
         </div>
       </div>
 
-      {/* Save Button for Extension + Bank */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={savePaymentInfo}
-          disabled={saving}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save Payment Info"}
-        </button>
-        {saveMsg && (
-          <span className={`text-sm ${saveMsg.includes("fail") ? "text-red-600" : "text-green-600"}`}>
-            {saveMsg}
-          </span>
-        )}
-      </div>
 
       {/* Page 1 Tax Lines (22a-27) */}
       {taxFields.length > 0 && (
@@ -3517,12 +3791,15 @@ function StandardSection({
  *  e.g. "L1a" → "L1", "L1d" → "L1", "L9b" → "L9_depr", "L9e" → "L9_depr"
  */
 function schedLGroup(lineNum: string): string {
-  // Accumulated depreciation lines pair together
-  if (lineNum === "L9b" || lineNum === "L9e") return "L9_depr";
+  // Accumulated depreciation/depletion/amortization lines pair together
+  if (lineNum === "L2b" || lineNum === "L2e") return "L2_bad_debt";
+  if (lineNum === "L10b" || lineNum === "L10e") return "L10_depr";
+  if (lineNum === "L11b" || lineNum === "L11e") return "L11_depl";
+  if (lineNum === "L13b" || lineNum === "L13e") return "L13_amort";
   // Total lines
-  if (lineNum === "L14a" || lineNum === "L14d") return "L14";
-  if (lineNum === "L27a" || lineNum === "L27d") return "L27";
-  // Standard: strip trailing letter → e.g. "L15a" → "L15", "L15d" → "L15"
+  if (lineNum === "L15a" || lineNum === "L15d") return "L15";
+  if (lineNum === "L28a" || lineNum === "L28d") return "L28";
+  // Standard: strip trailing letter → e.g. "L16a" → "L16", "L16d" → "L16"
   return lineNum.replace(/[a-e]$/, "");
 }
 
@@ -3554,7 +3831,10 @@ function ScheduleLSection({
     const label = (boy?.label || eoy?.label || "")
       .replace(/ — (beginning|end)( of year)?/i, "")
       .replace(/ — (beginning|end)/i, "")
-      .replace(/Less accumulated depreciation/, "Less accum. depreciation");
+      .replace(/Less accumulated depreciation/, "Less accum. depreciation")
+      .replace(/Less accumulated depletion/, "Less accum. depletion")
+      .replace(/Less accumulated amortization/, "Less accum. amortization")
+      .replace(/Less allowance for bad debts/, "Less bad debt allowance");
 
     groups.push({ label, boy, eoy });
     seen.add(group);
@@ -3586,10 +3866,10 @@ function ScheduleLSection({
           const isComputed = (g.boy?.is_computed || g.eoy?.is_computed) ?? false;
 
           // Section dividers
-          const isTotalAssets = lineNum === "L14";
-          const isFirstLiability = lineNum === "L15";
-          const isFirstEquity = lineNum === "L21";
-          const isTotalLE = lineNum === "L27";
+          const isTotalAssets = lineNum === "L15";
+          const isFirstLiability = lineNum === "L16";
+          const isFirstEquity = lineNum === "L22";
+          const isTotalLE = lineNum === "L28";
 
           return (
             <div key={i}>
@@ -4393,21 +4673,21 @@ const PY_COMPARE_GROUPS: { title: string; lines: { ln: string; label: string }[]
       { ln: "L2d", label: "Trade notes and accounts receivable" },
       { ln: "L3d", label: "Inventories" },
       { ln: "L9d", label: "Buildings and other depreciable assets" },
-      { ln: "L14d", label: "Total assets" },
+      { ln: "L15d", label: "Total assets" },
       { ln: "L15d", label: "Accounts payable" },
       { ln: "L20d", label: "Loans from shareholders" },
       { ln: "L24d", label: "Retained earnings" },
-      { ln: "L27d", label: "Total liabilities and shareholders' equity" },
+      { ln: "L28d", label: "Total liabilities and shareholders' equity" },
     ],
   },
   {
     title: "Schedule M-2 (AAA)",
     lines: [
-      { ln: "M2_1", label: "Balance at beginning of year" },
-      { ln: "M2_2", label: "Ordinary income" },
-      { ln: "M2_5", label: "Other reductions" },
-      { ln: "M2_7", label: "Distributions" },
-      { ln: "M2_8", label: "Balance at end of year" },
+      { ln: "M2_1a", label: "Balance at beginning of year" },
+      { ln: "M2_2a", label: "Ordinary income" },
+      { ln: "M2_5a", label: "Other reductions" },
+      { ln: "M2_7a", label: "Distributions" },
+      { ln: "M2_8a", label: "Balance at end of year" },
     ],
   },
 ];
@@ -4423,19 +4703,33 @@ function PriorYearSummarySection({
   fieldsBySection,
   priorYear,
   currentYear,
+  onRefresh,
 }: {
   taxReturnId: string;
   fieldsBySection: Record<string, FieldValue[]>;
   priorYear: PriorYearData | null;
   currentYear: number;
+  onRefresh: () => Promise<void>;
 }) {
   const [interestTrend, setInterestTrend] = useState<InterestTrendData | null>(null);
+  // Local PY overrides — keyed by line_number
+  const [pyOverrides, setPyOverrides] = useState<Record<string, number>>({});
 
   useEffect(() => {
     get(`/tax-returns/${taxReturnId}/interest-trend/`).then((res) => {
       if (res.ok) setInterestTrend(res.data as InterestTrendData);
     });
+    setPyOverrides({});
   }, [taxReturnId]);
+
+  async function updatePYLine(lineNumber: string, value: string) {
+    const num = parseFloat(value) || 0;
+    setPyOverrides((prev) => ({ ...prev, [lineNumber]: num }));
+    await patch(`/tax-returns/${taxReturnId}/prior-year/update-line/`, {
+      line_number: lineNumber,
+      value: num,
+    });
+  }
 
   if (!priorYear) {
     return (
@@ -4454,7 +4748,9 @@ function PriorYearSummarySection({
     }
   }
 
-  const pyLines = priorYear.line_values ?? {};
+  const rawPyLines = priorYear.line_values ?? {};
+  // Apply local overrides
+  const pyLines: Record<string, number> = { ...rawPyLines, ...pyOverrides };
   const pyYear = priorYear.year;
 
   const fmt = (n: number | undefined) =>
@@ -4543,7 +4839,13 @@ function PriorYearSummarySection({
                       <td className="px-4 py-1 text-tx-secondary font-mono text-xs">{l.ln}</td>
                       <td className="px-4 py-1 text-tx">{l.label}</td>
                       <td className="px-4 py-1 text-right font-mono tabular-nums">{fmt(cy)}</td>
-                      <td className="px-4 py-1 text-right font-mono tabular-nums text-tx-secondary">{fmt(py)}</td>
+                      <td className="px-2 py-0.5 w-32">
+                        <CurrencyInput
+                          value={py ? String(py) : ""}
+                          onValueChange={(v) => updatePYLine(l.ln, v)}
+                          className="text-xs text-right text-tx-secondary"
+                        />
+                      </td>
                       <td className={`px-4 py-1 text-right font-mono tabular-nums ${
                         hasDiff ? (diff > 0 ? "text-success" : "text-danger") : "text-tx-muted"
                       }`}>

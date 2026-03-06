@@ -1456,15 +1456,4 @@ FIELD_MAP: FieldMap = {
     "M2_8c": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_49[0]", field_type="text", format="currency"),
     "M2_8d": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_50[0]", field_type="text", format="currency"),
 
-    # --- M-2 DB key aliases ---
-    # The compute engine stores M-2 values as M2_1..M2_8 (AAA column only).
-    # Map these DB keys to the column (a) = AAA AcroForm fields.
-    "M2_1": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line1[0].f5_19[0]", field_type="text", format="currency"),
-    "M2_2": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line2[0].f5_23[0]", field_type="text", format="currency"),
-    "M2_3": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line3[0].f5_27[0]", field_type="text", format="currency"),
-    "M2_4": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line4[0].f5_31[0]", field_type="text", format="currency"),
-    "M2_5": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line5[0].f5_35[0]", field_type="text", format="currency"),
-    "M2_6": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line6[0].f5_39[0]", field_type="text", format="currency"),
-    "M2_7": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line7[0].f5_43[0]", field_type="text", format="currency"),
-    "M2_8": AcroField(acro_name="topmostSubform[0].Page5[0].Table_SchM-2[0].Line8[0].f5_47[0]", field_type="text", format="currency"),
 }

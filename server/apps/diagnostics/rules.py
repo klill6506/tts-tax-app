@@ -253,7 +253,7 @@ def math_m2_check(tax_year: TaxYear) -> list[dict]:
     if form_code != "1120-S":
         return []
 
-    m2_8 = _d(values, "M2_8")
+    m2_8 = _d(values, "M2_8a")
     # For 1120-S, retained earnings is typically L24d (Retained earnings EOY)
     retained = _d(values, "L24d")
 

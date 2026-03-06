@@ -101,23 +101,15 @@ class TestFieldMapValidation:
         """Verify field map has expected number of entries."""
         # 1120-S has ~390 AcroForm fields total
         total = len(F1120S_FIELD_MAP) + len(F1120S_HEADER_MAP)
-        assert total >= 350, f"Expected 350+ mapped fields, got {total}"
+        assert total >= 340, f"Expected 340+ mapped fields, got {total}"
 
     def test_no_duplicate_acro_names(self):
-        """No two map entries should point to the same AcroForm field
-        (except intentional M-2 DB key aliases)."""
-        # M-2 aliases: the DB stores M2_1..M2_8, field map has M2_1a..M2_8d.
-        # We intentionally alias M2_N → M2_Na (same AcroForm field).
-        m2_alias_keys = {f"M2_{i}" for i in range(1, 9)}
-
+        """No two map entries should point to the same AcroForm field."""
         seen = {}
         duplicates = []
         for key, acro in {**F1120S_HEADER_MAP, **F1120S_FIELD_MAP}.items():
             if acro.acro_name in seen:
                 other = seen[acro.acro_name]
-                # Allow M-2 DB key aliases (M2_1 ↔ M2_1a, etc.)
-                if key in m2_alias_keys or other in m2_alias_keys:
-                    continue
                 duplicates.append(
                     f"{key} and {other} both map to {acro.acro_name}"
                 )

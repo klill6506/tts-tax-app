@@ -71,45 +71,65 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     # Inventory flows from COGS (Schedule A)
     ("L3a", lambda v: _d(v, "A1")),   # BOY inventory = COGS beginning inventory
     ("L3d", lambda v: _d(v, "A7")),   # EOY inventory = COGS ending inventory
-    # Total assets = cash + AR + inventories + shareholder loans + other current
-    #              + (buildings − accum depr)
-    ("L14a", lambda v: _sum(v, "L1a", "L2a", "L3a", "L5a", "L7a")
-     + _d(v, "L9a") - _d(v, "L9b")),
-    ("L14d", lambda v: _sum(v, "L1d", "L2d", "L3d", "L5d", "L7d")
-     + _d(v, "L9d") - _d(v, "L9e")),
+    # Total assets
+    ("L15a", lambda v: (
+        _sum(v, "L1a", "L3a", "L4a", "L5a", "L6a", "L7a", "L8a", "L9a", "L12a", "L14a")
+        + _d(v, "L2a") - _d(v, "L2b")
+        + _d(v, "L10a") - _d(v, "L10b")
+        + _d(v, "L11a") - _d(v, "L11b")
+        + _d(v, "L13a") - _d(v, "L13b")
+    )),
+    ("L15d", lambda v: (
+        _sum(v, "L1d", "L3d", "L4d", "L5d", "L6d", "L7d", "L8d", "L9d", "L12d", "L14d")
+        + _d(v, "L2d") - _d(v, "L2e")
+        + _d(v, "L10d") - _d(v, "L10e")
+        + _d(v, "L11d") - _d(v, "L11e")
+        + _d(v, "L13d") - _d(v, "L13e")
+    )),
     # Total liabilities & equity
-    ("L27a", lambda v: _sum(
-        v, "L15a", "L17a", "L18a", "L20a",
-        "L21a", "L23a", "L24a", "L25a",
-    )),
-    ("L27d", lambda v: _sum(
-        v, "L15d", "L17d", "L18d", "L20d",
-        "L21d", "L23d", "L24d", "L25d",
-    )),
+    ("L28a", lambda v: _sum(
+        v, "L16a", "L17a", "L18a", "L19a", "L20a", "L21a",
+        "L22a", "L23a", "L24a", "L25a", "L27a",
+    ) - _d(v, "L26a")),
+    ("L28d", lambda v: _sum(
+        v, "L16d", "L17d", "L18d", "L19d", "L20d", "L21d",
+        "L22d", "L23d", "L24d", "L25d", "L27d",
+    ) - _d(v, "L26d")),
 
     # Schedule M-1
-    # Line 3b: non-deductible expenses (book expenses not on K lines 1-13a)
-    ("M1_3b", lambda v: _d(v, "K16c")),
-    ("M1_4", lambda v: _sum(v, "M1_1", "M1_2", "M1_3a", "M1_3b")),
-    ("M1_7", lambda v: _d(v, "M1_5") + _d(v, "M1_6")),
+    ("M1_4", lambda v: _sum(v, "M1_1", "M1_2", "M1_3a", "M1_3b", "M1_3c")),
+    ("M1_7", lambda v: _sum(v, "M1_5a", "M1_5b", "M1_6a", "M1_6b")),
     ("M1_8", lambda v: _d(v, "M1_4") - _d(v, "M1_7")),
 
-    # Schedule M-2 — AAA tracking
-    # Line 2: ordinary income (positive only, from K1 via line 21)
-    ("M2_2", lambda v: max(ZERO, _d(v, "K1"))),
-    # Line 4: loss (from K1, shown as positive amount)
-    ("M2_4", lambda v: max(ZERO, -_d(v, "K1"))),
-    # Line 5: other reductions = charitable + sec 179 + nondeductible expenses
-    ("M2_5", lambda v: _sum(v, "K12a", "K11", "K16c")),
-    # Line 6: combine lines 1 through 5
-    ("M2_6", lambda v: (
-        _d(v, "M2_1") + _d(v, "M2_2") + _d(v, "M2_3")
-        - _d(v, "M2_4") - _d(v, "M2_5")
+    # Schedule M-2 — 4 columns: (a) AAA, (b) OAA, (c) STPI, (d) Accu E&P
+    # Column (a) AAA — auto-computed
+    ("M2_2a", lambda v: max(ZERO, _d(v, "K1"))),
+    ("M2_4a", lambda v: max(ZERO, -_d(v, "K1"))),
+    ("M2_5a", lambda v: _sum(v, "K12a", "K11", "K16c")),
+    ("M2_6a", lambda v: (
+        _d(v, "M2_1a") + _d(v, "M2_2a") + _d(v, "M2_3a")
+        - _d(v, "M2_4a") - _d(v, "M2_5a")
     )),
-    # Line 7: distributions (from Schedule K line 16d)
-    ("M2_7", lambda v: _d(v, "K16d")),
-    # Line 8: ending balance
-    ("M2_8", lambda v: _d(v, "M2_6") - _d(v, "M2_7")),
+    ("M2_7a", lambda v: _d(v, "K16d")),
+    ("M2_8a", lambda v: _d(v, "M2_6a") - _d(v, "M2_7a")),
+    # Column (b) OAA — line 6 and 8 computed, rest manual
+    ("M2_6b", lambda v: (
+        _d(v, "M2_1b") + _d(v, "M2_2b") + _d(v, "M2_3b")
+        - _d(v, "M2_4b") - _d(v, "M2_5b")
+    )),
+    ("M2_8b", lambda v: _d(v, "M2_6b") - _d(v, "M2_7b")),
+    # Column (c) STPI — line 6 and 8 computed, rest manual
+    ("M2_6c", lambda v: (
+        _d(v, "M2_1c") + _d(v, "M2_2c") + _d(v, "M2_3c")
+        - _d(v, "M2_4c") - _d(v, "M2_5c")
+    )),
+    ("M2_8c", lambda v: _d(v, "M2_6c") - _d(v, "M2_7c")),
+    # Column (d) Accu E&P — line 6 and 8 computed, rest manual
+    ("M2_6d", lambda v: (
+        _d(v, "M2_1d") + _d(v, "M2_2d") + _d(v, "M2_3d")
+        - _d(v, "M2_4d") - _d(v, "M2_5d")
+    )),
+    ("M2_8d", lambda v: _d(v, "M2_6d") - _d(v, "M2_7d")),
 ]
 
 # ---------------------------------------------------------------------------

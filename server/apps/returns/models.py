@@ -548,6 +548,24 @@ class ShareholderLoan(models.Model):
     )
     # Lines 23-25 are computed at render time
 
+    # Loan detail fields (informational — for note generation)
+    original_loan_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Original principal amount of the loan.",
+    )
+    interest_rate = models.DecimalField(
+        max_digits=6, decimal_places=4, default=0,
+        help_text="Annual interest rate (e.g. 5.24 for 5.24%).",
+    )
+    payment_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Regular payment amount.",
+    )
+    maturity_date = models.DateField(
+        null=True, blank=True,
+        help_text="Loan maturity date.",
+    )
+
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
