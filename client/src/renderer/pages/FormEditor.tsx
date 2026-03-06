@@ -2361,10 +2361,8 @@ function ShareholdersSection({
   shareholders: ShareholderRow[];
   onRefresh: () => Promise<void>;
 }) {
-  const [editing, setEditing] = useState<Partial<ShareholderRow> | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [alsoCreateOfficer, setAlsoCreateOfficer] = useState(false);
-  const [showBasis, setShowBasis] = useState(false);
 
   function formatSSN(raw: string): string {
     const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -2373,55 +2371,28 @@ function ShareholdersSection({
     return digits;
   }
 
-  async function saveShareholder() {
-    if (!editing) return;
-    setSaving(true);
-    const payload = {
-      name: editing.name || "",
-      ssn: editing.ssn || "",
-      address_line1: editing.address_line1 || "",
-      address_line2: editing.address_line2 || "",
-      city: editing.city || "",
-      state: editing.state || "",
-      zip_code: editing.zip_code || "",
-      ownership_percentage: editing.ownership_percentage || "0",
-      beginning_shares: editing.beginning_shares || "0",
-      ending_shares: editing.ending_shares || "0",
-      distributions: editing.distributions || "0",
-      health_insurance_premium: editing.health_insurance_premium || "0",
-      linked_client: editing.linked_client || null,
-      // Form 7203 basis fields
-      stock_basis_boy: editing.stock_basis_boy || "0",
-      capital_contributions: editing.capital_contributions || "0",
-      depletion: editing.depletion || "0",
-      suspended_ordinary_loss: editing.suspended_ordinary_loss || "0",
-      suspended_rental_re_loss: editing.suspended_rental_re_loss || "0",
-      suspended_other_rental_loss: editing.suspended_other_rental_loss || "0",
-      suspended_st_capital_loss: editing.suspended_st_capital_loss || "0",
-      suspended_lt_capital_loss: editing.suspended_lt_capital_loss || "0",
-      suspended_1231_loss: editing.suspended_1231_loss || "0",
-      suspended_other_loss: editing.suspended_other_loss || "0",
-    };
-
-    if (editing.id) {
-      await patch(`/tax-returns/${taxReturnId}/shareholders/${editing.id}/`, payload);
-    } else {
-      const res = await post(`/tax-returns/${taxReturnId}/shareholders/`, payload);
-      // Also create matching officer if checkbox was checked
-      if (res.ok && alsoCreateOfficer) {
+  async function addShareholder() {
+    setAdding(true);
+    const res = await post(`/tax-returns/${taxReturnId}/shareholders/`, {
+      name: "", ssn: "", address_line1: "", city: "", state: "", zip_code: "",
+      ownership_percentage: "0", beginning_shares: "0", ending_shares: "0",
+      distributions: "0", health_insurance_premium: "0",
+    });
+    if (res.ok) {
+      if (alsoCreateOfficer) {
         await post(`/tax-returns/${taxReturnId}/officers/`, {
-          name: editing.name || "",
-          ssn: editing.ssn || "",
-          percent_ownership: editing.ownership_percentage || "0",
-          title: "",
-          compensation: "0",
+          name: "", ssn: "", percent_ownership: "0", title: "", compensation: "0",
         });
       }
+      await onRefresh();
     }
-    await onRefresh();
-    setEditing(null);
+    setAdding(false);
     setAlsoCreateOfficer(false);
-    setSaving(false);
+  }
+
+  async function updateField(shId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/shareholders/${shId}/`, { [field]: value });
+    await onRefresh();
   }
 
   async function deleteShareholder(id: string) {
@@ -2439,12 +2410,17 @@ function ShareholdersSection({
     "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-tx">Shareholders</h3>
           <p className="text-xs text-tx-muted">
             K-1 forms will be generated for each shareholder based on ownership percentage.
+            {shareholders.length > 0 && (
+              <span className={`ml-2 font-medium ${Math.abs(totalOwnership - 100) < 0.01 ? "text-success" : "text-amber-600"}`}>
+                Total: {totalOwnership.toFixed(2)}%
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -2469,213 +2445,129 @@ function ShareholdersSection({
             </button>
           )}
           <button
-            onClick={() =>
-              setEditing({
-                name: "", ssn: "", address_line1: "", address_line2: "",
-                city: "", state: "", zip_code: "", ownership_percentage: "",
-                beginning_shares: "0", ending_shares: "0",
-                distributions: "0", health_insurance_premium: "0",
-                linked_client: null, linked_client_name: null,
-              })
-            }
-            className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
+            onClick={addShareholder}
+            disabled={adding}
+            className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
           >
             Add Shareholder
           </button>
         </div>
       </div>
 
-      {shareholders.length === 0 && !editing && (
-        <div className="px-4 py-8 text-center text-sm text-tx-muted">
+      {shareholders.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
           No shareholders added yet. Add shareholders to enable K-1 generation.
         </div>
       )}
 
-      {shareholders.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm zebra-table">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">Name</th>
-                <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">SSN</th>
-                <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">City, State</th>
-                <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Ownership %</th>
-                <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Distributions</th>
-                <th className="px-4 pb-2 pt-3 text-right font-semibold text-tx-secondary">Capital Contributed</th>
-                <th className="px-4 pb-2 pt-3 font-semibold text-tx-secondary">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle zebra-rows">
-              {shareholders.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-2 text-tx">
-                    {s.name}
-                    {s.linked_client_name && (
-                      <span className="ml-1.5 rounded-full bg-primary-subtle px-1.5 py-0.5 text-[10px] font-medium text-primary-text" title={`Linked to client: ${s.linked_client_name}`}>
-                        Linked
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-tx">{s.ssn}</td>
-                  <td className="px-4 py-2 text-tx">
-                    {[s.city, s.state].filter(Boolean).join(", ")}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-tx">
-                    {s.ownership_percentage ? `${s.ownership_percentage}%` : ""}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-tx">
-                    {parseFloat(s.distributions || "0") > 0 ? Number(s.distributions).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : ""}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-tx">
-                    {parseFloat(s.capital_contributions || "0") > 0 ? Number(s.capital_contributions).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : ""}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        onClick={() => setEditing({ ...s, ownership_percentage: s.ownership_percentage, beginning_shares: String(s.beginning_shares), ending_shares: String(s.ending_shares) })}
-                        className="text-xs font-medium text-primary-text hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={async () => {
-                          const r = await renderK1(taxReturnId, s.id);
-                          if (r?.pdfBase64) {
-                            const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                            window.open(URL.createObjectURL(blob), "_blank");
-                          } else alert(r?.error || "Failed to generate K-1.");
-                        }}
-                        className="text-xs font-medium text-primary-text hover:underline"
-                      >
-                        K-1
-                      </button>
-                      {parseFloat(s.health_insurance_premium || "0") > 0 && (
-                        <button
-                          onClick={async () => {
-                            const r = await render7206(taxReturnId, s.id);
-                            if (r?.pdfBase64) {
-                              const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                              window.open(URL.createObjectURL(blob), "_blank");
-                            } else alert(r?.error || "Failed to generate Form 7206.");
-                          }}
-                          className="text-xs font-medium text-primary-text hover:underline"
-                        >
-                          7206
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteShareholder(s.id)}
-                        className="text-xs font-medium text-danger hover:text-danger-hover hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-border bg-surface-alt">
-                <td className="px-4 py-2 font-medium text-tx" colSpan={3}>Total</td>
-                <td className={`px-4 py-2 text-right font-medium tabular-nums ${
-                  Math.abs(totalOwnership - 100) < 0.01 ? "text-success" : "text-amber-600"
-                }`}>
-                  {totalOwnership.toFixed(2)}%
-                </td>
-                <td className="px-4 py-2 text-right font-medium tabular-nums text-tx">
-                  {shareholders.reduce((sum, s) => sum + (parseFloat(s.distributions || "0") || 0), 0) > 0
-                    ? shareholders.reduce((sum, s) => sum + (parseFloat(s.distributions || "0") || 0), 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 })
-                    : ""}
-                </td>
-                <td colSpan={2} />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
-
-      {/* Shareholder edit form */}
-      {editing && (
-        <div className="border-t border-border bg-surface-alt p-4">
-          <h4 className="mb-3 text-sm font-semibold text-tx">
-            {editing.id ? "Edit Shareholder" : "New Shareholder"}
-          </h4>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="col-span-2">
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Name</label>
-              <input type="text" value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">SSN</label>
-              <input type="text" value={editing.ssn || ""} onChange={(e) => setEditing({ ...editing, ssn: formatSSN(e.target.value) })} className={inputClass} placeholder="XXX-XX-XXXX" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Ownership %</label>
-              <input type="text" value={editing.ownership_percentage || ""} onChange={(e) => setEditing({ ...editing, ownership_percentage: e.target.value })} className={inputClass} />
+      {shareholders.map((s) => (
+        <div key={s.id} className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
+            <span className="text-xs font-bold text-tx">{s.name || "(New Shareholder)"}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  const r = await renderK1(taxReturnId, s.id);
+                  if (r?.pdfBase64) {
+                    const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                    window.open(URL.createObjectURL(blob), "_blank");
+                  } else alert(r?.error || "Failed to generate K-1.");
+                }}
+                className="text-xs font-medium text-primary-text hover:underline"
+              >
+                K-1
+              </button>
+              {parseFloat(s.health_insurance_premium || "0") > 0 && (
+                <button
+                  onClick={async () => {
+                    const r = await render7206(taxReturnId, s.id);
+                    if (r?.pdfBase64) {
+                      const blob = new Blob([Uint8Array.from(atob(r.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                      window.open(URL.createObjectURL(blob), "_blank");
+                    } else alert(r?.error || "Failed to generate Form 7206.");
+                  }}
+                  className="text-xs font-medium text-primary-text hover:underline"
+                >
+                  7206
+                </button>
+              )}
+              <button
+                onClick={() => deleteShareholder(s.id)}
+                className="text-xs font-medium text-danger hover:underline"
+              >
+                Delete
+              </button>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="col-span-2">
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Address</label>
-              <input type="text" value={editing.address_line1 || ""} onChange={(e) => setEditing({ ...editing, address_line1: e.target.value })} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">City</label>
-              <input type="text" value={editing.city || ""} onChange={(e) => setEditing({ ...editing, city: e.target.value })} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-tx-secondary">State</label>
-                <input type="text" value={editing.state || ""} onChange={(e) => setEditing({ ...editing, state: e.target.value })} className={inputClass} maxLength={2} />
+          <div className="px-4 py-3 space-y-3">
+            {/* Row 1: Name, SSN, Ownership */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="col-span-2">
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Name</label>
+                <input type="text" defaultValue={s.name} onBlur={(e) => updateField(s.id, "name", e.target.value)} className={inputClass + " text-xs"} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-tx-secondary">ZIP</label>
-                <input type="text" value={editing.zip_code || ""} onChange={(e) => setEditing({ ...editing, zip_code: e.target.value })} className={inputClass} />
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">SSN</label>
+                <input type="text" defaultValue={s.ssn} onBlur={(e) => updateField(s.id, "ssn", e.target.value)}
+                  onChange={(e) => { e.target.value = formatSSN(e.target.value); }}
+                  className={inputClass + " text-xs"} placeholder="XXX-XX-XXXX" />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Ownership %</label>
+                <input type="text" defaultValue={s.ownership_percentage} onBlur={(e) => updateField(s.id, "ownership_percentage", e.target.value)} className={inputClass + " text-xs"} />
+              </div>
+            </div>
+            {/* Row 2: Address */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="col-span-2">
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address</label>
+                <input type="text" defaultValue={s.address_line1} onBlur={(e) => updateField(s.id, "address_line1", e.target.value)} className={inputClass + " text-xs"} />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">City</label>
+                <input type="text" defaultValue={s.city} onBlur={(e) => updateField(s.id, "city", e.target.value)} className={inputClass + " text-xs"} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">State</label>
+                  <input type="text" defaultValue={s.state} onBlur={(e) => updateField(s.id, "state", e.target.value)} className={inputClass + " text-xs"} maxLength={2} />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">ZIP</label>
+                  <input type="text" defaultValue={s.zip_code} onBlur={(e) => updateField(s.id, "zip_code", e.target.value)} className={inputClass + " text-xs"} />
+                </div>
+              </div>
+            </div>
+            {/* Row 3: Shares, Distributions, Health Insurance */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Beginning Shares</label>
+                <input type="text" inputMode="numeric" defaultValue={s.beginning_shares}
+                  onBlur={(e) => updateField(s.id, "beginning_shares", e.target.value.replace(/[^0-9]/g, ""))}
+                  className={inputClass + " text-xs"} />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Ending Shares</label>
+                <input type="text" inputMode="numeric" defaultValue={s.ending_shares}
+                  onBlur={(e) => updateField(s.id, "ending_shares", e.target.value.replace(/[^0-9]/g, ""))}
+                  className={inputClass + " text-xs"} />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Distributions</label>
+                <CurrencyInput value={s.distributions || "0"} onValueChange={(v) => updateField(s.id, "distributions", v)} />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Health Ins. Premium</label>
+                <CurrencyInput value={s.health_insurance_premium || "0"} onValueChange={(v) => updateField(s.id, "health_insurance_premium", v)} />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Capital Contributed</label>
+                <CurrencyInput value={s.capital_contributions || "0"} onValueChange={(v) => updateField(s.id, "capital_contributions", v)} />
               </div>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Beginning Shares</label>
-              <input type="text" inputMode="numeric" value={editing.beginning_shares || "0"} onChange={(e) => setEditing({ ...editing, beginning_shares: e.target.value.replace(/[^0-9]/g, "") })} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Ending Shares</label>
-              <input type="text" inputMode="numeric" value={editing.ending_shares || "0"} onChange={(e) => setEditing({ ...editing, ending_shares: e.target.value.replace(/[^0-9]/g, "") })} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Distributions</label>
-              <CurrencyInput value={editing.distributions || "0"} onValueChange={(v) => setEditing({ ...editing, distributions: v })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-tx-secondary">Capital Contributed</label>
-              <CurrencyInput value={editing.capital_contributions || "0"} onValueChange={(v) => setEditing({ ...editing, capital_contributions: v })} />
-            </div>
-          </div>
-          {/* Cross-link checkbox — only show for new shareholders */}
-          {!editing.id && (
-            <div className="mt-3">
-              <label className="flex items-center gap-2 text-sm text-tx cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={alsoCreateOfficer}
-                  onChange={(e) => setAlsoCreateOfficer(e.target.checked)}
-                  className="h-4 w-4 rounded border-input-border text-primary focus:ring-primary"
-                />
-                Also add as officer
-              </label>
-            </div>
-          )}
-          <div className="mt-3 flex gap-2">
-            <button onClick={saveShareholder} disabled={saving} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50">
-              {saving ? "Saving..." : "Save"}
-            </button>
-            <button onClick={() => { setEditing(null); setAlsoCreateOfficer(false); }} className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs font-semibold text-tx shadow-sm transition hover:bg-border">
-              Cancel
-            </button>
-          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -3066,6 +2958,24 @@ function RentalPropertiesSection({
   onRefresh: () => Promise<void>;
 }) {
   const [saving, setSaving] = useState(false);
+  const seededRef = useRef(false);
+
+  // Auto-seed 4 blank properties on first visit if none exist
+  useEffect(() => {
+    if (properties.length === 0 && !seededRef.current) {
+      seededRef.current = true;
+      (async () => {
+        for (let i = 1; i <= 4; i++) {
+          await post(`/tax-returns/${taxReturnId}/rental-properties/`, {
+            description: `Property ${i}`,
+            property_type: "6",
+            rents_received: "0",
+          });
+        }
+        await onRefresh();
+      })();
+    }
+  }, [properties.length]);
 
   async function addProperty() {
     setSaving(true);
@@ -3998,9 +3908,28 @@ function SubSchedulePanel({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    get(`/tax-returns/${taxReturnId}/line-details/?line_number=${lineNumber}`).then((res) => {
-      if (res.ok) setItems(res.data as LineItemDetailRow[]);
-      setLoading(false);
+    get(`/tax-returns/${taxReturnId}/line-details/?line_number=${lineNumber}`).then(async (res) => {
+      if (res.ok) {
+        const existing = res.data as LineItemDetailRow[];
+        if (existing.length > 0) {
+          setItems(existing);
+          setLoading(false);
+        } else {
+          // Auto-seed 4 blank rows on first open
+          const seeded: LineItemDetailRow[] = [];
+          for (let i = 1; i <= 4; i++) {
+            const r = await post(`/tax-returns/${taxReturnId}/line-details/`, {
+              line_number: lineNumber, description: "", amount: "0",
+              amount_boy: "0", amount_eoy: "0", sort_order: i,
+            });
+            if (r.ok) seeded.push(r.data as LineItemDetailRow);
+          }
+          setItems(seeded);
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
     });
   }, [taxReturnId, lineNumber]);
 
@@ -4016,7 +3945,6 @@ function SubSchedulePanel({
     if (res.ok) {
       const newItem = res.data as LineItemDetailRow;
       setItems([...items, newItem]);
-      await onRefresh();
       // Focus the new description input
       setTimeout(() => {
         document.getElementById(`lid-desc-${newItem.id}`)?.focus();
@@ -4046,8 +3974,13 @@ function SubSchedulePanel({
 
   return (
     <div className="border border-border-subtle rounded-lg bg-surface-alt/20 p-2 mt-1 space-y-1">
-      {items.length === 0 && (
-        <p className="text-[10px] text-tx-muted px-1">No detail items. Click + to add.</p>
+      {isBs && items.length > 0 && (
+        <div className="flex items-center gap-1.5 px-1 pb-0.5">
+          <span className="flex-1" />
+          <span className="w-28 text-center text-[10px] font-semibold text-tx-muted">BOY</span>
+          <span className="w-28 text-center text-[10px] font-semibold text-tx-muted">EOY</span>
+          <span className="w-4" />
+        </div>
       )}
       {items.map((item) => (
         <div key={item.id} className="flex items-center gap-1.5">
