@@ -733,7 +733,6 @@ export default function FormEditor() {
             <IncomeDeductionsSection
               taxReturnId={taxReturnId!}
               fieldsBySection={fieldsBySection}
-              otherDeductions={returnData.other_deductions || []}
               onChange={handleFieldChange}
               onRefresh={refreshReturn}
               priorYear={priorYear}
@@ -1912,73 +1911,16 @@ const TAX_SECTION_CODE = "page1_tax";
 function IncomeDeductionsSection({
   taxReturnId,
   fieldsBySection,
-  otherDeductions,
   onChange,
   onRefresh,
   priorYear,
 }: {
   taxReturnId: string;
   fieldsBySection: Record<string, FieldValue[]>;
-  otherDeductions: OtherDeductionRow[];
   onChange: (formLineId: string, value: string) => void;
   onRefresh: () => Promise<void>;
   priorYear: PriorYearData | null;
 }) {
-  const [categories, setCategories] = useState<string[]>([]);
-  const [localOther, setLocalOther] = useState<OtherDeductionRow[]>(otherDeductions);
-
-  useEffect(() => { setLocalOther(otherDeductions); }, [otherDeductions]);
-
-  useEffect(() => {
-    get("/tax-returns/deduction-categories/").then((res) => {
-      if (res.ok) setCategories(res.data as string[]);
-    });
-  }, []);
-
-  // --- Other deduction CRUD ---
-  const [newDedId, setNewDedId] = useState<string | null>(null);
-
-  async function addDeduction() {
-    const res = await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
-      description: "",
-      amount: "0",
-      category: "",
-      sort_order: localOther.length + 1,
-      source: "manual",
-    });
-    if (res.ok) {
-      setNewDedId((res.data as OtherDeductionRow).id);
-      await onRefresh();
-    } else {
-      console.error("Failed to add deduction:", res);
-      alert("Failed to add deduction. Please try again.");
-    }
-  }
-
-  // Auto-focus on newly added deduction row
-  useEffect(() => {
-    if (newDedId) {
-      const el = document.getElementById(`ded-desc-${newDedId}`);
-      if (el) { el.focus(); el.scrollIntoView({ behavior: "smooth", block: "center" }); }
-      setNewDedId(null);
-    }
-  }, [localOther, newDedId]);
-
-  async function updateDeduction(dedId: string, field: string, value: string) {
-    await patch(`/tax-returns/${taxReturnId}/other-deductions/${dedId}/`, { [field]: value });
-    await onRefresh();
-  }
-
-  async function deleteDeduction(dedId: string) {
-    if (!confirm("Delete this deduction?")) return;
-    await del(`/tax-returns/${taxReturnId}/other-deductions/${dedId}/`);
-    await onRefresh();
-  }
-
-  function handleLocalOtherChange(dedId: string, field: keyof OtherDeductionRow, value: string) {
-    setLocalOther((prev) => prev.map((r) => (r.id === dedId ? { ...r, [field]: value } : r)));
-  }
-
   // --- Separate fields by role ---
   const incomeFields = fieldsBySection["page1_income"] || [];
   const cogsFields = fieldsBySection["sched_a"] || [];
@@ -1994,104 +1936,29 @@ function IncomeDeductionsSection({
   const pyLines = priorYear?.line_values ?? {};
   const hasPY = priorYear !== null;
 
-  // Build merged list: form lines 7-18 + other deduction rows, sorted alphabetically
-  type DeductionItem =
-    | { type: "form_line"; field: FieldValue }
-    | { type: "other_ded"; row: OtherDeductionRow };
-
-  const allDeductions: DeductionItem[] = useMemo(() => {
-    const items: DeductionItem[] = [];
-    for (const f of deductionFields) {
-      if (f.line_number === "19" || DEDUCTION_SUMMARY_LINES.includes(f.line_number)) continue;
-      items.push({ type: "form_line", field: f });
-    }
-    for (const row of localOther) {
-      items.push({ type: "other_ded", row });
-    }
-    items.sort((a, b) => {
-      const labelA = a.type === "form_line" ? a.field.label : (a.row.description || "zzz");
-      const labelB = b.type === "form_line" ? b.field.label : (b.row.description || "zzz");
-      return labelA.localeCompare(labelB, "en", { sensitivity: "base" });
-    });
+  // Build form-line deductions (lines 7-18), sorted alphabetically in 2 columns
+  const sortedDeductions = useMemo(() => {
+    const items = deductionFields.filter(
+      (f) => f.line_number !== "19" && !DEDUCTION_SUMMARY_LINES.includes(f.line_number)
+    );
+    items.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
     return items;
-  }, [deductionFields, localOther]);
+  }, [deductionFields]);
 
-  // Split into two columns
-  const midpoint = Math.ceil(allDeductions.length / 2);
-  const leftDeductions = allDeductions.slice(0, midpoint);
-  const rightDeductions = allDeductions.slice(midpoint);
+  const midpoint = Math.ceil(sortedDeductions.length / 2);
+  const leftDeductions = sortedDeductions.slice(0, midpoint);
+  const rightDeductions = sortedDeductions.slice(midpoint);
 
-  // Detail expand for adding more other deductions
   const [otherDedExpanded, setOtherDedExpanded] = useState(false);
-  const [seedingRows, setSeedingRows] = useState(false);
 
-  async function expandOtherDed() {
-    if (otherDedExpanded) { setOtherDedExpanded(false); return; }
-    setOtherDedExpanded(true);
-    // Seed up to 4 blank rows if fewer exist
-    const manualCount = localOther.filter((r) => r.source === "manual").length;
-    const needed = 4 - manualCount;
-    if (needed > 0 && !seedingRows) {
-      setSeedingRows(true);
-      for (let i = 0; i < needed; i++) {
-        await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
-          description: "", amount: "0", category: "", sort_order: localOther.length + i + 1, source: "manual",
-        });
-      }
-      await onRefresh();
-      setSeedingRows(false);
-    }
-  }
-
-  function renderDeductionItem(item: DeductionItem) {
-    if (item.type === "form_line") {
-      return (
-        <div key={item.field.id} className={`flex items-center gap-2 px-3 py-1 ${item.field.is_computed ? "bg-surface-alt/50" : ""}`}>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs text-tx truncate">{item.field.label}</span>
-          </div>
-          <div className="w-32 shrink-0">
-            <FieldInput field={item.field} onChange={onChange} />
-          </div>
-          <div className="w-8 shrink-0" />
-        </div>
-      );
-    }
-    const row = item.row;
-    const isStandard = row.source === "standard";
+  function renderDeductionField(field: FieldValue) {
     return (
-      <div key={row.id} className="flex items-center gap-2 px-3 py-1">
+      <div key={field.id} className={`flex items-center gap-2 px-3 py-1 ${field.is_computed ? "bg-surface-alt/50" : ""}`}>
         <div className="flex-1 min-w-0">
-          {isStandard ? (
-            <span className="text-xs text-tx">{row.description}</span>
-          ) : (
-            <>
-              <input
-                id={`ded-desc-${row.id}`}
-                type="text"
-                list={`ded-cats-${row.id}`}
-                value={row.description}
-                onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
-                onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
-                className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                placeholder="Enter deduction..."
-              />
-              <datalist id={`ded-cats-${row.id}`}>
-                {categories.map((cat) => <option key={cat} value={cat} />)}
-              </datalist>
-            </>
-          )}
+          <span className="text-xs text-tx truncate">{field.label}</span>
         </div>
         <div className="w-32 shrink-0">
-          <CurrencyInput
-            value={row.amount}
-            onValueChange={(v) => { handleLocalOtherChange(row.id, "amount", v); updateDeduction(row.id, "amount", v); }}
-          />
-        </div>
-        <div className="w-8 shrink-0 text-center">
-          {!isStandard && (
-            <button onClick={() => deleteDeduction(row.id)} className="text-xs font-medium text-danger hover:text-danger-hover">×</button>
-          )}
+          <FieldInput field={field} onChange={onChange} />
         </div>
       </div>
     );
@@ -2152,21 +2019,21 @@ function IncomeDeductionsSection({
         </div>
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
           <div className="divide-y divide-border-subtle">
-            {leftDeductions.map(renderDeductionItem)}
+            {leftDeductions.map(renderDeductionField)}
           </div>
           <div className="divide-y divide-border-subtle">
-            {rightDeductions.map(renderDeductionItem)}
+            {rightDeductions.map(renderDeductionField)}
           </div>
         </div>
 
-        {/* Last row: Other deductions total + Detail button to add more */}
+        {/* Last row: Other deductions total + Detail button (SubSchedulePanel) */}
         {otherDedLine && (
           <div className="border-t border-border-subtle">
             <div className="flex items-center gap-2 px-3 py-1">
               <div className="flex-1 min-w-0 flex items-center gap-1">
                 <span className="text-xs text-tx">{otherDedLine.label}</span>
                 <button
-                  onClick={expandOtherDed}
+                  onClick={() => setOtherDedExpanded(!otherDedExpanded)}
                   className="ml-1 text-[10px] font-medium text-primary hover:underline"
                 >
                   {otherDedExpanded ? "▾ Hide detail" : "▸ Detail"}
@@ -2177,55 +2044,12 @@ function IncomeDeductionsSection({
               </div>
             </div>
             {otherDedExpanded && (
-              <div className="bg-surface-alt/30 border-t border-border-subtle px-4 py-2 space-y-1">
-                {seedingRows && (
-                  <div className="text-xs text-tx-muted py-1">Loading...</div>
-                )}
-                {localOther.map((row) => {
-                  const isStandard = row.source === "standard";
-                  return (
-                    <div key={row.id} className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        {isStandard ? (
-                          <span className="text-xs text-tx">{row.description}</span>
-                        ) : (
-                          <>
-                            <input
-                              id={`ded-desc-${row.id}`}
-                              type="text"
-                              list={`ded-cats-${row.id}`}
-                              value={row.description}
-                              onChange={(e) => handleLocalOtherChange(row.id, "description", e.target.value)}
-                              onBlur={(e) => updateDeduction(row.id, "description", e.target.value)}
-                              className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                              placeholder="Enter deduction..."
-                            />
-                            <datalist id={`ded-cats-${row.id}`}>
-                              {categories.map((cat) => <option key={cat} value={cat} />)}
-                            </datalist>
-                          </>
-                        )}
-                      </div>
-                      <div className="w-32 shrink-0">
-                        <CurrencyInput
-                          value={row.amount}
-                          onValueChange={(v) => { handleLocalOtherChange(row.id, "amount", v); updateDeduction(row.id, "amount", v); }}
-                        />
-                      </div>
-                      <div className="w-8 shrink-0 text-center">
-                        {!isStandard && (
-                          <button onClick={() => deleteDeduction(row.id)} className="text-xs font-medium text-danger hover:text-danger-hover">×</button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                <button
-                  onClick={addDeduction}
-                  className="mt-1 rounded-lg bg-success px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover"
-                >
-                  Add
-                </button>
+              <div className="px-4 pb-2">
+                <SubSchedulePanel
+                  taxReturnId={taxReturnId}
+                  lineNumber="19"
+                  onRefresh={onRefresh}
+                />
               </div>
             )}
           </div>
@@ -3739,6 +3563,7 @@ const SUBSCHEDULE_LINES: Record<string, { type: "single" | "balance_sheet"; labe
   M1_3c: { type: "single", label: "Other M-1 additions" },
   M1_5b: { type: "single", label: "Other M-1 income on return not on books" },
   M1_6b: { type: "single", label: "Other M-1 deductions on books not on return" },
+  "19": { type: "single", label: "Other deductions" },
   L6: { type: "balance_sheet", label: "Other current assets" },
   L9: { type: "balance_sheet", label: "Other investments" },
   L14: { type: "balance_sheet", label: "Other assets" },
