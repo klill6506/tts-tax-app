@@ -664,6 +664,28 @@ class TaxReturnViewSet(
             )
         return qs
 
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a tax return, backfilling any missing form lines first."""
+        instance = self.get_object()
+        # Backfill: if new lines were added to the form definition after this
+        # return was created, create empty FormFieldValue rows for them.
+        existing_line_ids = set(
+            instance.field_values.values_list("form_line_id", flat=True)
+        )
+        all_lines = FormLine.objects.filter(
+            section__form=instance.form_definition
+        )
+        missing = [ln for ln in all_lines if ln.id not in existing_line_ids]
+        if missing:
+            FormFieldValue.objects.bulk_create([
+                FormFieldValue(tax_return=instance, form_line=ln, value="")
+                for ln in missing
+            ])
+            # Re-fetch so serializer sees the new rows
+            instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     # ------------------------------------------------------------------
     # Create return (form-aware by entity type)
     # ------------------------------------------------------------------

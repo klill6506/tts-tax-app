@@ -1,18 +1,11 @@
 /**
- * Universal API adapter — works in both Electron (IPC bridge) and web (fetch).
- *
- * Detection: if `window.api` exists, we're in Electron and use the IPC bridge.
- * Otherwise we use native fetch() against the same origin.
+ * API adapter — standard fetch() against the same origin (Django).
  */
 
 const API_BASE = "/api/v1";
 
-function isElectron(): boolean {
-  return typeof window !== "undefined" && !!window.api;
-}
-
 // ---------------------------------------------------------------------------
-// CSRF helper (web only — reads Django's csrftoken cookie)
+// CSRF helper (reads Django's csrftoken cookie)
 // ---------------------------------------------------------------------------
 
 function getCsrfToken(): string | null {
@@ -29,10 +22,6 @@ export async function api(
   path: string,
   body?: unknown
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  if (isElectron()) {
-    return window.api!.request(method, path, body);
-  }
-
   const headers: Record<string, string> = {};
   if (body) headers["Content-Type"] = "application/json";
   if (["POST", "PATCH", "PUT", "DELETE"].includes(method.toUpperCase())) {
@@ -83,12 +72,6 @@ export async function uploadFile(
   fields: Record<string, string>,
   file: File
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  if (isElectron()) {
-    const filePath = window.api!.getFilePath(file);
-    return window.api!.uploadFile(path, fields, "file", filePath, file.name);
-  }
-
-  // Web: standard FormData
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
     formData.append(key, value);
@@ -161,12 +144,10 @@ async function fetchPdf(urlPath: string): Promise<PdfResponse> {
 }
 
 export async function renderPdf(taxReturnId: string): Promise<PdfResponse> {
-  if (isElectron()) return window.api!.renderPdf(taxReturnId);
   return fetchPdf(`/tax-returns/${taxReturnId}/render-pdf/`);
 }
 
 export async function renderK1s(taxReturnId: string): Promise<PdfResponse> {
-  if (isElectron()) return window.api!.renderK1s(taxReturnId);
   return fetchPdf(`/tax-returns/${taxReturnId}/render-k1s/`);
 }
 
@@ -174,7 +155,6 @@ export async function renderK1(
   taxReturnId: string,
   shareholderId: string
 ): Promise<PdfResponse> {
-  if (isElectron()) return window.api!.renderK1(taxReturnId, shareholderId);
   return fetchPdf(
     `/tax-returns/${taxReturnId}/render-k1/${shareholderId}/`
   );
@@ -184,7 +164,6 @@ export async function render7206(
   taxReturnId: string,
   shareholderId: string
 ): Promise<PdfResponse> {
-  if (isElectron()) return window.api!.render7206(taxReturnId, shareholderId);
   return fetchPdf(
     `/tax-returns/${taxReturnId}/render-7206/${shareholderId}/`
   );
@@ -220,8 +199,5 @@ export async function render7004(taxReturnId: string): Promise<PdfResponse> {
 // ---------------------------------------------------------------------------
 
 export async function clearSession(): Promise<void> {
-  if (isElectron()) {
-    await window.api!.clearSession();
-  }
-  // In web mode, Django's logout endpoint already clears the session cookie.
+  // Django's logout endpoint clears the session cookie.
 }

@@ -11,7 +11,7 @@ set -o errexit  # exit on error
 echo "=== Building React SPA ==="
 cd client
 npm install
-npx vite build --config vite.config.web.ts
+npx vite build --config vite.config.ts
 echo "SPA build output:"
 ls -la ../client/dist-web/
 cd ..

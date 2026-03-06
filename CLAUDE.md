@@ -15,14 +15,13 @@ Local path: `D:\dev\tts-tax-app`
 | Layer | Technology |
 |-------|-----------|
 | Server | Django 5.2 LTS + Django REST Framework |
-| Database | PostgreSQL 16 (local Docker for dev) |
-| Desktop Client | Electron 40 + Vite + React + TypeScript |
+| Database | Supabase Postgres 17.6 |
+| Web Client | Vite + React + TypeScript (SPA served by Django) |
 | Styling | Tailwind UI / Tailwind Plus |
-| Dev DB | Postgres in Docker Compose |
+| Hosting | Render.com (Django + WhiteNoise serves SPA) |
 | Dependency Mgmt | Poetry (Python 3.13) |
-| Remote Access | Firm's existing VPN (no custom remote) |
 | AI Help | Gemini (IRS-grounded RAG + broad search) |
-| PDF Rendering | ReportLab + pypdf over official IRS templates |
+| PDF Rendering | ReportLab + pypdf + pymupdf over official IRS templates |
 
 ## Project Rules (enforced)
 - **No real PII in dev** — use synthetic/fake data only
@@ -37,7 +36,7 @@ Local path: `D:\dev\tts-tax-app`
 - Docker Desktop (for Postgres)
 - Python 3.13+
 - Poetry
-- Node.js (for Electron client)
+- Node.js (for React client)
 
 ### Start Postgres
 ```powershell
@@ -54,7 +53,7 @@ poetry run python manage.py runserver
 # Or use: .\scripts\run_dev.ps1
 ```
 
-### Start Electron client
+### Start React dev server
 ```powershell
 cd D:\dev\tts-tax-app\client
 npm install
@@ -103,9 +102,7 @@ tts-tax-app/
 │   │   └── tts_forms/          # IRS form PDF rendering
 │   ├── tests/                  # pytest test files
 │   └── scripts/                # Dev scripts (run_dev.ps1)
-└── client/                     # Electron + React app
-    ├── src/main/               # Electron main process
-    ├── src/preload/            # IPC bridge
+└── client/                     # React web SPA
     └── src/renderer/           # React UI
 ```
 
@@ -131,7 +128,7 @@ exist everywhere. Modules can be sold individually or as a suite.
 ### Modules
 | Module | Status | Stack | Database |
 |---|---|---|---|
-| **Tax Prep** (this repo) | Active dev | Django + Electron | Local Docker Postgres |
+| **Tax Prep** (this repo) | Active dev | Django + React SPA | Supabase Postgres |
 | **1099 E-Filing** | Production | FastAPI(?) | Supabase Postgres |
 | **Client Check-In** | Working | Flask | In-memory (no DB yet) |
 | **Client Portal** | Planned (summer) | TBD | — |
@@ -160,4 +157,4 @@ An AI-native, modern-stack tax platform for professional preparers is an open fi
 - ❌ Don't invent new ports or services without asking
 - Push to GitHub regularly — that's the backup strategy
 - Keep code readable — Ken is a CPA learning to code, not a career engineer
-- **Do NOT change the tech stack** (Django, React, Electron) without explicit discussion
+- **Do NOT change the tech stack** (Django, React, Vite) without explicit discussion

@@ -19,7 +19,7 @@ def _serve_spa(request):
         resp = FileResponse(open(index, "rb"), content_type="text/html")
         resp["Cache-Control"] = "no-cache"
         return resp
-    return HttpResponseNotFound("SPA not built. Run: cd client && npm run build:web")
+    return HttpResponseNotFound("SPA not built. Run: cd client && npm run build")
 
 
 urlpatterns = [
