@@ -2023,6 +2023,25 @@ function IncomeDeductionsSection({
 
   // Detail expand for adding more other deductions
   const [otherDedExpanded, setOtherDedExpanded] = useState(false);
+  const [seedingRows, setSeedingRows] = useState(false);
+
+  async function expandOtherDed() {
+    if (otherDedExpanded) { setOtherDedExpanded(false); return; }
+    setOtherDedExpanded(true);
+    // Seed up to 4 blank rows if fewer exist
+    const manualCount = localOther.filter((r) => r.source === "manual").length;
+    const needed = 4 - manualCount;
+    if (needed > 0 && !seedingRows) {
+      setSeedingRows(true);
+      for (let i = 0; i < needed; i++) {
+        await post(`/tax-returns/${taxReturnId}/other-deductions/`, {
+          description: "", amount: "0", category: "", sort_order: localOther.length + i + 1, source: "manual",
+        });
+      }
+      await onRefresh();
+      setSeedingRows(false);
+    }
+  }
 
   function renderDeductionItem(item: DeductionItem) {
     if (item.type === "form_line") {
@@ -2034,6 +2053,7 @@ function IncomeDeductionsSection({
           <div className="w-32 shrink-0">
             <FieldInput field={item.field} onChange={onChange} />
           </div>
+          <div className="w-8 shrink-0" />
         </div>
       );
     }
@@ -2098,9 +2118,28 @@ function IncomeDeductionsSection({
               Cost of Goods Sold
             </div>
             <div className="divide-y divide-border-subtle">
-              {cogsFields.map((fv) => (
-                <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />
-              ))}
+              {cogsFields.map((fv) => {
+                if (fv.line_number === "A9a") {
+                  return (
+                    <div key={fv.id} className="flex items-center gap-4 px-4 py-1.5">
+                      <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">{fv.line_number}</div>
+                      <div className="flex-1"><span className="text-xs text-tx">{fv.label}</span></div>
+                      <div className="w-36 shrink-0">
+                        <select
+                          value={fv.value || ""}
+                          onChange={(e) => onChange(fv.form_line, e.target.value)}
+                          className="w-full rounded-md border border-input-border bg-input px-2 py-1 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Cost">Cost</option>
+                          <option value="Lower of cost or market">Lower of cost or market</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                }
+                return <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLines[fv.line_number]} showPY={hasPY} />;
+              })}
             </div>
           </div>
         )}
@@ -2127,7 +2166,7 @@ function IncomeDeductionsSection({
               <div className="flex-1 min-w-0 flex items-center gap-1">
                 <span className="text-xs text-tx">{otherDedLine.label}</span>
                 <button
-                  onClick={() => setOtherDedExpanded(!otherDedExpanded)}
+                  onClick={expandOtherDed}
                   className="ml-1 text-[10px] font-medium text-primary hover:underline"
                 >
                   {otherDedExpanded ? "▾ Hide detail" : "▸ Detail"}
@@ -2139,8 +2178,8 @@ function IncomeDeductionsSection({
             </div>
             {otherDedExpanded && (
               <div className="bg-surface-alt/30 border-t border-border-subtle px-4 py-2 space-y-1">
-                {localOther.length === 0 && (
-                  <div className="text-xs text-tx-muted py-1">No detail rows yet. Click "Add" to create one.</div>
+                {seedingRows && (
+                  <div className="text-xs text-tx-muted py-1">Loading...</div>
                 )}
                 {localOther.map((row) => {
                   const isStandard = row.source === "standard";

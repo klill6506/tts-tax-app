@@ -62,11 +62,8 @@ SECTIONS = [
             ("A7", "Inventory at end of year", C, "1120S_A7", False, 70, DR),
             ("A8", "Cost of goods sold (line 6 minus line 7)", C, "", True, 80, DR),
             # Inventory method indicators (Form 1125-A, line 9)
-            ("A9a", "Check if LIFO was adopted this tax year", B, "", False, 90, DR),
-            ("A9b", "Was there any change in determining quantities, cost, or valuations?", B, "", False, 91, DR),
-            ("A9c", "Check all methods used for valuing closing inventory: (i) Cost", B, "", False, 92, DR),
-            ("A9d", "Check all methods used: (ii) Lower of cost or market", B, "", False, 93, DR),
-            ("A9e", "Check all methods used: (iii) Other (specify method and attach explanation)", B, "", False, 94, DR),
+            ("A9a", "Method used for valuing closing inventory", T, "", False, 90, DR),
+            ("A9f", "Was there any change in determining quantities, cost, or valuations?", B, "", False, 91, DR),
         ],
     ),
     # ------ PAGE 1: DEDUCTIONS ------
