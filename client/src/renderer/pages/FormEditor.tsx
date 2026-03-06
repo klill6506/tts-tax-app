@@ -396,6 +396,7 @@ const GA_SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
 
 export default function FormEditor() {
   const { taxReturnId } = useParams<{ taxReturnId: string }>();
+  const navigate = useNavigate();
 
   const [returnData, setReturnData] = useState<TaxReturnData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -478,6 +479,14 @@ export default function FormEditor() {
   }, [returnData]);
 
   const isStateReturn = returnData?.form_code === "GA-600S";
+
+  // If user navigates directly to a state return, redirect to the federal return's State tab
+  useEffect(() => {
+    if (isStateReturn && returnData?.federal_return_id) {
+      navigate(`/tax-returns/${returnData.federal_return_id}/editor`, { replace: true });
+    }
+  }, [isStateReturn, returnData?.federal_return_id]);
+
   const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
   const sectionTabs = useMemo(() => {
     if (isStateReturn) return GA_SECTION_TABS;
