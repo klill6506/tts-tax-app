@@ -115,10 +115,9 @@ def fill_form(
             fname = widget.field_name
 
             # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default).
-            # Must set fill_color AND force update to rebuild the appearance stream.
+            # Only clear fill_color (background) — keep borders intact for field boxes.
             try:
                 widget.fill_color = (1, 1, 1)  # white background
-                widget.border_color = (1, 1, 1)  # white border
             except Exception:
                 pass
 

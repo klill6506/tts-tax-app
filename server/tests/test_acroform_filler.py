@@ -104,15 +104,27 @@ class TestFieldMapValidation:
         assert total >= 340, f"Expected 340+ mapped fields, got {total}"
 
     def test_no_duplicate_acro_names(self):
-        """No two map entries should point to the same AcroForm field."""
+        """No two map entries should point to the same AcroForm field (except known aliases)."""
+        # M2_1..M2_8 are intentional aliases for M2_1a..M2_8a (compute engine uses short keys)
+        known_alias_pairs = {
+            frozenset({"M2_1", "M2_1a"}),
+            frozenset({"M2_2", "M2_2a"}),
+            frozenset({"M2_3", "M2_3a"}),
+            frozenset({"M2_4", "M2_4a"}),
+            frozenset({"M2_5", "M2_5a"}),
+            frozenset({"M2_6", "M2_6a"}),
+            frozenset({"M2_7", "M2_7a"}),
+            frozenset({"M2_8", "M2_8a"}),
+        }
         seen = {}
         duplicates = []
         for key, acro in {**F1120S_HEADER_MAP, **F1120S_FIELD_MAP}.items():
             if acro.acro_name in seen:
                 other = seen[acro.acro_name]
-                duplicates.append(
-                    f"{key} and {other} both map to {acro.acro_name}"
-                )
+                if frozenset({key, other}) not in known_alias_pairs:
+                    duplicates.append(
+                        f"{key} and {other} both map to {acro.acro_name}"
+                    )
             seen[acro.acro_name] = key
 
         assert not duplicates, (
