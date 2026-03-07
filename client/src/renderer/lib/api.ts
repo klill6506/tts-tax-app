@@ -194,6 +194,10 @@ export async function render7004(taxReturnId: string): Promise<PdfResponse> {
   return fetchPdf(`/tax-returns/${taxReturnId}/render-7004/`);
 }
 
+export async function renderComplete(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-complete/`);
+}
+
 // ---------------------------------------------------------------------------
 // Session management
 // ---------------------------------------------------------------------------

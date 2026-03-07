@@ -4,6 +4,7 @@ import {
   get, patch, post, del,
   renderPdf, renderK1s, renderK1, render7206,
   render1125a, render8825, render7203, render7203s, render7004,
+  renderComplete,
 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
@@ -4084,28 +4085,8 @@ function ReturnStatusPill({ status }: { status: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Forms Tab — gallery of all renderable IRS form PDFs
+// Forms Tab — full-width continuous return viewer
 // ---------------------------------------------------------------------------
-
-/** Open a PDF blob in a new browser tab. */
-function openPdfBlob(base64: string, filename: string) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const blob = new Blob([bytes], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, "_blank");
-  // Revoke after a delay so the browser has time to load
-  if (w) setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-
-interface FormEntry {
-  key: string;
-  label: string;
-  description: string;
-  renderFn: () => Promise<{ ok: boolean; pdfBase64?: string; error?: string }>;
-  condition?: boolean; // false = hide this entry
-}
 
 function FormsTab({
   taxReturnId,
@@ -4114,143 +4095,27 @@ function FormsTab({
   taxReturnId: string;
   returnData: TaxReturnData;
 }) {
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const formCode = returnData.form_code;
-  const shareholders = returnData.shareholders || [];
-  const hasRentals = (returnData.rental_properties || []).length > 0;
-  const hasCOGS = (returnData.field_values || []).some(
-    (fv) => fv.section_code === "sched_a" && parseFloat(fv.value) !== 0,
-  );
-
-  // Build list of available forms
-  const forms: FormEntry[] = useMemo(() => {
-    const list: FormEntry[] = [
-      {
-        key: "main",
-        label: `Form ${formCode}`,
-        description: `Main return (Pages 1–5)`,
-        renderFn: () => renderPdf(taxReturnId),
-      },
-      {
-        key: "7004",
-        label: "Form 7004",
-        description: "Application for Automatic Extension of Time",
-        renderFn: () => render7004(taxReturnId),
-      },
-    ];
-
-    // COGS
-    if (hasCOGS) {
-      list.push({
-        key: "1125a",
-        label: "Form 1125-A",
-        description: "Cost of Goods Sold",
-        renderFn: () => render1125a(taxReturnId),
-      });
-    }
-
-    // Rental
-    if (hasRentals) {
-      list.push({
-        key: "8825",
-        label: "Form 8825",
-        description: "Rental Real Estate Income and Expenses",
-        renderFn: () => render8825(taxReturnId),
-      });
-    }
-
-    // State returns
-    const stateReturns = returnData.state_returns || [];
-    for (const sr of stateReturns) {
-      list.push({
-        key: `state-${sr.id}`,
-        label: `${sr.form_code}`,
-        description: `State return`,
-        renderFn: () => renderPdf(sr.id),
-      });
-    }
-    // If this IS a state return, the main form is already the state form
-    if (formCode === "GA-600S") {
-      // Already rendered as "main" — no additional entries needed
-    }
-
-    // Shareholder-level forms (1120-S only)
-    if (formCode === "1120-S" && shareholders.length > 0) {
-      // All K-1s combined
-      list.push({
-        key: "k1s-all",
-        label: "Schedule K-1 (All)",
-        description: `All ${shareholders.length} Schedule K-1s combined`,
-        renderFn: () => renderK1s(taxReturnId),
-      });
-
-      // Individual K-1s
-      for (const sh of shareholders) {
-        list.push({
-          key: `k1-${sh.id}`,
-          label: `K-1: ${sh.name}`,
-          description: `${sh.ownership_percentage}% ownership`,
-          renderFn: () => renderK1(taxReturnId, sh.id),
-        });
-      }
-
-      // All 7203s combined
-      list.push({
-        key: "7203s-all",
-        label: "Form 7203 (All)",
-        description: "All shareholder basis limitation forms",
-        renderFn: () => render7203s(taxReturnId),
-      });
-
-      // Individual 7203s
-      for (const sh of shareholders) {
-        list.push({
-          key: `7203-${sh.id}`,
-          label: `7203: ${sh.name}`,
-          description: "Stock and Debt Basis Limitations",
-          renderFn: () => render7203(taxReturnId, sh.id),
-        });
-      }
-
-      // 7206 for shareholders with health insurance
-      for (const sh of shareholders) {
-        const premium = parseFloat(sh.health_insurance_premium || "0");
-        if (premium > 0) {
-          list.push({
-            key: `7206-${sh.id}`,
-            label: `7206: ${sh.name}`,
-            description: "Self-Employed Health Insurance Deduction",
-            renderFn: () => render7206(taxReturnId, sh.id),
-          });
-        }
-      }
-    }
-
-    return list;
-  }, [taxReturnId, formCode, shareholders, hasRentals, hasCOGS]);
-
-  const [activeForm, setActiveForm] = useState<string>("main");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const pdfUrlRef = useRef<string | null>(null);
 
-  // Auto-load the selected form's PDF
-  async function loadForm(key: string) {
-    const entry = forms.find((f) => f.key === key);
-    if (!entry) return;
+  const formCode = returnData.form_code;
+  const entityName = returnData.entity_name;
+  const year = returnData.year;
 
-    // Revoke previous URL
+  // Load the complete return PDF (all forms combined)
+  async function loadComplete() {
     if (pdfUrlRef.current) {
       URL.revokeObjectURL(pdfUrlRef.current);
       pdfUrlRef.current = null;
     }
     setPdfUrl(null);
-    setLoading(key);
+    setLoading(true);
     setError(null);
 
-    const res = await entry.renderFn();
-    setLoading(null);
+    const res = await renderComplete(taxReturnId);
+    setLoading(false);
 
     if (res.ok && res.pdfBase64) {
       const binary = atob(res.pdfBase64);
@@ -4265,70 +4130,36 @@ function FormsTab({
     }
   }
 
-  // Auto-load main form on first render
   useEffect(() => {
-    loadForm("main");
+    loadComplete();
     return () => {
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     };
   }, [taxReturnId]);
 
-  function handleSelectForm(key: string) {
-    setActiveForm(key);
-    loadForm(key);
-  }
-
   function handleDownload() {
     if (!pdfUrl) return;
-    const entry = forms.find((f) => f.key === activeForm);
     const a = document.createElement("a");
     a.href = pdfUrl;
-    a.download = `${entry?.label || "form"}.pdf`;
+    a.download = `${formCode}_${entityName.replace(/\s+/g, "_")}_${year}.pdf`;
     a.click();
   }
 
-  // Group forms for sidebar
-  const groups: { title: string; entries: FormEntry[] }[] = [
-    { title: "Return", entries: forms.filter((f) => ["main", "7004", "1125a", "8825"].includes(f.key)) },
-    { title: "State", entries: forms.filter((f) => f.key.startsWith("state-")) },
-    { title: "K-1s", entries: forms.filter((f) => f.key === "k1s-all" || f.key.startsWith("k1-")) },
-    { title: "Basis (7203)", entries: forms.filter((f) => f.key === "7203s-all" || f.key.startsWith("7203-")) },
-    { title: "Health (7206)", entries: forms.filter((f) => f.key.startsWith("7206-")) },
-  ].filter((g) => g.entries.length > 0);
-
   return (
-    <div className="flex gap-0 -mx-6 -mb-6" style={{ height: "calc(100vh - 8rem)" }}>
-      {/* Sidebar — form selector */}
-      <div className="w-56 shrink-0 overflow-y-auto border-r border-border bg-card">
-        {groups.map((group) => (
-          <div key={group.title}>
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-tx-muted bg-surface-alt border-b border-border-subtle">
-              {group.title}
-            </div>
-            {group.entries.map((entry) => (
-              <button
-                key={entry.key}
-                onClick={() => handleSelectForm(entry.key)}
-                className={`block w-full text-left px-3 py-2 text-sm transition border-b border-border-subtle ${
-                  activeForm === entry.key
-                    ? "bg-primary-subtle text-primary-text font-semibold"
-                    : "text-tx hover:bg-surface-alt/50"
-                }`}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* PDF viewer */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-1.5">
-          <span className="text-sm font-semibold text-tx">
-            {forms.find((f) => f.key === activeForm)?.label || ""}
-          </span>
+    <div className="flex flex-col -mx-6 -mb-6" style={{ height: "calc(100vh - 8rem)" }}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-1.5">
+        <span className="text-sm font-semibold text-tx">
+          {formCode} &mdash; {entityName} &mdash; {year}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => loadComplete()}
+            disabled={loading}
+            className="rounded-lg border border-border px-3 py-1 text-sm font-medium text-tx hover:bg-surface-alt disabled:opacity-50"
+          >
+            Refresh
+          </button>
           <button
             onClick={handleDownload}
             disabled={!pdfUrl}
@@ -4337,29 +4168,29 @@ function FormsTab({
             Download
           </button>
         </div>
-
-        {/* PDF content */}
-        {loading && (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="text-center">
-              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary-subtle border-t-primary" />
-              <p className="text-sm text-tx-secondary">Generating PDF...</p>
-            </div>
-          </div>
-        )}
-        {error && !loading && (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-danger">{error}</p>
-          </div>
-        )}
-        {pdfUrl && !loading && (
-          <iframe
-            src={pdfUrl}
-            className="flex-1 border-0"
-            title="Form PDF"
-          />
-        )}
       </div>
+
+      {/* Full-width PDF viewer */}
+      {loading && (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary-subtle border-t-primary" />
+            <p className="text-sm text-tx-secondary">Generating complete return...</p>
+          </div>
+        </div>
+      )}
+      {error && !loading && (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-danger">{error}</p>
+        </div>
+      )}
+      {pdfUrl && !loading && (
+        <iframe
+          src={pdfUrl}
+          className="flex-1 border-0"
+          title="Complete Return PDF"
+        />
+      )}
     </div>
   );
 }

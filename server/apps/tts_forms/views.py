@@ -39,6 +39,7 @@ from .renderer import (
     render_7004,
     render_8825,
     render_all_k1s,
+    render_complete_return,
     render_k1,
     render_tax_return,
 )
@@ -317,6 +318,40 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         filename = f"7203s_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 7004 rendering (Extension)
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Complete return rendering (all forms combined)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-complete")
+    def render_complete(self, request, pk=None):
+        """Generate all forms for this return as one continuous PDF."""
+        tax_return = self.get_object()
+
+        try:
+            pdf_bytes = render_complete_return(tax_return)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        form_code = tax_return.form_definition.code
+        filename = f"{form_code}_Complete_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

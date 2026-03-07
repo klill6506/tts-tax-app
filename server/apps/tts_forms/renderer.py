@@ -1063,3 +1063,95 @@ def render_7004(tax_return) -> bytes:
         field_values=field_values,
         header_data=header_data,
     )
+
+
+# ---------------------------------------------------------------------------
+# Complete Return rendering (all forms combined)
+# ---------------------------------------------------------------------------
+
+
+def render_complete_return(tax_return) -> bytes:
+    """
+    Render all applicable forms for a return as one continuous PDF.
+
+    Order: Main return → 1125-A → 8825 → K-1s → 7203s → 7206s → 7004 → State.
+    Skips any form that fails or has no data.
+    """
+    import logging
+    from apps.returns.models import FormFieldValue, RentalProperty, Shareholder
+
+    logger = logging.getLogger(__name__)
+    writer = PdfWriter()
+
+    def _append(pdf_bytes: bytes) -> None:
+        for page in PdfReader(io.BytesIO(pdf_bytes)).pages:
+            writer.add_page(page)
+
+    # 1. Main return (e.g. 1120-S pages 1-5)
+    try:
+        _append(render_tax_return(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: main form failed: %s", e)
+
+    # 2. Form 1125-A (COGS) — only if Schedule A has non-zero data
+    try:
+        has_cogs = FormFieldValue.objects.filter(
+            tax_return=tax_return,
+            form_line__section__code="sched_a",
+        ).exclude(value__in=["", "0", "0.00"]).exists()
+        if has_cogs:
+            _append(render_1125a(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 1125-A failed: %s", e)
+
+    # 3. Form 8825 (Rental Real Estate) — only if rental properties exist
+    try:
+        if RentalProperty.objects.filter(tax_return=tax_return).exists():
+            _append(render_8825(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 8825 failed: %s", e)
+
+    # 4-6: Shareholder-level forms (1120-S only)
+    form_code = tax_return.form_definition.code
+    if form_code == "1120-S":
+        shareholders = Shareholder.objects.filter(
+            tax_return=tax_return, is_active=True,
+        ).order_by("sort_order", "name")
+
+        if shareholders.exists():
+            # 4. All K-1s
+            try:
+                _append(render_all_k1s(tax_return))
+            except Exception as e:
+                logger.warning("render_complete: K-1s failed: %s", e)
+
+            # 5. All 7203s
+            try:
+                _append(render_all_7203s(tax_return))
+            except Exception as e:
+                logger.warning("render_complete: 7203s failed: %s", e)
+
+            # 6. Form 7206 per shareholder with health insurance
+            for sh in shareholders:
+                if sh.health_insurance_premium and sh.health_insurance_premium > 0:
+                    try:
+                        _append(render_7206(tax_return, sh))
+                    except Exception as e:
+                        logger.warning("render_complete: 7206 for %s failed: %s", sh.name, e)
+
+    # 7. Form 7004 (Extension)
+    try:
+        _append(render_7004(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 7004 failed: %s", e)
+
+    # 8. State returns
+    for sr in tax_return.state_returns.all():
+        try:
+            _append(render_tax_return(sr))
+        except Exception as e:
+            logger.warning("render_complete: state %s failed: %s", sr.form_definition.code, e)
+
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
