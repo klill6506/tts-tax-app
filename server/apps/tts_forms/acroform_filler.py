@@ -115,11 +115,11 @@ def fill_form(
             fname = widget.field_name
 
             # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default).
-            # widget.update() regenerates the appearance stream, so we must
-            # explicitly set border_color — otherwise borders are lost.
+            # The base PDF template already has printed grid lines, so we set
+            # border_width=0 to avoid doubling up borders in the appearance stream.
             try:
                 widget.fill_color = (1, 1, 1)  # white background
-                widget.border_color = (0, 0, 0)  # black border (recreate field boxes)
+                widget.border_width = 0  # no border — template provides grid lines
             except Exception:
                 pass
 
