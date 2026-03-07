@@ -136,10 +136,10 @@ export default function ReturnManager() {
 
   // ---- Filter + sort ----
 
-  const availableYears = [...new Set(federalReturns.map((r) => r.year))].sort((a, b) => b - a);
-
   // Exclude state returns (e.g. GA-600S) — they're accessed via the federal return's State tab
   const federalReturns = returns.filter((r) => !r.form_code.startsWith("GA-"));
+
+  const availableYears = [...new Set(federalReturns.map((r) => r.year))].sort((a, b) => b - a);
 
   const filtered = federalReturns.filter((r) => {
     if (search) {
