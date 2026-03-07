@@ -76,8 +76,8 @@ export default function ReturnManager() {
   const [yearFilter, setYearFilter] = useState(searchParams.get("year") || "");
 
   // Sorting
-  const [sortCol, setSortCol] = useState<SortColumn>("created_at");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortCol, setSortCol] = useState<SortColumn>("client_name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "Your firm";
 
@@ -136,9 +136,12 @@ export default function ReturnManager() {
 
   // ---- Filter + sort ----
 
-  const availableYears = [...new Set(returns.map((r) => r.year))].sort((a, b) => b - a);
+  const availableYears = [...new Set(federalReturns.map((r) => r.year))].sort((a, b) => b - a);
 
-  const filtered = returns.filter((r) => {
+  // Exclude state returns (e.g. GA-600S) — they're accessed via the federal return's State tab
+  const federalReturns = returns.filter((r) => !r.form_code.startsWith("GA-"));
+
+  const filtered = federalReturns.filter((r) => {
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -352,7 +355,7 @@ export default function ReturnManager() {
           </table>
           <div className="border-t border-border bg-surface-alt px-4 py-2">
             <span className="text-xs text-tx-muted">
-              Showing {sorted.length} of {returns.length} returns
+              Showing {sorted.length} of {federalReturns.length} returns
             </span>
           </div>
         </div>
