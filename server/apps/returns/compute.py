@@ -66,9 +66,24 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("25", lambda v: max(ZERO, _d(v, "22c") - _d(v, "23d"))),
     ("26", lambda v: max(ZERO, _d(v, "23d") - _d(v, "22c"))),
 
+    # Schedule F — Farm Income
+    ("F1c", lambda v: _d(v, "F1a") - _d(v, "F1b")),
+    ("F9", lambda v: _sum(
+        v, "F1c", "F2", "F3", "F4", "F5", "F6", "F7", "F8",
+    )),
+    ("F33", lambda v: _sum(
+        v, "F10", "F11", "F12", "F13", "F14", "F15", "F16",
+        "F17", "F18", "F19", "F20", "F21a", "F21b", "F22",
+        "F23", "F24a", "F24b", "F25", "F26", "F27", "F28",
+        "F29", "F30", "F31", "F32",
+    )),
+    ("F34", lambda v: _d(v, "F9") - _d(v, "F33")),
+
     # Schedule K — auto-flows from Page 1 and sub-schedules
     # K1 = ordinary business income (from Page 1 Line 21)
     ("K1", lambda v: _d(v, "21")),
+    # K10 = net farm profit/loss (from Schedule F)
+    ("K10", lambda v: _d(v, "F34")),
     # K18 = total income/loss reconciliation
     # (income items positive, deduction items negative)
     ("K18", lambda v: (

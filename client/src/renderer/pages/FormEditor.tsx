@@ -373,6 +373,7 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "basis_7203", label: "Form 7203", sections: [] },
   { id: "rental", label: "Rental (8825)", sections: [] },
+  { id: "schedule_f", label: "Schedule F", sections: ["sched_f"] },
   { id: "tax_payments", label: "Extensions", sections: ["page1_tax"] },
   { id: "prior_year", label: "PY Compare", sections: [] },
   { id: "state", label: "State", sections: [] },
