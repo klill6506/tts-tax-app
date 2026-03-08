@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
+    Disposition,
     FormDefinition,
     FormFieldValue,
     FormLine,
@@ -146,6 +147,42 @@ class RentalPropertySerializer(serializers.ModelSerializer):
             "other_expenses",
             "total_expenses",
             "net_rent",
+            "sort_order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class DispositionSerializer(serializers.ModelSerializer):
+    gain_loss = serializers.DecimalField(
+        max_digits=15, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = Disposition
+        fields = (
+            "id",
+            "description",
+            "date_acquired",
+            "date_acquired_various",
+            "date_sold",
+            "date_sold_various",
+            "sales_price",
+            "cost_basis",
+            "amt_cost_basis",
+            "state_cost_basis",
+            "state_amt_cost_basis",
+            "expenses_of_sale",
+            "term",
+            "nontaxable_federal",
+            "nontaxable_state",
+            "related_party_loss",
+            "securities_trader",
+            "is_4797",
+            "inherited_property",
+            "net_investment_income_tax",
+            "gain_loss",
             "sort_order",
             "created_at",
             "updated_at",
@@ -299,6 +336,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     officers = OfficerSerializer(many=True, read_only=True)
     shareholders = ShareholderSerializer(many=True, read_only=True)
     rental_properties = RentalPropertySerializer(many=True, read_only=True)
+    dispositions = DispositionSerializer(many=True, read_only=True)
     preparer_info = PreparerInfoSerializer(read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
     tax_year_id = serializers.UUIDField(source="tax_year.id", read_only=True)
@@ -378,6 +416,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "officers",
             "shareholders",
             "rental_properties",
+            "dispositions",
             "preparer_info",
             "created_at",
             "updated_at",

@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 270
+        assert lines.count() == 277
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -85,7 +85,7 @@ class TestSeed:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 270
+        assert FormLine.objects.filter(section__form=seeded).count() == 277
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
@@ -114,7 +114,7 @@ class TestFormDefinitionEndpoints:
         resp = http.get(f"/api/v1/form-definitions/{seeded.id}/")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data["sections"]) == 9
+        assert len(data["sections"]) == 10
         # First section should have lines
         assert len(data["sections"][0]["lines"]) > 0
 
@@ -137,8 +137,8 @@ class TestTaxReturnEndpoints:
         data = resp.json()
         assert data["form_code"] == "1120-S"
         assert data["status"] == "draft"
-        # All form lines should have field values (113 non-B + 17 Schedule B = 130)
-        assert len(data["field_values"]) == 195
+        # All form lines should have field values
+        assert len(data["field_values"]) == 277
 
     def test_create_duplicate_returns_409(self, user_and_http, seeded, tax_year):
         _, http = user_and_http

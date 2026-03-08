@@ -166,6 +166,14 @@ SECTIONS = [
         "Schedule F — Profit or Loss From Farming",
         27,
         [
+            # Header fields
+            ("FH_CROP", "Principal crop or activity", T, "", False, 1, DR),
+            ("FH_CODE", "Agricultural activity code", T, "", False, 2, DR),
+            ("FH_METHOD", "Accounting method", T, "", False, 3, DR),
+            ("FH_EIN", "Employer ID number (EIN)", T, "", False, 4, DR),
+            ("FH_PARTICIPATION", "Did you materially participate in the operation of this business during the tax year?", B, "", False, 5, DR),
+            ("FH_1099_RECEIVED", "Did you receive an applicable subsidy in the tax year?", B, "", False, 6, DR),
+            ("FH_1099_FILED", "If 'Yes,' did you file required Form(s) 1099?", B, "", False, 7, DR),
             # Part I — Farm Income
             ("F1a", "Sales of livestock and other resale items", C, "", False, 10, CR),
             ("F1b", "Cost or other basis of livestock and items sold", C, "", False, 20, DR),

@@ -110,6 +110,31 @@ interface RentalPropertyRow {
   net_rent: string;
 }
 
+interface DispositionRow {
+  id: string;
+  description: string;
+  date_acquired: string | null;
+  date_acquired_various: boolean;
+  date_sold: string | null;
+  date_sold_various: boolean;
+  sales_price: string;
+  cost_basis: string;
+  amt_cost_basis: string | null;
+  state_cost_basis: string | null;
+  state_amt_cost_basis: string | null;
+  expenses_of_sale: string;
+  term: "short" | "long";
+  nontaxable_federal: boolean;
+  nontaxable_state: boolean;
+  related_party_loss: boolean;
+  securities_trader: boolean;
+  is_4797: boolean;
+  inherited_property: boolean;
+  net_investment_income_tax: string;
+  gain_loss: string;
+  sort_order: number;
+}
+
 interface EntityInfo {
   id: string;
   name: string;
@@ -202,6 +227,7 @@ interface TaxReturnData {
   officers: OfficerRow[];
   shareholders: ShareholderRow[];
   rental_properties: RentalPropertyRow[];
+  dispositions: DispositionRow[];
   preparer_info: PreparerInfoData | null;
   created_at: string;
   updated_at: string;
@@ -271,6 +297,11 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Column (d) Accu E&P
   ["M2_6d", (v) => val(v, "M2_1d") + val(v, "M2_2d") + val(v, "M2_3d") - val(v, "M2_4d") - val(v, "M2_5d")],
   ["M2_8d", (v) => val(v, "M2_6d") - val(v, "M2_7d")],
+  // Schedule F — Farm Income
+  ["F1c", (v) => val(v, "F1a") - val(v, "F1b")],
+  ["F9", (v) => sumLines(v, "F1c","F2","F3","F4","F5","F6","F7","F8")],
+  ["F33", (v) => sumLines(v, "F10","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20","F21a","F21b","F22","F23","F24a","F24b","F25","F26","F27","F28","F29","F30","F31","F32")],
+  ["F34", (v) => val(v, "F9") - val(v, "F33")],
 ];
 
 /** GA-600S compute formulas (mirrors server compute.py GA section). */
@@ -374,6 +405,7 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
   { id: "basis_7203", label: "Form 7203", sections: [] },
   { id: "rental", label: "Rental (8825)", sections: [] },
+  { id: "dispositions", label: "Dispositions", sections: [] },
   { id: "schedule_f", label: "Schedule F", sections: ["sched_f"] },
   { id: "tax_payments", label: "Extensions", sections: ["page1_tax"] },
   { id: "prior_year", label: "PY Compare", sections: [] },
@@ -751,6 +783,17 @@ export default function FormEditor() {
               taxReturnId={taxReturnId!}
               properties={returnData.rental_properties || []}
               onRefresh={refreshReturn}
+            />
+          ) : activeTab === "dispositions" ? (
+            <DispositionsSection
+              taxReturnId={taxReturnId!}
+              dispositions={returnData.dispositions || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "schedule_f" ? (
+            <ScheduleFSection
+              fieldsBySection={fieldsBySection}
+              onChange={handleFieldChange}
             />
           ) : activeTab === "balance_sheets" ? (
             <BalanceSheetsSection
@@ -3314,6 +3357,445 @@ function ScheduleBSection({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedule F — Profit or Loss From Farming
+// ---------------------------------------------------------------------------
+
+/** Lines that are farm income (Part I). */
+const SCHED_F_INCOME_LINES = ["F1a","F1b","F1c","F2","F3","F4","F5","F6","F7","F8","F9"];
+/** Lines that are farm expenses (Part II). */
+const SCHED_F_EXPENSE_LINES = [
+  "F10","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20",
+  "F21a","F21b","F22","F23","F24a","F24b","F25","F26","F27","F28",
+  "F29","F30","F31","F32",
+];
+/** Header lines (text/boolean at the top). */
+const SCHED_F_HEADER_LINES = ["FH_CROP","FH_CODE","FH_METHOD","FH_EIN","FH_PARTICIPATION","FH_1099_RECEIVED","FH_1099_FILED"];
+
+function ScheduleFSection({
+  fieldsBySection,
+  onChange,
+}: {
+  fieldsBySection: Record<string, FieldValue[]>;
+  onChange: (formLineId: string, value: string) => void;
+}) {
+  const allFields = fieldsBySection["sched_f"] || [];
+
+  const headerFields = allFields.filter((f) => SCHED_F_HEADER_LINES.includes(f.line_number));
+  const incomeFields = allFields.filter((f) => SCHED_F_INCOME_LINES.includes(f.line_number));
+  const expenseFields = allFields.filter((f) => SCHED_F_EXPENSE_LINES.includes(f.line_number));
+  const summaryFields = allFields.filter((f) => f.line_number === "F33" || f.line_number === "F34");
+
+  if (allFields.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+        No Schedule F data found. Re-run the seed command to create Schedule F fields.
+      </div>
+    );
+  }
+
+  // Split expenses into two columns
+  const midpoint = Math.ceil(expenseFields.length / 2);
+  const leftExpenses = expenseFields.slice(0, midpoint);
+  const rightExpenses = expenseFields.slice(midpoint);
+
+  return (
+    <div className="space-y-4">
+      {/* Header fields */}
+      {headerFields.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+            Schedule F — Farm Information
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border-subtle">
+            <div className="divide-y divide-border-subtle">
+              {headerFields.filter((_, i) => i < 4).map((fv) => (
+                <div key={fv.id} className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-tx">{fv.label}</span>
+                  </div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fv} onChange={onChange} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="divide-y divide-border-subtle">
+              {headerFields.filter((_, i) => i >= 4).map((fv) => (
+                <div key={fv.id} className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-tx">{fv.label}</span>
+                  </div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fv} onChange={onChange} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Part I — Farm Income */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Part I — Farm Income
+        </div>
+        <div className="flex items-center gap-4 border-b border-border bg-surface-alt px-4 py-1.5">
+          <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
+          <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
+          <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {incomeFields.map((fv) => (
+            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+          ))}
+        </div>
+      </div>
+
+      {/* Part II — Farm Expenses (2-column layout) */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Part II — Farm Expenses
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-border-subtle">
+          <div className="divide-y divide-border-subtle">
+            {leftExpenses.map((fv) => (
+              <div key={fv.id} className="flex items-center gap-2 px-3 py-1">
+                <div className="w-10 shrink-0 text-xs font-medium text-tx-secondary">{fv.line_number}</div>
+                <div className="flex-1 min-w-0"><span className="text-xs text-tx truncate">{fv.label}</span></div>
+                <div className="w-28 shrink-0"><FieldInput field={fv} onChange={onChange} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="divide-y divide-border-subtle">
+            {rightExpenses.map((fv) => (
+              <div key={fv.id} className="flex items-center gap-2 px-3 py-1">
+                <div className="w-10 shrink-0 text-xs font-medium text-tx-secondary">{fv.line_number}</div>
+                <div className="flex-1 min-w-0"><span className="text-xs text-tx truncate">{fv.label}</span></div>
+                <div className="w-28 shrink-0"><FieldInput field={fv} onChange={onChange} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary lines: F33 Total + F34 Net profit/loss */}
+        <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
+          {summaryFields.map((fv) => (
+            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dispositions Section (Schedule D / Form 4797)
+// ---------------------------------------------------------------------------
+
+function DispositionsSection({
+  taxReturnId,
+  dispositions,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  dispositions: DispositionRow[];
+  onRefresh: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  async function addDisposition() {
+    setSaving(true);
+    const res = await post(`/tax-returns/${taxReturnId}/dispositions/`, {
+      description: "",
+      sales_price: "0",
+      cost_basis: "0",
+      expenses_of_sale: "0",
+      term: "long",
+      sort_order: dispositions.length,
+    });
+    if (res.ok) {
+      await onRefresh();
+      setEditingId((res.data as DispositionRow).id);
+    }
+    setSaving(false);
+  }
+
+  async function updateDisposition(id: string, data: Partial<DispositionRow>) {
+    await patch(`/tax-returns/${taxReturnId}/dispositions/${id}/`, data);
+    await onRefresh();
+  }
+
+  async function deleteDisposition(id: string) {
+    if (!confirm("Delete this disposition?")) return;
+    await del(`/tax-returns/${taxReturnId}/dispositions/${id}/`);
+    await onRefresh();
+  }
+
+  const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const inputClass = "w-full rounded-md border border-input-border bg-input px-2 py-1 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  const totalGain = dispositions.reduce((s, d) => s + (parseFloat(d.gain_loss) || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-tx">Dispositions — Schedule D / Form 4797</h3>
+          <p className="text-xs text-tx-muted">Asset sales and exchanges. Data flows to Schedule D and Form 4797.</p>
+        </div>
+        <button
+          onClick={addDisposition}
+          disabled={saving}
+          className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
+        >
+          Add Disposition
+        </button>
+      </div>
+
+      {dispositions.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+          No dispositions. Click "Add Disposition" to enter an asset sale.
+        </div>
+      )}
+
+      {/* List view */}
+      {dispositions.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-surface-alt text-tx-secondary">
+                <th className="text-left px-3 py-1.5 font-semibold">Description</th>
+                <th className="text-left px-3 py-1.5 font-semibold">Acquired</th>
+                <th className="text-left px-3 py-1.5 font-semibold">Sold</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Sales Price</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Basis</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Gain/Loss</th>
+                <th className="text-center px-3 py-1.5 font-semibold">Term</th>
+                <th className="text-center px-3 py-1.5 font-semibold">Type</th>
+                <th className="px-3 py-1.5"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-subtle">
+              {dispositions.map((d) => (
+                <tr key={d.id} className="hover:bg-surface-alt/30">
+                  <td className="px-3 py-1.5 max-w-[200px] truncate">{d.description || "(No description)"}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">{d.date_acquired_various ? "Various" : d.date_acquired || "—"}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">{d.date_sold_various ? "Various" : d.date_sold || "—"}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{fmt(parseFloat(d.sales_price) || 0)}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{fmt(parseFloat(d.cost_basis) || 0)}</td>
+                  <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${parseFloat(d.gain_loss) >= 0 ? "text-success" : "text-danger"}`}>
+                    {fmt(parseFloat(d.gain_loss) || 0)}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">{d.term === "short" ? "ST" : "LT"}</td>
+                  <td className="px-3 py-1.5 text-center">{d.is_4797 ? "4797" : "Sch D"}</td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                    <button onClick={() => setEditingId(editingId === d.id ? null : d.id)} className="text-primary hover:underline mr-2">
+                      {editingId === d.id ? "Close" : "Edit"}
+                    </button>
+                    <button onClick={() => deleteDisposition(d.id)} className="text-danger hover:underline">Del</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {dispositions.length > 1 && (
+              <tfoot>
+                <tr className="bg-surface-alt font-semibold">
+                  <td colSpan={5} className="px-3 py-1.5 text-right">Total Gain/Loss:</td>
+                  <td className={`px-3 py-1.5 text-right tabular-nums ${totalGain >= 0 ? "text-success" : "text-danger"}`}>
+                    {fmt(totalGain)}
+                  </td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+
+      {/* Edit form (inline below list) */}
+      {editingId && (
+        <DispositionEditForm
+          disposition={dispositions.find((d) => d.id === editingId)!}
+          onSave={(data) => updateDisposition(editingId, data)}
+          onClose={() => setEditingId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DispositionEditForm({
+  disposition,
+  onSave,
+  onClose,
+}: {
+  disposition: DispositionRow;
+  onSave: (data: Partial<DispositionRow>) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const inputClass = "w-full rounded-md border border-input-border bg-input px-2 py-1 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  async function save(data: Partial<DispositionRow>) {
+    setSaving(true);
+    await onSave(data);
+    setSaving(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-1.5 rounded-t-xl">
+        <span className="text-xs font-bold text-tx">Edit Disposition</span>
+        <button onClick={onClose} className="text-xs text-tx-secondary hover:text-tx">&times; Close</button>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        {/* Row 1: Description */}
+        <div>
+          <label className="block text-xs font-medium text-tx-secondary mb-0.5">Description of property</label>
+          <input type="text" defaultValue={disposition.description} onBlur={(e) => save({ description: e.target.value })} className={inputClass} />
+        </div>
+
+        {/* Row 2: Dates */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date acquired</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                defaultValue={disposition.date_acquired || ""}
+                disabled={disposition.date_acquired_various}
+                onBlur={(e) => save({ date_acquired: e.target.value || null } as any)}
+                className={inputClass}
+              />
+              <label className="flex items-center gap-1 text-xs text-tx-secondary whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={disposition.date_acquired_various}
+                  onChange={(e) => save({ date_acquired_various: e.target.checked, ...(e.target.checked ? { date_acquired: null } : {}) } as any)}
+                />
+                Various
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date sold</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                defaultValue={disposition.date_sold || ""}
+                disabled={disposition.date_sold_various}
+                onBlur={(e) => save({ date_sold: e.target.value || null } as any)}
+                className={inputClass}
+              />
+              <label className="flex items-center gap-1 text-xs text-tx-secondary whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={disposition.date_sold_various}
+                  onChange={(e) => save({ date_sold_various: e.target.checked, ...(e.target.checked ? { date_sold: null } : {}) } as any)}
+                />
+                Various
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Amounts */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Sales price</label>
+            <CurrencyInput value={disposition.sales_price} onValueChange={(v) => save({ sales_price: v })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Cost or other basis</label>
+            <CurrencyInput value={disposition.cost_basis} onValueChange={(v) => save({ cost_basis: v })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Expenses of sale</label>
+            <CurrencyInput value={disposition.expenses_of_sale} onValueChange={(v) => save({ expenses_of_sale: v })} />
+          </div>
+        </div>
+
+        {/* Row 4: Optional cost basis overrides */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT cost basis <span className="text-tx-muted">(optional)</span></label>
+            <CurrencyInput value={disposition.amt_cost_basis ?? ""} onValueChange={(v) => save({ amt_cost_basis: v || null } as any)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">State cost basis <span className="text-tx-muted">(optional)</span></label>
+            <CurrencyInput value={disposition.state_cost_basis ?? ""} onValueChange={(v) => save({ state_cost_basis: v || null } as any)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">State AMT basis <span className="text-tx-muted">(optional)</span></label>
+            <CurrencyInput value={disposition.state_amt_cost_basis ?? ""} onValueChange={(v) => save({ state_amt_cost_basis: v || null } as any)} />
+          </div>
+        </div>
+
+        {/* Row 5: Classification */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Term</label>
+            <select
+              defaultValue={disposition.term}
+              onChange={(e) => save({ term: e.target.value as "short" | "long" })}
+              className={inputClass}
+            >
+              <option value="short">Short-term</option>
+              <option value="long">Long-term</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Form type</label>
+            <select
+              defaultValue={disposition.is_4797 ? "4797" : "schd"}
+              onChange={(e) => save({ is_4797: e.target.value === "4797" })}
+              className={inputClass}
+            >
+              <option value="schd">Schedule D (noninvestment)</option>
+              <option value="4797">Form 4797 (investment)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Net investment income tax</label>
+            <select
+              defaultValue={disposition.net_investment_income_tax}
+              onChange={(e) => save({ net_investment_income_tax: e.target.value })}
+              className={inputClass}
+            >
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 6: Checkboxes */}
+        <div className="flex flex-wrap gap-x-6 gap-y-1 pt-1">
+          {([
+            ["nontaxable_federal", "Nontaxable to federal"],
+            ["nontaxable_state", "Nontaxable to state"],
+            ["related_party_loss", "Related party loss"],
+            ["securities_trader", "Securities trader"],
+            ["inherited_property", "Inherited (stepped-up basis)"],
+          ] as [keyof DispositionRow, string][]).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-1.5 text-xs text-tx">
+              <input
+                type="checkbox"
+                checked={!!disposition[key]}
+                onChange={(e) => save({ [key]: e.target.checked })}
+                className="rounded border-input-border"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
       </div>
     </div>
   );

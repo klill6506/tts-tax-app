@@ -16,6 +16,7 @@ from apps.tts_forms.views import PDFRenderMixin
 
 from .compute import compute_return
 from .models import (
+    Disposition,
     FormDefinition,
     FormFieldValue,
     FormLine,
@@ -31,6 +32,7 @@ from .models import (
 )
 from .serializers import (
     CreateReturnSerializer,
+    DispositionSerializer,
     FormDefinitionListSerializer,
     FormDefinitionSerializer,
     LineItemDetailSerializer,
@@ -637,6 +639,7 @@ class TaxReturnViewSet(
             "officers",
             "shareholders",
             "rental_properties",
+            "dispositions",
             "preparer_info",
         )
         # Filter by tax year UUID (existing)
@@ -1799,3 +1802,45 @@ class TaxReturnViewSet(
                     status=status.HTTP_404_NOT_FOUND,
                 )
         return Response({"updated": updated})
+
+    # ------------------------------------------------------------------
+    # Dispositions (Schedule D / Form 4797)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="dispositions")
+    def dispositions(self, request, pk=None):
+        """List or create Disposition rows."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = Disposition.objects.filter(tax_return=tax_return)
+            return Response(DispositionSerializer(qs, many=True).data)
+
+        # POST
+        ser = DispositionSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="dispositions/(?P<disp_id>[^/.]+)",
+    )
+    def disposition_detail(self, request, pk=None, disp_id=None):
+        """Update or delete a single Disposition row."""
+        tax_return = self.get_object()
+        try:
+            disp = Disposition.objects.get(id=disp_id, tax_return=tax_return)
+        except Disposition.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            disp.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PATCH
+        ser = DispositionSerializer(disp, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)

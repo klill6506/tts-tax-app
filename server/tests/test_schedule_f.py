@@ -42,11 +42,11 @@ class TestScheduleFSeed:
         section = FormSection.objects.get(form=seeded, code="sched_f")
         assert section.title == "Schedule F — Profit or Loss From Farming"
 
-    def test_schedule_f_has_38_lines(self, seeded):
+    def test_schedule_f_has_45_lines(self, seeded):
         lines = FormLine.objects.filter(
             section__form=seeded, section__code="sched_f"
         )
-        assert lines.count() == 38
+        assert lines.count() == 45  # 7 header + 11 income + 25 expense + 2 summary
 
     def test_schedule_f_computed_lines(self, seeded):
         computed = FormLine.objects.filter(
@@ -79,6 +79,8 @@ class TestScheduleFSeed:
                 "F1a", "F1b", "F1c", "F2", "F3", "F4",
                 "F5", "F6", "F7", "F8", "F9", "F33", "F34",
             ],
+        ).exclude(
+            line_number__startswith="FH_",  # header fields
         )
         assert expense_lines.count() == 25
 

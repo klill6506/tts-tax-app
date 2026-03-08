@@ -821,3 +821,135 @@ class PriorYearReturn(models.Model):
 
     def __str__(self):
         return f"PY {self.year} {self.form_code} — {self.entity.name}"
+
+
+# ---------------------------------------------------------------------------
+# Dispositions (Schedule D / Form 4797)
+# ---------------------------------------------------------------------------
+
+
+class TermType(models.TextChoices):
+    SHORT = "short", "Short-term"
+    LONG = "long", "Long-term"
+
+
+class Disposition(models.Model):
+    """
+    A single asset disposition (sale/exchange) on a tax return.
+
+    Stores data that will eventually flow to Schedule D and Form 4797.
+    Supports multiple dispositions per return.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="dispositions",
+    )
+
+    # Property identification
+    description = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Description of property sold or exchanged.",
+    )
+
+    # Dates — support "various" via null + various flag
+    date_acquired = models.DateField(
+        null=True, blank=True,
+        help_text="Date property was acquired (null if various).",
+    )
+    date_acquired_various = models.BooleanField(
+        default=False,
+        help_text="True if acquired on various dates.",
+    )
+    date_sold = models.DateField(
+        null=True, blank=True,
+        help_text="Date property was sold (null if various).",
+    )
+    date_sold_various = models.BooleanField(
+        default=False,
+        help_text="True if sold on various dates.",
+    )
+
+    # Amounts
+    sales_price = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Gross sales price.",
+    )
+    cost_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Cost or other basis (do not reduce by depreciation).",
+    )
+    amt_cost_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="AMT cost or other basis. Null = same as regular.",
+    )
+    state_cost_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="State cost or other basis. Null = same as regular.",
+    )
+    state_amt_cost_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="State AMT cost or other basis.",
+    )
+    expenses_of_sale = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Expenses of sale or exchange.",
+    )
+
+    # Classification
+    term = models.CharField(
+        max_length=5,
+        choices=TermType.choices,
+        default=TermType.LONG,
+        help_text="Short-term or long-term.",
+    )
+
+    # Flags
+    nontaxable_federal = models.BooleanField(
+        default=False,
+        help_text="Nontaxable to federal.",
+    )
+    nontaxable_state = models.BooleanField(
+        default=False,
+        help_text="Nontaxable to state.",
+    )
+    related_party_loss = models.BooleanField(
+        default=False,
+        help_text="Related party loss.",
+    )
+    securities_trader = models.BooleanField(
+        default=False,
+        help_text="Securities trader transaction.",
+    )
+    is_4797 = models.BooleanField(
+        default=False,
+        help_text="True = Form 4797 (investment property). "
+                  "False = Schedule D (noninvestment).",
+    )
+    inherited_property = models.BooleanField(
+        default=False,
+        help_text="Inherited property with stepped-up basis.",
+    )
+    net_investment_income_tax = models.CharField(
+        max_length=3,
+        choices=[("yes", "Yes"), ("no", "No")],
+        default="yes",
+        help_text="Subject to net investment income tax.",
+    )
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "description"]
+
+    @property
+    def gain_loss(self):
+        """Calculate gain or loss: sales price - cost basis - expenses."""
+        return self.sales_price - self.cost_basis - self.expenses_of_sale
+
+    def __str__(self):
+        return f"{self.description} ({self.term}: {self.gain_loss})"
