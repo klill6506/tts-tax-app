@@ -1,8 +1,10 @@
 """
-AcroForm-based PDF field filler.
+AcroForm-positioned PDF text overlay.
 
-Fills IRS fillable PDF forms by setting AcroForm field values using pymupdf.
-This replaces the coordinate-overlay approach for forms that have AcroForm fields.
+Extracts field positions from IRS fillable PDF AcroForm widgets, then renders
+values as a ReportLab text overlay merged onto a flattened copy of the template.
+This avoids AcroForm appearance stream issues (doubled/missing borders) by not
+modifying form fields at all — text is drawn directly onto the page.
 
 Usage:
     from apps.tts_forms.acroform_filler import fill_form
@@ -17,18 +19,25 @@ Usage:
     )
 """
 
+import io
 import logging
 from pathlib import Path
 
-import fitz  # pymupdf
+import fitz  # pymupdf — used only to extract widget positions
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
 
 from .field_maps import AcroField, FieldMap
 from .formatting import format_value, is_truthy
 
 logger = logging.getLogger(__name__)
 
-# pymupdf field flag for read-only
-PDF_FIELD_IS_READ_ONLY = 1
+# Font settings (matches coordinate overlay approach)
+DEFAULT_FONT = "Courier"
+DEFAULT_FONT_SIZE = 10
+
+# Small margin inside field edges (pts)
+_FIELD_MARGIN = 2
 
 
 def _build_pending_values(
@@ -64,7 +73,7 @@ def _build_pending_values(
             continue
 
         if acro.field_type == "checkbox":
-            # Checkboxes: pass raw value through (handled in page loop)
+            # Checkboxes: pass raw value through (handled in overlay loop)
             pending[acro.acro_name] = (raw_value, acro)
         else:
             # Text fields: format for display
@@ -85,10 +94,11 @@ def fill_form(
     flatten: bool = True,
 ) -> bytes:
     """
-    Fill an IRS AcroForm PDF with values and return the result.
+    Fill an IRS PDF by overlaying text at AcroForm field positions.
 
-    Iterates pages and fills widgets inline (never stores widget references
-    across pages) to avoid pymupdf's "Annot is not bound to a page" error.
+    Extracts widget positions from the fillable template using pymupdf,
+    strips all AcroForm widgets, then draws values as a ReportLab text
+    overlay merged onto the clean template via pypdf.
 
     Args:
         template_path: Path to the fillable IRS PDF template.
@@ -96,88 +106,114 @@ def fill_form(
         field_map: {line_number: AcroField} mapping our keys to AcroForm names.
         header_data: {field_name: display_value} for entity/header info.
         header_map: {field_name: AcroField} for header field names.
-        flatten: If True, set fields to read-only after filling.
+        flatten: Ignored (kept for API compatibility). Widgets are always
+            stripped from the output.
 
     Returns:
         Filled PDF as bytes.
     """
+    # --- 1. Extract widget positions from the fillable PDF ---
     doc = fitz.open(str(template_path))
+    widget_positions: dict[str, tuple[int, tuple, float]] = {}
+    page_sizes: list[tuple[float, float]] = []
 
-    # Pre-compute all values keyed by AcroForm field name
+    for page_idx, page in enumerate(doc):
+        page_sizes.append((page.rect.width, page.rect.height))
+        for widget in page.widgets():
+            fs = widget.text_fontsize
+            if not fs or fs <= 0:
+                fs = DEFAULT_FONT_SIZE
+            # Store rect as plain tuple (x0, y0, x1, y1) — pymupdf y from top
+            widget_positions[widget.field_name] = (
+                page_idx,
+                (widget.rect.x0, widget.rect.y0, widget.rect.x1, widget.rect.y1),
+                fs,
+            )
+
+    page_count = len(doc)
+    doc.close()
+
+    # --- 2. Pre-format all values keyed by AcroForm field name ---
     pending = _build_pending_values(field_values, field_map, header_data, header_map)
 
+    # --- 3. Flatten template (strip AcroForm widgets, keep printed grid lines) ---
+    writer = PdfWriter()
+    for page in PdfReader(str(template_path)).pages:
+        writer.add_page(page)
+    writer.remove_annotations(subtypes="/Widget")
+    flat_buf = io.BytesIO()
+    writer.write(flat_buf)
+    flat_buf.seek(0)
+    flat_reader = PdfReader(flat_buf)
+
+    # --- 4. Create ReportLab text overlay at widget positions ---
+    overlay_buf = io.BytesIO()
+    c = canvas.Canvas(overlay_buf)
     filled_count = 0
-    missing_names = []
 
-    # Iterate pages and fill widgets inline (widgets stay bound to their page)
-    for page in doc:
-        for widget in page.widgets():
-            fname = widget.field_name
+    for page_idx in range(page_count):
+        page_w, page_h = page_sizes[page_idx]
+        c.setPageSize((page_w, page_h))
 
-            # Clear purple/blue highlight on ALL widgets (IRS fillable PDF default).
-            # The base PDF template already has printed grid lines, so we set
-            # border_width=0 to avoid doubling up borders in the appearance stream.
-            try:
-                widget.fill_color = (1, 1, 1)  # white background
-                widget.border_width = 0  # no border — template provides grid lines
-            except Exception:
-                pass
-
-            if fname not in pending:
-                # Empty widget — set to empty string to force appearance rebuild
-                try:
-                    if widget.field_type in (
-                        fitz.PDF_WIDGET_TYPE_TEXT,
-                        fitz.PDF_WIDGET_TYPE_COMBOBOX,
-                        fitz.PDF_WIDGET_TYPE_LISTBOX,
-                    ):
-                        widget.field_value = ""
-                    elif widget.field_type == fitz.PDF_WIDGET_TYPE_CHECKBOX:
-                        widget.field_value = "Off"
-                    widget.update()
-                except Exception:
-                    pass
+        for acro_name, (display_value, acro) in pending.items():
+            pos = widget_positions.get(acro_name)
+            if not pos:
+                continue
+            w_page, rect, font_size = pos
+            if w_page != page_idx:
                 continue
 
-            value, acro = pending[fname]
+            x0, y0_mu, x1, y1_mu = rect  # pymupdf: y0=top edge, y1=bottom edge
 
-            try:
-                if acro.field_type == "checkbox":
-                    if is_truthy(value):
-                        on_state = widget.on_state()
-                        widget.field_value = on_state if on_state else True
-                    else:
-                        widget.field_value = "Off"
+            if acro.field_type == "checkbox":
+                if is_truthy(display_value):
+                    # Draw "X" centered in the checkbox box
+                    box_h = y1_mu - y0_mu
+                    chk_fs = max(box_h * 0.75, 6)
+                    c.setFont(DEFAULT_FONT, chk_fs)
+                    cx = (x0 + x1) / 2
+                    # Center vertically: convert center to RL, adjust for baseline
+                    cy = page_h - (y0_mu + y1_mu) / 2 - chk_fs * 0.3
+                    c.drawCentredString(cx, cy, "X")
+                    filled_count += 1
+            else:
+                # Text field — draw at baseline near bottom of field
+                c.setFont(DEFAULT_FONT, font_size)
+                baseline_y = page_h - y1_mu + _FIELD_MARGIN
+
+                if acro.format == "currency":
+                    # Right-align currency values
+                    c.drawRightString(x1 - _FIELD_MARGIN, baseline_y, display_value)
                 else:
-                    widget.field_value = value
-                widget.update()
+                    # Left-align text values
+                    c.drawString(x0 + _FIELD_MARGIN, baseline_y, display_value)
                 filled_count += 1
-            except Exception as e:
-                logger.warning("Failed to set %r to %r: %s", fname, value, e)
 
-    # Check for pending values that had no matching widget
-    all_widget_names = set()
-    for page in doc:
-        for widget in page.widgets():
-            all_widget_names.add(widget.field_name)
+        c.showPage()
 
-    for acro_name in pending:
-        if acro_name not in all_widget_names:
-            missing_names.append(acro_name)
+    c.save()
+    overlay_buf.seek(0)
 
-    if missing_names:
+    # --- 5. Merge overlay onto flattened template ---
+    overlay_reader = PdfReader(overlay_buf)
+    result_writer = PdfWriter()
+    for i in range(page_count):
+        page = flat_reader.pages[i]
+        if i < len(overlay_reader.pages):
+            page.merge_page(overlay_reader.pages[i])
+        result_writer.add_page(page)
+
+    output = io.BytesIO()
+    result_writer.write(output)
+
+    # --- Log results ---
+    missing = [n for n in pending if n not in widget_positions]
+    if missing:
         logger.info(
             "Filled %d fields; %d AcroForm names not found in PDF: %s",
-            filled_count, len(missing_names), missing_names[:5]
+            filled_count, len(missing), missing[:5],
         )
     else:
         logger.info("Filled %d fields (all matched)", filled_count)
 
-    # Flatten: set ALL widgets to read-only (prevents interactive blue highlight)
-    if flatten:
-        for page in doc:
-            for widget in page.widgets():
-                widget.field_flags = widget.field_flags | PDF_FIELD_IS_READ_ONLY
-                widget.update()
-
-    return doc.tobytes(deflate=True)
+    return output.getvalue()
