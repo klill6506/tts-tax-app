@@ -31,6 +31,39 @@ DR = NormalBalance.DEBIT
 CR = NormalBalance.CREDIT
 
 SECTIONS = [
+    # ------ ADMIN: INVOICE + LETTER ------
+    (
+        "admin",
+        "Admin — Invoice & Letter",
+        5,
+        [
+            # Invoice fields
+            ("INV_PREP_FEE", "Preparation fee", C, "", False, 10, DR),
+            ("INV_FEE_2_DESC", "Additional fee 2 description", T, "", False, 20, DR),
+            ("INV_FEE_2", "Additional fee 2", C, "", False, 21, DR),
+            ("INV_FEE_3_DESC", "Additional fee 3 description", T, "", False, 30, DR),
+            ("INV_FEE_3", "Additional fee 3", C, "", False, 31, DR),
+            ("INV_MEMO", "Invoice memo", T, "", False, 40, DR),
+            ("INV_TOTAL", "Invoice total", C, "", True, 50, DR),
+            # Letter fields
+            ("LTR_FILING_METHOD", "Filing method", T, "", False, 100, DR),
+            ("LTR_8879_NEEDED", "Form 8879 needed", B, "", False, 110, DR),
+            ("LTR_ST_FILING", "State filing method", T, "", False, 120, DR),
+            ("LTR_FED_BALANCE", "Federal balance due", C, "", False, 130, DR),
+            ("LTR_FED_DUE_DATE", "Federal due date", T, "", False, 131, DR),
+            ("LTR_GA_BALANCE", "Georgia balance due", C, "", False, 140, DR),
+            ("LTR_GA_DUE_DATE", "Georgia due date", T, "", False, 141, DR),
+            ("LTR_EST_TAX_1", "Estimated tax payment 1", C, "", False, 200, DR),
+            ("LTR_EST_DATE_1", "Estimated tax date 1", T, "", False, 201, DR),
+            ("LTR_EST_TAX_2", "Estimated tax payment 2", C, "", False, 210, DR),
+            ("LTR_EST_DATE_2", "Estimated tax date 2", T, "", False, 211, DR),
+            ("LTR_EST_TAX_3", "Estimated tax payment 3", C, "", False, 220, DR),
+            ("LTR_EST_DATE_3", "Estimated tax date 3", T, "", False, 221, DR),
+            ("LTR_EST_TAX_4", "Estimated tax payment 4", C, "", False, 230, DR),
+            ("LTR_EST_DATE_4", "Estimated tax date 4", T, "", False, 231, DR),
+            ("LTR_CUSTOM_NOTE", "Custom letter note", T, "", False, 300, DR),
+        ],
+    ),
     # ------ PAGE 1: INCOME ------
     (
         "page1_income",

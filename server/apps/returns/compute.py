@@ -33,6 +33,9 @@ def _sum(values: dict[str, Decimal], *lines: str) -> Decimal:
 # ---------------------------------------------------------------------------
 
 FORMULAS_1120S: list[tuple[str, callable]] = [
+    # Admin — Invoice
+    ("INV_TOTAL", lambda v: _sum(v, "INV_PREP_FEE", "INV_FEE_2", "INV_FEE_3")),
+
     # Schedule A — Cost of Goods Sold
     ("A6", lambda v: _sum(v, "A1", "A2", "A3", "A4", "A5")),
     ("A8", lambda v: _d(v, "A6") - _d(v, "A7")),

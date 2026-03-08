@@ -247,6 +247,8 @@ function sumLines(values: Record<string, number>, ...lines: string[]): number {
 
 /** Ordered list of [line_number, formula].  Dependencies must come first. */
 const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
+  // Admin — Invoice
+  ["INV_TOTAL", (v) => sumLines(v, "INV_PREP_FEE","INV_FEE_2","INV_FEE_3")],
   // Schedule A — Cost of Goods Sold
   ["A6", (v) => sumLines(v, "A1","A2","A3","A4","A5")],
   ["A8", (v) => val(v, "A6") - val(v, "A7")],
@@ -398,6 +400,7 @@ function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue
 /** Each tab can show one or more section codes. */
 const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "info", label: "Client Info", sections: [] },
+  { id: "admin", label: "Admin", sections: ["admin"] },
   { id: "shareholders", label: "Shareholders", sections: [] },
   { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions"] },
   { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
@@ -757,6 +760,11 @@ export default function FormEditor() {
           {/* Active section content */}
           {activeTab === "info" ? (
             <InfoSection returnData={returnData} onRefresh={refreshReturn} />
+          ) : activeTab === "admin" ? (
+            <AdminSection
+              fieldsBySection={fieldsBySection}
+              onChange={handleFieldChange}
+            />
           ) : activeTab === "shareholders" ? (
             <ShareholdersSection
               taxReturnId={taxReturnId!}
@@ -3364,6 +3372,230 @@ function ScheduleBSection({
 
 // ---------------------------------------------------------------------------
 // Schedule F — Profit or Loss From Farming
+// ---------------------------------------------------------------------------
+// Admin Section (Invoice + Letter)
+// ---------------------------------------------------------------------------
+
+const FILING_METHOD_OPTIONS = ["E-File", "Paper", "Extension Filed"];
+const STATE_FILING_METHOD_OPTIONS = ["E-File", "Paper", "Not Required", "Extension Filed"];
+
+function AdminSection({
+  fieldsBySection,
+  onChange,
+}: {
+  fieldsBySection: Record<string, FieldValue[]>;
+  onChange: (formLineId: string, value: string) => void;
+}) {
+  const allFields = fieldsBySection["admin"] || [];
+
+  if (allFields.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+        No Admin data found. Re-run the seed command to create Admin fields.
+      </div>
+    );
+  }
+
+  const fieldMap: Record<string, FieldValue> = {};
+  for (const f of allFields) fieldMap[f.line_number] = f;
+
+  const invFeeRows = [
+    { desc: null, amount: fieldMap["INV_PREP_FEE"], label: "Preparation Fee" },
+    { desc: fieldMap["INV_FEE_2_DESC"], amount: fieldMap["INV_FEE_2"], label: "Additional Fee 2" },
+    { desc: fieldMap["INV_FEE_3_DESC"], amount: fieldMap["INV_FEE_3"], label: "Additional Fee 3" },
+  ];
+
+  const estRows = [1, 2, 3, 4].map((n) => ({
+    tax: fieldMap[`LTR_EST_TAX_${n}`],
+    date: fieldMap[`LTR_EST_DATE_${n}`],
+  }));
+
+  return (
+    <div className="space-y-4">
+      {/* Invoice */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Invoice
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {/* Fee header row */}
+          <div className="flex items-center gap-2 px-3 py-1 bg-surface-alt/50">
+            <div className="flex-1 text-xs font-semibold text-tx-secondary">Description</div>
+            <div className="w-36 shrink-0 text-right text-xs font-semibold text-tx-secondary">Amount</div>
+          </div>
+          {invFeeRows.map((row, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+              <div className="flex-1 min-w-0">
+                {row.desc ? (
+                  <FieldInput field={row.desc} onChange={onChange} />
+                ) : (
+                  <span className="text-xs text-tx">{row.label}</span>
+                )}
+              </div>
+              <div className="w-36 shrink-0">
+                {row.amount && <FieldInput field={row.amount} onChange={onChange} />}
+              </div>
+            </div>
+          ))}
+          {/* Memo */}
+          {fieldMap["INV_MEMO"] && (
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <div className="w-24 shrink-0 text-xs text-tx-secondary">Memo</div>
+              <div className="flex-1">
+                <FieldInput field={fieldMap["INV_MEMO"]} onChange={onChange} />
+              </div>
+            </div>
+          )}
+          {/* Total */}
+          {fieldMap["INV_TOTAL"] && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-alt/30 border-t border-border">
+              <div className="flex-1 text-xs font-semibold text-tx">Total</div>
+              <div className="w-36 shrink-0">
+                <FieldInput field={fieldMap["INV_TOTAL"]} onChange={onChange} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Letter */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt rounded-t-xl">
+          Engagement Letter / Filing Info
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {/* Filing method */}
+          {fieldMap["LTR_FILING_METHOD"] && (
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <div className="w-48 shrink-0 text-xs text-tx">Federal filing method</div>
+              <div className="w-44 shrink-0">
+                <select
+                  className="w-full rounded border border-border bg-card px-2 py-1 text-sm text-tx"
+                  value={fieldMap["LTR_FILING_METHOD"].value || ""}
+                  onChange={(e) => onChange(fieldMap["LTR_FILING_METHOD"].form_line, e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {FILING_METHOD_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {/* 8879 needed */}
+          {fieldMap["LTR_8879_NEEDED"] && (
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <div className="w-48 shrink-0 text-xs text-tx">Form 8879 needed</div>
+              <div className="w-44 shrink-0">
+                <FieldInput field={fieldMap["LTR_8879_NEEDED"]} onChange={onChange} />
+              </div>
+            </div>
+          )}
+          {/* State filing method */}
+          {fieldMap["LTR_ST_FILING"] && (
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <div className="w-48 shrink-0 text-xs text-tx">State filing method</div>
+              <div className="w-44 shrink-0">
+                <select
+                  className="w-full rounded border border-border bg-card px-2 py-1 text-sm text-tx"
+                  value={fieldMap["LTR_ST_FILING"].value || ""}
+                  onChange={(e) => onChange(fieldMap["LTR_ST_FILING"].form_line, e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {STATE_FILING_METHOD_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {/* Balance due / due dates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border-subtle">
+            <div className="divide-y divide-border-subtle">
+              <div className="px-3 py-1 bg-surface-alt/50">
+                <span className="text-xs font-semibold text-tx-secondary">Federal</span>
+              </div>
+              {fieldMap["LTR_FED_BALANCE"] && (
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 text-xs text-tx">Balance due</div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fieldMap["LTR_FED_BALANCE"]} onChange={onChange} />
+                  </div>
+                </div>
+              )}
+              {fieldMap["LTR_FED_DUE_DATE"] && (
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 text-xs text-tx">Due date</div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fieldMap["LTR_FED_DUE_DATE"]} onChange={onChange} />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="divide-y divide-border-subtle">
+              <div className="px-3 py-1 bg-surface-alt/50">
+                <span className="text-xs font-semibold text-tx-secondary">Georgia</span>
+              </div>
+              {fieldMap["LTR_GA_BALANCE"] && (
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 text-xs text-tx">Balance due</div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fieldMap["LTR_GA_BALANCE"]} onChange={onChange} />
+                  </div>
+                </div>
+              )}
+              {fieldMap["LTR_GA_DUE_DATE"] && (
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <div className="flex-1 text-xs text-tx">Due date</div>
+                  <div className="w-36 shrink-0">
+                    <FieldInput field={fieldMap["LTR_GA_DUE_DATE"]} onChange={onChange} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Quarterly estimates */}
+          <div className="px-3 py-1 bg-surface-alt/50">
+            <span className="text-xs font-semibold text-tx-secondary">Quarterly Estimated Tax Payments</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-surface-alt/30">
+              <div className="w-16 shrink-0 text-xs font-semibold text-tx-secondary">Quarter</div>
+              <div className="flex-1 text-xs font-semibold text-tx-secondary">Due Date</div>
+              <div className="w-36 shrink-0 text-right text-xs font-semibold text-tx-secondary">Amount</div>
+            </div>
+            {estRows.map((row, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-1 border-t border-border-subtle">
+                <div className="w-16 shrink-0 text-xs text-tx-secondary">Q{i + 1}</div>
+                <div className="flex-1">
+                  {row.date && <FieldInput field={row.date} onChange={onChange} />}
+                </div>
+                <div className="w-36 shrink-0">
+                  {row.tax && <FieldInput field={row.tax} onChange={onChange} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Custom note */}
+          {fieldMap["LTR_CUSTOM_NOTE"] && (
+            <div className="px-3 py-2">
+              <div className="text-xs text-tx-secondary mb-1">Custom Note</div>
+              <textarea
+                className="w-full rounded border border-border bg-card px-2 py-1 text-sm text-tx resize-y"
+                rows={3}
+                value={fieldMap["LTR_CUSTOM_NOTE"].value || ""}
+                onChange={(e) => onChange(fieldMap["LTR_CUSTOM_NOTE"].form_line, e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedule F Section
 // ---------------------------------------------------------------------------
 
 /** Lines that are farm income (Part I). */
