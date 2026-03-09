@@ -4802,6 +4802,28 @@ function ReturnStatusPill({ status }: { status: string }) {
 // Forms Tab — full-width continuous return viewer
 // ---------------------------------------------------------------------------
 
+const PRINT_PACKAGES = [
+  { value: "", label: "All Forms" },
+  { value: "client", label: "Client Copy" },
+  { value: "filing", label: "Filing Copy" },
+  { value: "extension", label: "Extension Package" },
+  { value: "state", label: "State Only" },
+  { value: "k1s", label: "K-1 Package" },
+  { value: "invoice", label: "Invoice Only" },
+  { value: "letter", label: "Letter Only" },
+] as const;
+
+const PACKAGE_FILE_LABELS: Record<string, string> = {
+  "": "Complete",
+  client: "ClientCopy",
+  filing: "FilingCopy",
+  extension: "Extension",
+  state: "StateOnly",
+  k1s: "K1s",
+  invoice: "Invoice",
+  letter: "Letter",
+};
+
 function FormsTab({
   taxReturnId,
   returnData,
@@ -4812,6 +4834,7 @@ function FormsTab({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState("");
   const pdfUrlRef = useRef<string | null>(null);
 
   const formCode = returnData.form_code;
@@ -4819,7 +4842,8 @@ function FormsTab({
   const year = returnData.year;
 
   // Load the complete return PDF (all forms combined)
-  async function loadComplete() {
+  async function loadComplete(pkg?: string) {
+    const pkgName = pkg ?? selectedPackage;
     if (pdfUrlRef.current) {
       URL.revokeObjectURL(pdfUrlRef.current);
       pdfUrlRef.current = null;
@@ -4828,7 +4852,7 @@ function FormsTab({
     setLoading(true);
     setError(null);
 
-    const res = await renderComplete(taxReturnId);
+    const res = await renderComplete(taxReturnId, pkgName || undefined);
     setLoading(false);
 
     if (res.ok && res.pdfBase64) {
@@ -4845,17 +4869,25 @@ function FormsTab({
   }
 
   useEffect(() => {
-    loadComplete();
+    loadComplete("");
     return () => {
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     };
   }, [taxReturnId]);
 
+  function handlePackageChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const pkg = e.target.value;
+    setSelectedPackage(pkg);
+    loadComplete(pkg);
+  }
+
   function handleDownload() {
     if (!pdfUrl) return;
+    const label = PACKAGE_FILE_LABELS[selectedPackage] || "Complete";
+    const safeName = entityName.replace(/\s+/g, "_");
     const a = document.createElement("a");
     a.href = pdfUrl;
-    a.download = `${formCode}_${entityName.replace(/\s+/g, "_")}_${year}.pdf`;
+    a.download = `${formCode}_${label}_${safeName}_${year}.pdf`;
     a.click();
   }
 
@@ -4867,6 +4899,18 @@ function FormsTab({
           {formCode} &mdash; {entityName} &mdash; {year}
         </span>
         <div className="flex items-center gap-2">
+          <select
+            value={selectedPackage}
+            onChange={handlePackageChange}
+            disabled={loading}
+            className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-tx focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            {PRINT_PACKAGES.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => loadComplete()}
             disabled={loading}

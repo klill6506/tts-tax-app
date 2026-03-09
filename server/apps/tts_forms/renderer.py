@@ -60,6 +60,8 @@ from .field_maps.f1120s import FIELD_MAP as F1120S_ACRO_FIELD_MAP
 from .field_maps.f1120s import HEADER_MAP as F1120S_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
+from .invoice import render_invoice
+from .letter import render_letter
 from .statements import render_statement_pages
 
 # ---------------------------------------------------------------------------
@@ -1070,12 +1072,36 @@ def render_7004(tax_return) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def render_complete_return(tax_return) -> bytes:
-    """
-    Render all applicable forms for a return as one continuous PDF.
+# Valid package names for render_complete_return
+PRINT_PACKAGES = {
+    "client": "Client Copy",
+    "filing": "Filing Copy",
+    "extension": "Extension Package",
+    "state": "State Only",
+    "k1s": "K-1 Package",
+    "invoice": "Invoice Only",
+    "letter": "Letter Only",
+}
 
-    Order: Main return → 1125-A → 8825 → K-1s → 7203s → 7206s → 7004 → State.
-    Skips any form that fails or has no data.
+
+def render_complete_return(tax_return, package: str | None = None) -> bytes:
+    """
+    Render forms for a return as one continuous PDF.
+
+    Args:
+        tax_return: A TaxReturn model instance.
+        package: Optional package name to select which forms to include:
+            - None: all forms (default)
+            - "client": Letter + Invoice + all return forms + state
+            - "filing": all return forms + state (no letter/invoice)
+            - "extension": Form 7004 only
+            - "state": GA-600S only
+            - "k1s": All K-1s only
+            - "invoice": Invoice only
+            - "letter": Letter only
+
+    Returns:
+        PDF file content as bytes.
     """
     import logging
     from apps.returns.models import FormFieldValue, RentalProperty, Shareholder
@@ -1086,6 +1112,44 @@ def render_complete_return(tax_return) -> bytes:
     def _append(pdf_bytes: bytes) -> None:
         for page in PdfReader(io.BytesIO(pdf_bytes)).pages:
             writer.add_page(page)
+
+    # --- Single-form packages ---
+    if package == "invoice":
+        return render_invoice(tax_return)
+
+    if package == "letter":
+        return render_letter(tax_return)
+
+    if package == "extension":
+        return render_7004(tax_return)
+
+    if package == "state":
+        for sr in tax_return.state_returns.all():
+            _append(render_tax_return(sr))
+        output = io.BytesIO()
+        writer.write(output)
+        return output.getvalue()
+
+    if package == "k1s":
+        return render_all_k1s(tax_return)
+
+    # --- Multi-form packages: "client", "filing", or None (all) ---
+    include_letter = package in ("client", None)
+    include_invoice = package in ("client", None)
+
+    # 0a. Letter (client copy and all-forms only)
+    if include_letter:
+        try:
+            _append(render_letter(tax_return))
+        except Exception as e:
+            logger.warning("render_complete: letter failed: %s", e)
+
+    # 0b. Invoice (client copy and all-forms only)
+    if include_invoice:
+        try:
+            _append(render_invoice(tax_return))
+        except Exception as e:
+            logger.warning("render_complete: invoice failed: %s", e)
 
     # 1. Main return (e.g. 1120-S pages 1-5)
     try:

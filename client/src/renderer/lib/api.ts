@@ -194,8 +194,20 @@ export async function render7004(taxReturnId: string): Promise<PdfResponse> {
   return fetchPdf(`/tax-returns/${taxReturnId}/render-7004/`);
 }
 
-export async function renderComplete(taxReturnId: string): Promise<PdfResponse> {
-  return fetchPdf(`/tax-returns/${taxReturnId}/render-complete/`);
+export async function renderComplete(
+  taxReturnId: string,
+  packageName?: string
+): Promise<PdfResponse> {
+  const qs = packageName ? `?package=${packageName}` : "";
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-complete/${qs}`);
+}
+
+export async function renderInvoice(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-invoice/`);
+}
+
+export async function renderLetter(taxReturnId: string): Promise<PdfResponse> {
+  return fetchPdf(`/tax-returns/${taxReturnId}/render-letter/`);
 }
 
 // ---------------------------------------------------------------------------

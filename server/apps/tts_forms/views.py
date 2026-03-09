@@ -35,6 +35,7 @@ from apps.firms.permissions import IsFirmMember
 from apps.returns.models import Shareholder, TaxReturn
 
 from .renderer import (
+    PRINT_PACKAGES,
     render_1125a,
     render_7004,
     render_8825,
@@ -43,6 +44,8 @@ from .renderer import (
     render_k1,
     render_tax_return,
 )
+from .invoice import render_invoice
+from .letter import render_letter
 
 
 class PDFRenderMixin:
@@ -333,11 +336,22 @@ class PDFRenderMixin:
 
     @action(detail=True, methods=["post"], url_path="render-complete")
     def render_complete(self, request, pk=None):
-        """Generate all forms for this return as one continuous PDF."""
+        """Generate forms for this return as one continuous PDF.
+
+        Accepts optional `package` query param:
+            client, filing, extension, state, k1s, invoice, letter
+        """
         tax_return = self.get_object()
+        package = request.query_params.get("package")
+
+        if package and package not in PRINT_PACKAGES:
+            return Response(
+                {"error": f"Invalid package: {package!r}. Valid: {', '.join(PRINT_PACKAGES)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
-            pdf_bytes = render_complete_return(tax_return)
+            pdf_bytes = render_complete_return(tax_return, package=package)
         except Exception as e:
             return Response(
                 {"error": str(e)},
@@ -351,7 +365,68 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         form_code = tax_return.form_definition.code
-        filename = f"{form_code}_Complete_{entity_name}_{year}.pdf"
+
+        if package:
+            label = PRINT_PACKAGES[package].replace(" ", "")
+            filename = f"{form_code}_{label}_{entity_name}_{year}.pdf"
+        else:
+            filename = f"{form_code}_Complete_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Invoice rendering
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-invoice")
+    def render_invoice_pdf(self, request, pk=None):
+        """Generate an invoice PDF for this tax return."""
+        tax_return = self.get_object()
+        try:
+            pdf_bytes = render_invoice(tax_return)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"Invoice_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Client Letter rendering
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-letter")
+    def render_letter_pdf(self, request, pk=None):
+        """Generate a client transmittal letter PDF for this tax return."""
+        tax_return = self.get_object()
+        try:
+            pdf_bytes = render_letter(tax_return)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"Letter_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
