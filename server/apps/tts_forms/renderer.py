@@ -68,6 +68,10 @@ from .field_maps.f8453s import FIELD_MAP as F8453S_ACRO_FIELD_MAP
 from .field_maps.f8453s import HEADER_MAP as F8453S_ACRO_HEADER_MAP
 from .field_maps.f1125a import FIELD_MAP as F1125A_ACRO_FIELD_MAP
 from .field_maps.f1125a import HEADER_MAP as F1125A_ACRO_HEADER_MAP
+from .field_maps.f8825 import FIELD_MAP as F8825_ACRO_FIELD_MAP
+from .field_maps.f8825 import HEADER_MAP as F8825_ACRO_HEADER_MAP
+from .field_maps.f7203 import FIELD_MAP as F7203_ACRO_FIELD_MAP
+from .field_maps.f7203 import HEADER_MAP as F7203_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -119,6 +123,8 @@ ACROFORM_REGISTRY: dict[str, _FieldMap] = {
     "f8879s": F8879S_ACRO_FIELD_MAP,
     "f8453s": F8453S_ACRO_FIELD_MAP,
     "f1125a": F1125A_ACRO_FIELD_MAP,
+    "f8825": F8825_ACRO_FIELD_MAP,
+    "f7203": F7203_ACRO_FIELD_MAP,
 }
 
 ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
@@ -128,6 +134,8 @@ ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
     "f8879s": F8879S_ACRO_HEADER_MAP,
     "f8453s": F8453S_ACRO_HEADER_MAP,
     "f1125a": F1125A_ACRO_HEADER_MAP,
+    "f8825": F8825_ACRO_HEADER_MAP,
+    "f7203": F7203_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -865,35 +873,29 @@ def render_8825(tax_return) -> bytes:
     }
 
     # Build field_values for all properties
+    # Key pattern: {line}_{slot} where slot is A-H
     field_values: dict[str, tuple[str, str]] = {}
-    columns = "ABCD"
+    slots = "ABCDEFGH"
     total_income = Decimal("0")
     total_expenses = Decimal("0")
 
     for idx, prop in enumerate(properties[:8]):  # max 8 properties (2 pages)
-        page_idx = idx // 4
-        col = columns[idx % 4]
-        prefix = f"p{page_idx}_{col}"
+        slot = slots[idx]
 
         # Property description fields
-        addr_key = f"{prefix}_addr"
-        if addr_key in F8825_PROPERTY_FIELDS:
-            field_values[addr_key] = (prop.description, "text")
-        type_key = f"{prefix}_type"
-        if type_key in F8825_PROPERTY_FIELDS:
-            field_values[type_key] = (prop.property_type, "text")
-        days_key = f"{prefix}_fair_days"
-        if days_key in F8825_PROPERTY_FIELDS:
-            field_values[days_key] = (str(prop.fair_rental_days), "text")
-        pdays_key = f"{prefix}_personal_days"
-        if pdays_key in F8825_PROPERTY_FIELDS:
-            field_values[pdays_key] = (str(prop.personal_use_days), "text")
+        field_values[f"1_{slot}_desc"] = (prop.description or "", "text")
+        if prop.property_type:
+            field_values[f"1_{slot}_type"] = (prop.property_type, "text")
+        if prop.fair_rental_days:
+            field_values[f"1_{slot}_fair_days"] = (str(prop.fair_rental_days), "text")
+        if prop.personal_use_days:
+            field_values[f"1_{slot}_personal_days"] = (str(prop.personal_use_days), "text")
 
-        # Expense lines
+        # Expense lines — _RENTAL_EXPENSE_LINES maps model_field → line_num
         for model_field, line_num in _RENTAL_EXPENSE_LINES:
             amount = getattr(prop, model_field, Decimal("0"))
             if amount and amount != 0:
-                key = f"{prefix}_{line_num}"
+                key = f"{line_num}_{slot}"
                 field_values[key] = (str(amount), "currency")
 
         # Computed lines
@@ -903,15 +905,15 @@ def render_8825(tax_return) -> bytes:
 
         # Line 2c: total rental income (same as 2a for us, 2b is usually 0)
         if prop_income != 0:
-            field_values[f"{prefix}_2c"] = (str(prop_income), "currency")
+            field_values[f"2c_{slot}"] = (str(prop_income), "currency")
 
         # Line 18: total expenses
         if prop_total_exp != 0:
-            field_values[f"{prefix}_18"] = (str(prop_total_exp), "currency")
+            field_values[f"18_{slot}"] = (str(prop_total_exp), "currency")
 
         # Line 19: net income (loss) per property
         if prop_net != 0:
-            field_values[f"{prefix}_19"] = (str(prop_net), "currency")
+            field_values[f"19_{slot}"] = (str(prop_net), "currency")
 
         total_income += prop_income
         total_expenses += prop_total_exp
@@ -925,42 +927,12 @@ def render_8825(tax_return) -> bytes:
     if total_net != 0:
         field_values["21"] = (str(total_net), "currency")
 
-    # Merge property description fields into the coordinate map
-    # so _create_overlay can find them
-    combined_map = dict(F8825_FIELD_MAP)
-    combined_map.update(F8825_PROPERTY_FIELDS)
-
-    template_path = _get_template_path("f8825", tax_year_applicable)
-    if not template_path.exists():
-        raise FileNotFoundError(
-            f"IRS PDF template not found at {template_path}. "
-            f"Run scripts/update_irs_forms.py to download."
-        )
-
-    header_map = HEADER_REGISTRY.get("f8825")
-    template_reader = _flatten_template(PdfReader(str(template_path)))
-    page_count = len(template_reader.pages)
-
-    overlay_buf = _create_overlay(
+    return render(
+        form_id="f8825",
+        tax_year=tax_year_applicable,
         field_values=field_values,
-        field_map=combined_map,
         header_data=header_data,
-        header_map=header_map,
-        page_count=page_count,
     )
-    overlay_reader = PdfReader(overlay_buf)
-
-    writer = PdfWriter()
-    for i in range(page_count):
-        template_page = template_reader.pages[i]
-        if i < len(overlay_reader.pages):
-            overlay_page = overlay_reader.pages[i]
-            template_page.merge_page(overlay_page)
-        writer.add_page(template_page)
-
-    output = io.BytesIO()
-    writer.write(output)
-    return output.getvalue()
 
 
 # ---------------------------------------------------------------------------
