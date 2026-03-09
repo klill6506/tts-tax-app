@@ -61,7 +61,12 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-pdf")
     def render_pdf(self, request, pk=None):
         """Generate a PDF for this tax return using the official IRS template."""
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
+
+        # Ensure all computed fields are up-to-date before rendering
+        compute_return(tax_return)
 
         # Optional statement detail items from request body
         statement_items = None
@@ -341,8 +346,13 @@ class PDFRenderMixin:
         Accepts optional `package` query param:
             client, filing, extension, state, k1s, invoice, letter
         """
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
         package = request.query_params.get("package")
+
+        # Ensure all computed fields (M-2, totals, etc.) are up-to-date
+        compute_return(tax_return)
 
         if package and package not in PRINT_PACKAGES:
             return Response(

@@ -261,6 +261,20 @@ HEADER_MAP: FieldMap = {
         acro_name="topmostSubform[0].Page1[0].Account_Number[0].f1_55[0]",
         field_type="text", format="text",
     ),
+
+    # -------------------------------------------------------------------
+    # Schedule B Line 2 (page 2) -- business activity / product or service
+    # These are entity-level fields, not FormFieldValue-based, so they
+    # live in HEADER_MAP and are populated from _build_header_data().
+    # -------------------------------------------------------------------
+    "B2_business_activity": AcroField(
+        acro_name="topmostSubform[0].Page2[0].f2_1[0]",
+        field_type="text", format="text",
+    ),
+    "B2_product_service": AcroField(
+        acro_name="topmostSubform[0].Page2[0].f2_2[0]",
+        field_type="text", format="text",
+    ),
 }
 
 
@@ -495,22 +509,8 @@ FIELD_MAP: FieldMap = {
         field_type="checkbox", format="boolean",
     ),
 
-    # Schedule B Line 2 -- text fields for business activity
-    # f2_1: Business activity (descriptive text)
-    "B2_business_activity": AcroField(
-        acro_name="topmostSubform[0].Page2[0].f2_1[0]",
-        field_type="text", format="text",
-    ),
-    # f2_2: Product or service
-    "B2_product_service_left": AcroField(
-        acro_name="topmostSubform[0].Page2[0].f2_2[0]",
-        field_type="text", format="text",
-    ),
-    # f2_3: Product or service (right part)
-    "B2_product_service_right": AcroField(
-        acro_name="topmostSubform[0].Page2[0].f2_3[0]",
-        field_type="text", format="text",
-    ),
+    # Schedule B Line 2 -- B2_business_activity and B2_product_service
+    # moved to HEADER_MAP (populated from entity/return model, not FormFieldValues)
 
     # Schedule B Line 3 -- yes/no
     "B3_yes": AcroField(

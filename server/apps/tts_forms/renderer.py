@@ -489,13 +489,15 @@ def _build_header_data(tax_return) -> dict[str, str]:
     if tax_return.number_of_shareholders:
         header["number_of_shareholders"] = str(tax_return.number_of_shareholders)
 
-    # Product or service
-    if tax_return.product_or_service:
-        header["product_or_service"] = tax_return.product_or_service
-
-    # Business activity code
+    # Business activity code (IRS page 1, field B)
     if tax_return.business_activity_code:
         header["business_activity_code"] = tax_return.business_activity_code
+
+    # Schedule B Line 2 — business activity description + product or service
+    if entity.business_activity:
+        header["B2_business_activity"] = entity.business_activity
+    if tax_return.product_or_service:
+        header["B2_product_service"] = tax_return.product_or_service
 
     # Total assets — pull from balance sheet L15d (end-of-year total assets)
     from apps.returns.models import FormFieldValue as _FFV
@@ -630,14 +632,11 @@ def render_k1(tax_return, shareholder) -> bytes:
         "irs_center": "Ogden, UT",  # Default IRS center for S-Corps
         "corp_shares_boy": "",  # Filled from entity if tracked
         "corp_shares_eoy": "",
-        "tax_year_begin_month": f"{1:02d}",
-        "tax_year_begin_year": str(year),
-        "tax_year_end_month": "12",
-        "tax_year_end_day": "31",
-        "tax_year_end_year": str(year),
+        # Tax year dates intentionally omitted — calendar year filers don't
+        # populate the beginning/ending date fields on K-1.
         "sh_ssn": shareholder.ssn or "",
         "sh_name_address": "\n".join(sh_lines),
-        "sh_ownership_pct": f"{shareholder.ownership_percentage}",
+        "sh_ownership_pct": f"{shareholder.ownership_percentage.normalize():f}".rstrip("0").rstrip("."),
         "sh_shares_boy": str(shareholder.beginning_shares) if shareholder.beginning_shares else "",
         "sh_shares_eoy": str(shareholder.ending_shares) if shareholder.ending_shares else "",
     }

@@ -43,10 +43,9 @@ HEADER_MAP: FieldMap = {
 
     # Part II — Shareholder Information
     "sh_ssn": AcroField(f"{_L}.f1_11[0]"),              # E — SSN/TIN
-    "sh_name_address": AcroField(f"{_L}.f1_12[0]"),     # F — Name + address (multi-line)
-    "sh_loan_pct": AcroField(f"{_L}.f1_13[0]"),         # G — Loan repayment %
-    "sh_ownership_pct": AcroField(f"{_L}.f1_14[0]"),    # G — Current year allocation %
-    "sh_tax_shelter": AcroField(f"{_L}.f1_15[0]"),      # G — Tax shelter registration
+    "sh_name_address": AcroField(f"{_L}.f1_12[0]"),     # F1 — Name + address (multi-line)
+    # f1_13, f1_14, f1_15 = F2 block (entity shareholder info — not used for individuals)
+    "sh_ownership_pct": AcroField(f"{_L}.f1_16[0]"),    # G — Current year allocation %
     "sh_shares_boy": AcroField(f"{_L}.f1_17[0]"),       # H — Shares, beginning
     "sh_shares_eoy": AcroField(f"{_L}.f1_18[0]"),       # H — Shares, ending
     "sh_loans_boy": AcroField(f"{_L}.f1_19[0]"),        # I — Loans, beginning
