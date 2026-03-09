@@ -66,6 +66,8 @@ from .field_maps.f8879s import FIELD_MAP as F8879S_ACRO_FIELD_MAP
 from .field_maps.f8879s import HEADER_MAP as F8879S_ACRO_HEADER_MAP
 from .field_maps.f8453s import FIELD_MAP as F8453S_ACRO_FIELD_MAP
 from .field_maps.f8453s import HEADER_MAP as F8453S_ACRO_HEADER_MAP
+from .field_maps.f1125a import FIELD_MAP as F1125A_ACRO_FIELD_MAP
+from .field_maps.f1125a import HEADER_MAP as F1125A_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -116,6 +118,7 @@ ACROFORM_REGISTRY: dict[str, _FieldMap] = {
     "f7004": F7004_ACRO_FIELD_MAP,
     "f8879s": F8879S_ACRO_FIELD_MAP,
     "f8453s": F8453S_ACRO_FIELD_MAP,
+    "f1125a": F1125A_ACRO_FIELD_MAP,
 }
 
 ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
@@ -124,6 +127,7 @@ ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
     "f7004": F7004_ACRO_HEADER_MAP,
     "f8879s": F8879S_ACRO_HEADER_MAP,
     "f8453s": F8453S_ACRO_HEADER_MAP,
+    "f1125a": F1125A_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -781,11 +785,27 @@ def render_1125a(tax_return) -> bytes:
     field_values: dict[str, tuple[str, str]] = {}
     for fv in fvs:
         ln = fv.form_line.line_number
-        if ln.startswith("A") and len(ln) >= 2:
-            # Map A1 -> 1, A2 -> 2, etc.
-            form_line = ln[1:]
-            if form_line.isdigit() and fv.value:
-                field_values[form_line] = (fv.value, "currency")
+        if not ln.startswith("A") or len(ln) < 2 or not fv.value:
+            continue
+
+        form_line = ln[1:]
+
+        # Lines 1-8: currency amounts
+        if form_line.isdigit():
+            field_values[form_line] = (fv.value, "currency")
+        # A9a: inventory method dropdown → checkbox
+        elif form_line == "9a":
+            val = fv.value.lower()
+            if "cost" in val and "market" not in val:
+                field_values["9a_cost"] = ("true", "boolean")
+            elif "market" in val or "lcm" in val.replace(" ", ""):
+                field_values["9a_lcm"] = ("true", "boolean")
+        # A9f: change in quantities → Yes/No checkboxes
+        elif form_line == "9f":
+            if fv.value.lower() in ("true", "yes", "1"):
+                field_values["9f_yes"] = ("true", "boolean")
+            else:
+                field_values["9f_no"] = ("true", "boolean")
 
     return render(
         form_id="f1125a",

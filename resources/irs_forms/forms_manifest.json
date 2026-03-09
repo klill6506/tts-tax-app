@@ -86,7 +86,8 @@
       "sha256": "447270f7a058c5b8e3f3e31853bf2bf97470ccc0f5f07359fbcd5ec6a23be5c2",
       "local_path": "2025/f1125a.pdf",
       "pages": 1,
-      "notes": "Cost of Goods Sold - attachment to 1120-S, 1065, or 1120"
+      "has_acroform": true,
+      "notes": "Cost of Goods Sold - attachment to 1120-S, 1065, or 1120. 25 AcroForm fields (12 checkbox + 13 text)"
     },
     {
       "form_id": "f8825",
