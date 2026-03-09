@@ -99,7 +99,8 @@
       "sha256": "cfe6a4afa0d52bd6ba695299c4f63992443ac2117e68d7409bab171f934f5be8",
       "local_path": "2025/f8825.pdf",
       "pages": 2,
-      "notes": "Rental real estate - per-property income and expenses, attached to 1120-S or 1065"
+      "has_acroform": true,
+      "notes": "Rental real estate - per-property income and expenses, attached to 1120-S or 1065. 221 AcroForm fields (all text)"
     },
     {
       "form_id": "f7203",
@@ -111,7 +112,8 @@
       "sha256": "e138560a8c5d591f1619544cbf189658e6d4540e13e9b3726b6fcd653cb2ad1d",
       "local_path": "2025/f7203.pdf",
       "pages": 2,
-      "notes": "Per-shareholder stock and debt basis tracking - attached to Schedule K-1 (1120-S)"
+      "has_acroform": true,
+      "notes": "Per-shareholder stock and debt basis tracking - attached to Schedule K-1 (1120-S). 188 AcroForm fields (12 checkbox + 176 text)"
     },
     {
       "form_id": "i1120s",
