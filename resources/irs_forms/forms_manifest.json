@@ -165,6 +165,32 @@
       "notes": "1-page extension form: S-Corps (code 25), partnerships (code 09), C-Corps (code 12). 26 AcroForm fields (8 checkbox + 18 text)"
     },
     {
+      "form_id": "f8879s",
+      "form_code": "8879-S",
+      "title": "IRS e-file Signature Authorization for Form 1120-S",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f8879s.pdf",
+      "revision_date": "2021",
+      "sha256": "9378778414814905daa7d18af2569b4a95e599176e6fae6a00a2a4f2a70cb1ed",
+      "local_path": "2025/f8879s.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "S-Corp e-file PIN signature authorization. 16 AcroForm fields (2 checkbox + 14 text). Page 2 is instructions only."
+    },
+    {
+      "form_id": "f8453s",
+      "form_code": "8453-S",
+      "title": "U.S. S Corporation Income Tax Declaration for an IRS e-file Return",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f8453s.pdf",
+      "revision_date": "2021",
+      "sha256": "8f943898c98cf185447256308addcb33d8dfdea82a8f3f2ef96e3d44addc81fe",
+      "local_path": "2025/f8453s.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "S-Corp e-file declaration (alternative to 8879-S). 28 AcroForm fields (6 checkbox + 22 text). Page 2 is instructions only."
+    },
+    {
       "form_id": "fga600s",
       "form_code": "GA-600S",
       "title": "Georgia S Corporation Tax Return",

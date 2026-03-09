@@ -62,6 +62,10 @@ from .field_maps.f1120sk1 import FIELD_MAP as F1120SK1_ACRO_FIELD_MAP
 from .field_maps.f1120sk1 import HEADER_MAP as F1120SK1_ACRO_HEADER_MAP
 from .field_maps.f7004 import FIELD_MAP as F7004_ACRO_FIELD_MAP
 from .field_maps.f7004 import HEADER_MAP as F7004_ACRO_HEADER_MAP
+from .field_maps.f8879s import FIELD_MAP as F8879S_ACRO_FIELD_MAP
+from .field_maps.f8879s import HEADER_MAP as F8879S_ACRO_HEADER_MAP
+from .field_maps.f8453s import FIELD_MAP as F8453S_ACRO_FIELD_MAP
+from .field_maps.f8453s import HEADER_MAP as F8453S_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -110,12 +114,16 @@ ACROFORM_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_FIELD_MAP,
     "f1120sk1": F1120SK1_ACRO_FIELD_MAP,
     "f7004": F7004_ACRO_FIELD_MAP,
+    "f8879s": F8879S_ACRO_FIELD_MAP,
+    "f8453s": F8453S_ACRO_FIELD_MAP,
 }
 
 ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_HEADER_MAP,
     "f1120sk1": F1120SK1_ACRO_HEADER_MAP,
     "f7004": F7004_ACRO_HEADER_MAP,
+    "f8879s": F8879S_ACRO_HEADER_MAP,
+    "f8453s": F8453S_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -1091,6 +1099,147 @@ def render_7004(tax_return) -> bytes:
     )
 
 
+def render_8879s(tax_return) -> bytes:
+    """
+    Render Form 8879-S (IRS e-file Signature Authorization for Form 1120-S).
+
+    Populates:
+    - Header: entity name, EIN, tax year dates
+    - Part I: Lines 1-5 (financial amounts pulled from 1120-S field values)
+    - Part II: ERO firm name, officer PIN authorization
+    """
+    from apps.returns.models import FormFieldValue
+
+    entity = tax_return.tax_year.entity
+    year = tax_return.tax_year.year
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+
+    # Header
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+    if tax_return.tax_year_start:
+        header_data["tax_year_begin"] = tax_return.tax_year_start.strftime("%m/%d")
+    if tax_return.tax_year_end:
+        header_data["tax_year_end"] = tax_return.tax_year_end.strftime("%m/%d")
+        header_data["tax_year_end_year"] = str(tax_return.tax_year_end.year)[-2:]
+
+    # Part I: financial amounts from the 1120-S return
+    # Line 1 = 1120-S line 1c (gross receipts), Line 2 = line 3, Line 3 = line 21
+    # Line 4 = Sched K line 2, Line 5 = Sched K line 18
+    line_map = {
+        "1": "1c",    # Gross receipts
+        "2": "3",     # Gross profit
+        "3": "21",    # Ordinary business income
+        "4": "K2",    # Net rental real estate (Sched K line 2)
+        "5": "K18",   # Income reconciliation (Sched K line 18)
+    }
+
+    field_values: dict[str, tuple[str, str]] = {}
+    for efile_line, return_line in line_map.items():
+        try:
+            fv = FormFieldValue.objects.filter(
+                tax_return=tax_return, form_line__line_number=return_line,
+            ).first()
+            if fv and fv.value:
+                field_values[efile_line] = (fv.value, "currency")
+        except Exception:
+            pass
+
+    # ERO firm name (from preparer info if available)
+    try:
+        prep = tax_return.preparer_info
+        if prep and prep.firm_name:
+            field_values["ero_firm_name"] = (prep.firm_name, "text")
+            field_values["chk_authorize_ero"] = ("true", "boolean")
+    except Exception:
+        pass
+
+    return render(
+        form_id="f8879s",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+def render_8453s(tax_return) -> bytes:
+    """
+    Render Form 8453-S (U.S. S Corporation Income Tax Declaration
+    for an IRS e-file Return).
+
+    Populates:
+    - Header: entity name, EIN, tax year dates
+    - Part I: Lines 1-5 (financial amounts pulled from 1120-S field values)
+    - Part III: ERO/preparer info
+    """
+    from apps.returns.models import FormFieldValue
+
+    entity = tax_return.tax_year.entity
+    year = tax_return.tax_year.year
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+
+    # Header
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+    if tax_return.tax_year_start:
+        header_data["tax_year_begin"] = tax_return.tax_year_start.strftime("%m/%d")
+    if tax_return.tax_year_end:
+        header_data["tax_year_end"] = tax_return.tax_year_end.strftime("%m/%d")
+        header_data["tax_year_end_year"] = str(tax_return.tax_year_end.year)[-2:]
+
+    # Part I: same financial amounts as 8879-S
+    line_map = {
+        "1": "1c",
+        "2": "3",
+        "3": "21",
+        "4": "K2",
+        "5": "K18",
+    }
+
+    field_values: dict[str, tuple[str, str]] = {}
+    for efile_line, return_line in line_map.items():
+        try:
+            fv = FormFieldValue.objects.filter(
+                tax_return=tax_return, form_line__line_number=return_line,
+            ).first()
+            if fv and fv.value:
+                field_values[efile_line] = (fv.value, "currency")
+        except Exception:
+            pass
+
+    # ERO/Preparer info (from preparer info if available)
+    try:
+        prep = tax_return.preparer_info
+        if prep:
+            if prep.firm_name:
+                field_values["ero_firm_name"] = (prep.firm_name, "text")
+            if prep.firm_address:
+                field_values["ero_firm_address"] = (prep.firm_address, "text")
+            if prep.firm_ein:
+                field_values["ero_ein"] = (prep.firm_ein, "text")
+            if prep.firm_phone:
+                field_values["ero_phone"] = (prep.firm_phone, "text")
+            if prep.preparer_name:
+                field_values["preparer_name"] = (prep.preparer_name, "text")
+            if prep.preparer_ptin:
+                field_values["preparer_ptin"] = (prep.preparer_ptin, "text")
+                field_values["ero_ssn_ptin"] = (prep.preparer_ptin, "text")
+            field_values["chk_paid_preparer"] = ("true", "boolean")
+    except Exception:
+        pass
+
+    return render(
+        form_id="f8453s",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Complete Return rendering (all forms combined)
 # ---------------------------------------------------------------------------
@@ -1180,6 +1329,13 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
         _append(render_tax_return(tax_return))
     except Exception as e:
         logger.warning("render_complete: main form failed: %s", e)
+
+    # 1b. Form 8879-S (e-file signature auth — Client Copy and Filing Copy)
+    if package in ("client", "filing", None):
+        try:
+            _append(render_8879s(tax_return))
+        except Exception as e:
+            logger.warning("render_complete: 8879-S failed: %s", e)
 
     # 2. Form 1125-A (COGS) — only if Schedule A has non-zero data
     try:
