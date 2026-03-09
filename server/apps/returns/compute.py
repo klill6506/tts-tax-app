@@ -359,6 +359,22 @@ def compute_return(tax_return) -> int:
     if not formulas:
         return 0
 
+    # Backfill: ensure FormFieldValues exist for all FormLines.
+    # This handles cases where new lines were added to the seed after the
+    # return was created and the return hasn't been retrieved via the API yet.
+    existing_line_ids = set(
+        FormFieldValue.objects.filter(tax_return=tax_return)
+        .values_list("form_line_id", flat=True)
+    )
+    all_lines = FormLine.objects.filter(
+        section__form=tax_return.form_definition,
+    ).exclude(id__in=existing_line_ids)
+    if all_lines.exists():
+        FormFieldValue.objects.bulk_create([
+            FormFieldValue(tax_return=tax_return, form_line=ln, value="")
+            for ln in all_lines
+        ])
+
     # Load all field values into a line_number → Decimal dict
     fvs = (
         FormFieldValue.objects.filter(tax_return=tax_return)

@@ -268,11 +268,11 @@ HEADER_MAP: FieldMap = {
     # live in HEADER_MAP and are populated from _build_header_data().
     # -------------------------------------------------------------------
     "B2_business_activity": AcroField(
-        acro_name="topmostSubform[0].Page2[0].f2_1[0]",
+        acro_name="topmostSubform[0].Page2[0].f2_2[0]",
         field_type="text", format="text",
     ),
     "B2_product_service": AcroField(
-        acro_name="topmostSubform[0].Page2[0].f2_2[0]",
+        acro_name="topmostSubform[0].Page2[0].f2_3[0]",
         field_type="text", format="text",
     ),
 }
