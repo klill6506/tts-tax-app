@@ -636,7 +636,7 @@ def render_k1(tax_return, shareholder) -> bytes:
         # populate the beginning/ending date fields on K-1.
         "sh_ssn": shareholder.ssn or "",
         "sh_name_address": "\n".join(sh_lines),
-        "sh_ownership_pct": f"{shareholder.ownership_percentage.normalize():f}".rstrip("0").rstrip("."),
+        "sh_ownership_pct": f"{shareholder.ownership_percentage:.4f}".rstrip("0").rstrip("."),
         "sh_shares_boy": str(shareholder.beginning_shares) if shareholder.beginning_shares else "",
         "sh_shares_eoy": str(shareholder.ending_shares) if shareholder.ending_shares else "",
     }

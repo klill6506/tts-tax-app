@@ -125,6 +125,13 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ) - _d(v, "L26d")),
 
     # Schedule M-1
+    # Line 1 is back-computed from K18 so M-1 always reconciles:
+    #   M1_8 = M1_4 - M1_7 = K18  →  M1_1 = K18 + M1_7 - (M1_2..M1_3c)
+    ("M1_1", lambda v: (
+        _d(v, "K18")
+        + _sum(v, "M1_5a", "M1_5b", "M1_6a", "M1_6b")
+        - _sum(v, "M1_2", "M1_3a", "M1_3b", "M1_3c")
+    )),
     ("M1_4", lambda v: _sum(v, "M1_1", "M1_2", "M1_3a", "M1_3b", "M1_3c")),
     ("M1_7", lambda v: _sum(v, "M1_5a", "M1_5b", "M1_6a", "M1_6b")),
     ("M1_8", lambda v: _d(v, "M1_4") - _d(v, "M1_7")),

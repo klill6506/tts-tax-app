@@ -381,7 +381,7 @@ SECTIONS = [
         "Schedule M-1 — Reconciliation of Income (Loss)",
         60,
         [
-            ("M1_1", "Net income (loss) per books", C, "1120S_M1_1", False, 10, DR),
+            ("M1_1", "Net income (loss) per books", C, "", True, 10, DR),
             ("M1_2", "Income on Schedule K not on books", C, "1120S_M1_2", False, 20, DR),
             ("M1_3a", "Depreciation", C, "1120S_M1_3a", False, 30, DR),
             ("M1_3b", "Travel and entertainment", C, "1120S_M1_3b", False, 35, DR),
