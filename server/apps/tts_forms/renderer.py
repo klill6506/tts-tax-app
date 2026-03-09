@@ -60,6 +60,8 @@ from .field_maps.f1120s import FIELD_MAP as F1120S_ACRO_FIELD_MAP
 from .field_maps.f1120s import HEADER_MAP as F1120S_ACRO_HEADER_MAP
 from .field_maps.f1120sk1 import FIELD_MAP as F1120SK1_ACRO_FIELD_MAP
 from .field_maps.f1120sk1 import HEADER_MAP as F1120SK1_ACRO_HEADER_MAP
+from .field_maps.f7004 import FIELD_MAP as F7004_ACRO_FIELD_MAP
+from .field_maps.f7004 import HEADER_MAP as F7004_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -107,11 +109,13 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 ACROFORM_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_FIELD_MAP,
     "f1120sk1": F1120SK1_ACRO_FIELD_MAP,
+    "f7004": F7004_ACRO_FIELD_MAP,
 }
 
 ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_HEADER_MAP,
     "f1120sk1": F1120SK1_ACRO_HEADER_MAP,
+    "f7004": F7004_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -1036,20 +1040,20 @@ def render_7004(tax_return) -> bytes:
         )
 
     # Build header
-    city_state_zip = ", ".join(p for p in [entity.city, entity.state] if p)
-    if entity.zip_code:
-        city_state_zip += f" {entity.zip_code}"
-
     header_data = {
         "entity_name": entity.legal_name or entity.name,
         "ein": entity.ein or "",
         "address_street": entity.address_line1 or "",
-        "address_city_state_zip": city_state_zip,
+        "address_room": entity.address_line2 or "",
+        "address_city": entity.city or "",
+        "address_state": entity.state or "",
+        "address_zip": entity.zip_code or "",
     }
 
-    # Build field values
+    # Build field values — Line 1 form code split into two single-digit fields
     field_values: dict[str, tuple[str, str]] = {
-        "1": (ext_code, "text"),
+        "1a": (ext_code[0], "text"),
+        "1b": (ext_code[1], "text"),
     }
 
     # Line 5a: tax year dates
