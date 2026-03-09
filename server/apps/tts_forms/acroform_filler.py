@@ -177,16 +177,46 @@ def fill_form(
                     c.drawCentredString(cx, cy, "X")
                     filled_count += 1
             else:
-                # Text field — draw at baseline near bottom of field
+                # Text field
                 c.setFont(DEFAULT_FONT, font_size)
-                baseline_y = page_h - y1_mu + _FIELD_MARGIN
+                field_height = y1_mu - y0_mu
 
-                if acro.format == "currency":
-                    # Right-align currency values
-                    c.drawRightString(x1 - _FIELD_MARGIN, baseline_y, display_value)
+                if "\n" in display_value:
+                    # Multi-line text: draw each line from top of field
+                    lines = display_value.split("\n")
+                    line_height = font_size * 1.2
+                    for li, line in enumerate(lines):
+                        line_y = (
+                            page_h - y0_mu - _FIELD_MARGIN
+                            - font_size - (li * line_height)
+                        )
+                        if line_y < page_h - y1_mu:
+                            break  # don't draw below field bottom
+                        c.drawString(x0 + _FIELD_MARGIN, line_y, line)
+                elif field_height > font_size * 2.5:
+                    # Tall single-line field: draw near top
+                    baseline_y = (
+                        page_h - y0_mu - font_size - _FIELD_MARGIN
+                    )
+                    if acro.format == "currency":
+                        c.drawRightString(
+                            x1 - _FIELD_MARGIN, baseline_y, display_value
+                        )
+                    else:
+                        c.drawString(
+                            x0 + _FIELD_MARGIN, baseline_y, display_value
+                        )
                 else:
-                    # Left-align text values
-                    c.drawString(x0 + _FIELD_MARGIN, baseline_y, display_value)
+                    # Normal single-line field: draw at bottom
+                    baseline_y = page_h - y1_mu + _FIELD_MARGIN
+                    if acro.format == "currency":
+                        c.drawRightString(
+                            x1 - _FIELD_MARGIN, baseline_y, display_value
+                        )
+                    else:
+                        c.drawString(
+                            x0 + _FIELD_MARGIN, baseline_y, display_value
+                        )
                 filled_count += 1
 
         c.showPage()

@@ -58,6 +58,8 @@ from .acroform_filler import fill_form as _acroform_fill
 from .field_maps import FieldMap as _FieldMap
 from .field_maps.f1120s import FIELD_MAP as F1120S_ACRO_FIELD_MAP
 from .field_maps.f1120s import HEADER_MAP as F1120S_ACRO_HEADER_MAP
+from .field_maps.f1120sk1 import FIELD_MAP as F1120SK1_ACRO_FIELD_MAP
+from .field_maps.f1120sk1 import HEADER_MAP as F1120SK1_ACRO_HEADER_MAP
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -104,10 +106,12 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 # AcroForm field maps keyed by form_id (preferred over coordinates)
 ACROFORM_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_FIELD_MAP,
+    "f1120sk1": F1120SK1_ACRO_FIELD_MAP,
 }
 
 ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
     "f1120s": F1120S_ACRO_HEADER_MAP,
+    "f1120sk1": F1120SK1_ACRO_HEADER_MAP,
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -582,17 +586,33 @@ def render_k1(tax_return, shareholder) -> bytes:
     if shareholder.zip_code:
         sh_city_state_zip += f" {shareholder.zip_code}"
 
+    # Build multi-line name+address strings for AcroForm fillable fields
+    corp_name = entity.legal_name or entity.name
+    corp_lines = [corp_name]
+    if entity.address_line1:
+        corp_lines.append(entity.address_line1)
+    if city_state_zip:
+        corp_lines.append(city_state_zip)
+
+    sh_lines = [shareholder.name]
+    if shareholder.address_line1:
+        sh_lines.append(shareholder.address_line1)
+    if sh_city_state_zip:
+        sh_lines.append(sh_city_state_zip)
+
     header_data = {
         "corp_ein": entity.ein or "",
-        "corp_name": entity.legal_name or entity.name,
-        "corp_address": entity.address_line1 or "",
-        "corp_city_state_zip": city_state_zip,
-        "tax_year_begin": f"01/01/{year}",
-        "tax_year_end": f"12/31/{year}",
+        "corp_name_address": "\n".join(corp_lines),
+        "irs_center": "Ogden, UT",  # Default IRS center for S-Corps
+        "corp_shares_boy": "",  # Filled from entity if tracked
+        "corp_shares_eoy": "",
+        "tax_year_begin_month": f"{1:02d}",
+        "tax_year_begin_year": str(year),
+        "tax_year_end_month": "12",
+        "tax_year_end_day": "31",
+        "tax_year_end_year": str(year),
         "sh_ssn": shareholder.ssn or "",
-        "sh_name": shareholder.name,
-        "sh_address": shareholder.address_line1 or "",
-        "sh_city_state_zip": sh_city_state_zip,
+        "sh_name_address": "\n".join(sh_lines),
         "sh_ownership_pct": f"{shareholder.ownership_percentage}",
         "sh_shares_boy": str(shareholder.beginning_shares) if shareholder.beginning_shares else "",
         "sh_shares_eoy": str(shareholder.ending_shares) if shareholder.ending_shares else "",

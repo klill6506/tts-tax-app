@@ -25,7 +25,8 @@
       "sha256": "104ac7b1137cb78c9051d4e3424630dca233887f17928b311fef6fd578baacd0",
       "local_path": "2025/f1120ssk.pdf",
       "pages": 2,
-      "notes": "Schedule K-1 for individual shareholders"
+      "has_acroform": true,
+      "notes": "Schedule K-1 for individual shareholders (114 fields: 109 text + 5 checkbox)"
     },
     {
       "form_id": "f1065",
