@@ -1868,7 +1868,7 @@ class TaxReturnViewSet(
             .values_list("asset_number", flat=True)
             .first()
         ) or 0
-        data["asset_number"] = max_num + 1
+        asset_number = max_num + 1
 
         # Auto-suggest bonus_pct if not provided
         if "bonus_pct" not in data and "date_acquired" in data:
@@ -1886,7 +1886,8 @@ class TaxReturnViewSet(
 
         ser = DepreciationAssetSerializer(data=data)
         ser.is_valid(raise_exception=True)
-        ser.save(tax_return=tax_return)
+        # asset_number is read_only on serializer, pass via save()
+        ser.save(tax_return=tax_return, asset_number=asset_number)
         return Response(ser.data, status=status.HTTP_201_CREATED)
 
     @action(
