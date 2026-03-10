@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   get, patch, post, del,
@@ -135,6 +135,48 @@ interface DispositionRow {
   sort_order: number;
 }
 
+interface DepreciationAssetRow {
+  id: string;
+  asset_number: number;
+  description: string;
+  group_label: string;
+  property_label: string;
+  date_acquired: string;
+  date_sold: string | null;
+  cost_basis: string;
+  business_pct: string;
+  method: string;
+  convention: string;
+  life: string | null;
+  sec_179_elected: string;
+  sec_179_prior: string;
+  bonus_pct: string;
+  bonus_amount: string;
+  prior_depreciation: string;
+  current_depreciation: string;
+  amt_method: string;
+  amt_life: string | null;
+  amt_prior_depreciation: string;
+  amt_current_depreciation: string;
+  state_method: string;
+  state_life: string | null;
+  state_prior_depreciation: string;
+  state_current_depreciation: string;
+  state_bonus_disallowed: string;
+  flow_to: string;
+  rental_property: string | null;
+  is_listed_property: boolean;
+  vehicle_miles_total: number | null;
+  vehicle_miles_business: number | null;
+  is_amortization: boolean;
+  amort_code: string;
+  amort_months: number | null;
+  imported_from_lacerte: boolean;
+  lacerte_asset_no: number | null;
+  sort_order: number;
+  method_display: string;
+}
+
 interface EntityInfo {
   id: string;
   name: string;
@@ -228,6 +270,7 @@ interface TaxReturnData {
   shareholders: ShareholderRow[];
   rental_properties: RentalPropertyRow[];
   dispositions: DispositionRow[];
+  depreciation_assets: DepreciationAssetRow[];
   preparer_info: PreparerInfoData | null;
   created_at: string;
   updated_at: string;
@@ -409,6 +452,7 @@ const SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "basis_7203", label: "Form 7203", sections: [] },
   { id: "rental", label: "Rental (8825)", sections: [] },
   { id: "dispositions", label: "Dispositions", sections: [] },
+  { id: "depreciation", label: "Depreciation", sections: [] },
   { id: "schedule_f", label: "Schedule F", sections: ["sched_f"] },
   { id: "tax_payments", label: "Extensions", sections: ["page1_tax"] },
   { id: "prior_year", label: "PY Compare", sections: [] },
@@ -796,6 +840,13 @@ export default function FormEditor() {
             <DispositionsSection
               taxReturnId={taxReturnId!}
               dispositions={returnData.dispositions || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "depreciation" ? (
+            <DepreciationSection
+              taxReturnId={taxReturnId!}
+              assets={returnData.depreciation_assets || []}
+              rentalProperties={returnData.rental_properties || []}
               onRefresh={refreshReturn}
             />
           ) : activeTab === "schedule_f" ? (
@@ -4028,6 +4079,529 @@ function DispositionEditForm({
             </label>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Depreciation Assets
+// ---------------------------------------------------------------------------
+
+const GROUP_CHOICES = [
+  "Buildings",
+  "Machinery and Equipment",
+  "Furniture and Fixtures",
+  "Land",
+  "Improvements",
+  "Vehicles",
+  "Intangibles/Amortization",
+];
+
+const LIFE_CHOICES = ["3", "5", "7", "10", "15", "20", "27.5", "39"];
+
+function DepreciationSection({
+  taxReturnId,
+  assets,
+  rentalProperties,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  assets: DepreciationAssetRow[];
+  rentalProperties: { id: string; description: string }[];
+  onRefresh: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [calculating, setCalculating] = useState(false);
+
+  const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const num = (s: string | null | undefined) => parseFloat(s || "0") || 0;
+
+  async function addAsset() {
+    setSaving(true);
+    const res = await post(`/tax-returns/${taxReturnId}/depreciation/`, {
+      description: "",
+      group_label: "Machinery and Equipment",
+      date_acquired: new Date().toISOString().slice(0, 10),
+      cost_basis: "0",
+      method: "200DB",
+      convention: "HY",
+      life: "7",
+      flow_to: "page1",
+    });
+    if (res.ok) {
+      await onRefresh();
+      setEditingId((res.data as DepreciationAssetRow).id);
+    }
+    setSaving(false);
+  }
+
+  async function updateAsset(id: string, data: Record<string, unknown>) {
+    await patch(`/tax-returns/${taxReturnId}/depreciation/${id}/`, data);
+    await onRefresh();
+  }
+
+  async function deleteAsset(id: string) {
+    if (!confirm("Delete this asset?")) return;
+    await del(`/tax-returns/${taxReturnId}/depreciation/${id}/`);
+    await onRefresh();
+  }
+
+  async function calculateAll() {
+    setCalculating(true);
+    await post(`/tax-returns/${taxReturnId}/depreciation/calculate/`, {});
+    await onRefresh();
+    setCalculating(false);
+  }
+
+  // Group assets by property_label then group_label
+  const grouped = useMemo(() => {
+    const byProperty: Record<string, DepreciationAssetRow[]> = {};
+    for (const a of assets) {
+      const key = a.property_label || "(Page 1 Business)";
+      if (!byProperty[key]) byProperty[key] = [];
+      byProperty[key].push(a);
+    }
+    return byProperty;
+  }, [assets]);
+
+  // Summary totals
+  const totals = useMemo(() => {
+    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0;
+    for (const a of assets) {
+      sec179 += num(a.sec_179_elected);
+      bonus += num(a.bonus_amount);
+      const curr = num(a.current_depreciation);
+      regular += curr - num(a.sec_179_elected) - num(a.bonus_amount);
+      total += curr;
+      amtAdj += curr - num(a.amt_current_depreciation);
+      stateDisallowed += num(a.state_bonus_disallowed);
+    }
+    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed };
+  }, [assets]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-tx">Depreciation &amp; Amortization</h3>
+          <p className="text-xs text-tx-muted">Assets flow to Page 1 Line 14, Form 8825, or Schedule F.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={calculateAll}
+            disabled={calculating || assets.length === 0}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+          >
+            {calculating ? "Calculating..." : "Calculate All"}
+          </button>
+          <button
+            onClick={addAsset}
+            disabled={saving}
+            className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
+          >
+            Add Asset
+          </button>
+        </div>
+      </div>
+
+      {assets.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+          No depreciation assets. Click "Add Asset" to enter an asset.
+        </div>
+      )}
+
+      {/* Grid grouped by property_label */}
+      {Object.entries(grouped).map(([propLabel, propAssets]) => {
+        const propTotal = propAssets.reduce((s, a) => s + num(a.current_depreciation), 0);
+        // Sub-group by group_label
+        const byGroup: Record<string, DepreciationAssetRow[]> = {};
+        for (const a of propAssets) {
+          if (!byGroup[a.group_label]) byGroup[a.group_label] = [];
+          byGroup[a.group_label].push(a);
+        }
+
+        return (
+          <div key={propLabel} className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            {Object.keys(grouped).length > 1 && (
+              <div className="bg-surface-alt px-3 py-1 border-b border-border">
+                <span className="text-xs font-bold text-tx">{propLabel}</span>
+                <span className="text-xs text-tx-muted ml-2">Total: {fmt(propTotal)}</span>
+              </div>
+            )}
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-surface-alt text-tx-secondary">
+                  <th className="text-left px-2 py-1 font-semibold w-8">#</th>
+                  <th className="text-left px-2 py-1 font-semibold">Description</th>
+                  <th className="text-left px-2 py-1 font-semibold">Acquired</th>
+                  <th className="text-left px-2 py-1 font-semibold">Sold</th>
+                  <th className="text-right px-2 py-1 font-semibold">Cost/Basis</th>
+                  <th className="text-right px-2 py-1 font-semibold">Bus%</th>
+                  <th className="text-right px-2 py-1 font-semibold">Prior Depr</th>
+                  <th className="text-right px-2 py-1 font-semibold">179/Bonus</th>
+                  <th className="text-left px-2 py-1 font-semibold">Method</th>
+                  <th className="text-right px-2 py-1 font-semibold">Current Depr</th>
+                  <th className="px-2 py-1"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {Object.entries(byGroup).map(([groupLabel, groupAssets]) => {
+                  const groupTotal = groupAssets.reduce((s, a) => s + num(a.current_depreciation), 0);
+                  return (
+                    <Fragment key={groupLabel}>
+                      <tr className="bg-surface-alt/50">
+                        <td colSpan={9} className="px-2 py-0.5 text-xs font-semibold text-tx-secondary">{groupLabel}</td>
+                        <td className="px-2 py-0.5 text-right text-xs font-semibold tabular-nums text-tx-secondary">{fmt(groupTotal)}</td>
+                        <td></td>
+                      </tr>
+                      {groupAssets.map((a) => (
+                        <tr key={a.id} className="hover:bg-surface-alt/30">
+                          <td className="px-2 py-1 text-tx-muted">{a.asset_number}</td>
+                          <td className="px-2 py-1 max-w-[180px] truncate">{a.description || "(No description)"}</td>
+                          <td className="px-2 py-1 whitespace-nowrap">{a.date_acquired || "\u2014"}</td>
+                          <td className="px-2 py-1 whitespace-nowrap">{a.date_sold || "\u2014"}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{fmt(num(a.cost_basis))}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{num(a.business_pct)}%</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{fmt(num(a.prior_depreciation))}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">
+                            {num(a.sec_179_elected) > 0 || num(a.bonus_amount) > 0
+                              ? fmt(num(a.sec_179_elected) + num(a.bonus_amount))
+                              : "\u2014"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap text-tx-muted">{a.method_display}</td>
+                          <td className="px-2 py-1 text-right tabular-nums font-medium">{fmt(num(a.current_depreciation))}</td>
+                          <td className="px-2 py-1 text-right whitespace-nowrap">
+                            <button onClick={() => setEditingId(editingId === a.id ? null : a.id)} className="text-primary hover:underline mr-2">
+                              {editingId === a.id ? "Close" : "Edit"}
+                            </button>
+                            <button onClick={() => deleteAsset(a.id)} className="text-danger hover:underline">Del</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+              {propAssets.length > 1 && Object.keys(grouped).length > 1 && (
+                <tfoot>
+                  <tr className="bg-surface-alt font-semibold">
+                    <td colSpan={9} className="px-2 py-1 text-right text-xs">Property Total:</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-xs">{fmt(propTotal)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        );
+      })}
+
+      {/* Grand total */}
+      {assets.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <table className="w-full text-xs">
+            <tbody>
+              <tr className="bg-surface-alt font-bold">
+                <td colSpan={9} className="px-3 py-1.5 text-right">Grand Total Current Depreciation:</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(totals.total)}</td>
+                <td className="w-20"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit form */}
+      {editingId && assets.find((a) => a.id === editingId) && (
+        <DepreciationEditForm
+          asset={assets.find((a) => a.id === editingId)!}
+          rentalProperties={rentalProperties}
+          existingLabels={[...new Set(assets.map((a) => a.property_label).filter(Boolean))]}
+          onSave={(data) => updateAsset(editingId, data)}
+          onClose={() => setEditingId(null)}
+        />
+      )}
+
+      {/* Summary panel */}
+      {assets.length > 0 && (
+        <div className="rounded-xl border border-border bg-card shadow-sm px-4 py-3">
+          <h4 className="text-xs font-bold text-tx mb-2">Depreciation Summary</h4>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs max-w-md">
+            <span className="text-tx-secondary">Section 179 Elected:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.sec179)}</span>
+            <span className="text-tx-secondary">Bonus Depreciation:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.bonus)}</span>
+            <span className="text-tx-secondary">Regular MACRS/SL:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.regular)}</span>
+            <span className="col-span-2 border-t border-border my-1"></span>
+            <span className="text-tx font-bold">Total Current Depreciation:</span>
+            <span className="text-right tabular-nums font-bold">{fmt(totals.total)}</span>
+            <span className="text-tx-secondary">AMT Adjustment:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.amtAdj)}</span>
+            <span className="text-tx-secondary">GA Bonus Disallowed:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.stateDisallowed)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DepreciationEditForm({
+  asset,
+  rentalProperties,
+  existingLabels,
+  onSave,
+  onClose,
+}: {
+  asset: DepreciationAssetRow;
+  rentalProperties: { id: string; description: string }[];
+  existingLabels: string[];
+  onSave: (data: Record<string, unknown>) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const inputClass = "w-full rounded-md border border-input-border bg-input px-2 py-1 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+  const [showAmt, setShowAmt] = useState(false);
+  const [showVehicle, setShowVehicle] = useState(asset.group_label === "Vehicles");
+  const [showAmort, setShowAmort] = useState(asset.group_label === "Intangibles/Amortization");
+
+  async function save(data: Record<string, unknown>) {
+    setSaving(true);
+    await onSave(data);
+    setSaving(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-1.5 rounded-t-xl">
+        <span className="text-xs font-bold text-tx">Edit Asset #{asset.asset_number}</span>
+        <button onClick={onClose} className="text-xs text-tx-secondary hover:text-tx">&times; Close</button>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        {/* Section 1: Basic Info */}
+        <div className="text-xs font-bold text-tx-secondary uppercase tracking-wider">Basic Info</div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Description</label>
+            <input type="text" defaultValue={asset.description} onBlur={(e) => save({ description: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Group</label>
+            <select
+              defaultValue={asset.group_label}
+              onChange={(e) => {
+                const g = e.target.value;
+                save({ group_label: g });
+                setShowVehicle(g === "Vehicles");
+                setShowAmort(g === "Intangibles/Amortization");
+              }}
+              className={inputClass}
+            >
+              {GROUP_CHOICES.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Property Label</label>
+            <input
+              type="text"
+              list="property-labels"
+              defaultValue={asset.property_label}
+              onBlur={(e) => save({ property_label: e.target.value })}
+              placeholder="(blank = page 1)"
+              className={inputClass}
+            />
+            <datalist id="property-labels">
+              {existingLabels.map((l) => <option key={l} value={l} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Acquired</label>
+            <input type="date" defaultValue={asset.date_acquired} onBlur={(e) => save({ date_acquired: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
+            <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Flow To</label>
+            <select defaultValue={asset.flow_to} onChange={(e) => save({ flow_to: e.target.value })} className={inputClass}>
+              <option value="page1">Page 1 (Line 14)</option>
+              <option value="8825">Form 8825</option>
+              <option value="sched_f">Schedule F</option>
+            </select>
+          </div>
+        </div>
+
+        {asset.flow_to === "8825" && (
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-tx-secondary mb-0.5">Rental Property</label>
+              <select defaultValue={asset.rental_property || ""} onChange={(e) => save({ rental_property: e.target.value || null })} className={inputClass}>
+                <option value="">-- Select --</option>
+                {rentalProperties.map((p) => <option key={p.id} value={p.id}>{p.description}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Cost Basis</label>
+            <CurrencyInput value={asset.cost_basis} onValueChange={(v) => save({ cost_basis: v })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Business Use %</label>
+            <input type="number" step="0.01" min="0" max="100" defaultValue={asset.business_pct} onBlur={(e) => save({ business_pct: e.target.value })} className={inputClass} />
+          </div>
+        </div>
+
+        {/* Section 2: Depreciation Method */}
+        <div className="text-xs font-bold text-tx-secondary uppercase tracking-wider pt-2">Depreciation Method</div>
+        <div className="grid grid-cols-5 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Method</label>
+            <select defaultValue={asset.method} onChange={(e) => save({ method: e.target.value })} className={inputClass}>
+              <option value="200DB">MACRS 200DB</option>
+              <option value="150DB">MACRS 150DB</option>
+              <option value="SL">Straight-Line</option>
+              <option value="NONE">None</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Convention</label>
+            <select defaultValue={asset.convention} onChange={(e) => save({ convention: e.target.value })} className={inputClass}>
+              <option value="HY">HY (Half-Year)</option>
+              <option value="MQ">MQ (Mid-Quarter)</option>
+              <option value="MM">MM (Mid-Month)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Life (years)</label>
+            <select defaultValue={asset.life || ""} onChange={(e) => save({ life: e.target.value || null })} className={inputClass}>
+              <option value="">--</option>
+              {LIFE_CHOICES.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Section 179</label>
+            <CurrencyInput value={asset.sec_179_elected} onValueChange={(v) => save({ sec_179_elected: v })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Bonus %</label>
+            <input type="number" step="1" min="0" max="100" defaultValue={asset.bonus_pct} onBlur={(e) => save({ bonus_pct: e.target.value })} className={inputClass} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Prior Accum. Depreciation</label>
+            <CurrencyInput value={asset.prior_depreciation} onValueChange={(v) => save({ prior_depreciation: v })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Current Depreciation</label>
+            <div className="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-md border border-yellow-200 tabular-nums">
+              {parseFloat(asset.current_depreciation || "0").toLocaleString("en-US", { style: "currency", currency: "USD" })}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Bonus Amount</label>
+            <div className="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-md border border-yellow-200 tabular-nums">
+              {parseFloat(asset.bonus_amount || "0").toLocaleString("en-US", { style: "currency", currency: "USD" })}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: AMT (collapsible) */}
+        <div>
+          <button onClick={() => setShowAmt(!showAmt)} className="text-xs font-bold text-tx-secondary uppercase tracking-wider hover:text-tx pt-2">
+            {showAmt ? "\u25BC" : "\u25B6"} AMT Depreciation
+          </button>
+          {showAmt && (
+            <div className="grid grid-cols-4 gap-4 mt-2">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT Method</label>
+                <select defaultValue={asset.amt_method} onChange={(e) => save({ amt_method: e.target.value })} className={inputClass}>
+                  <option value="">(auto)</option>
+                  <option value="150DB">150DB</option>
+                  <option value="SL">S/L</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT Life</label>
+                <select defaultValue={asset.amt_life || ""} onChange={(e) => save({ amt_life: e.target.value || null })} className={inputClass}>
+                  <option value="">(same)</option>
+                  {LIFE_CHOICES.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT Prior Depreciation</label>
+                <CurrencyInput value={asset.amt_prior_depreciation} onValueChange={(v) => save({ amt_prior_depreciation: v })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT Current</label>
+                <div className="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-md border border-yellow-200 tabular-nums">
+                  {parseFloat(asset.amt_current_depreciation || "0").toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 4: Vehicle / Listed Property (only if Vehicles group) */}
+        {showVehicle && (
+          <div>
+            <div className="text-xs font-bold text-tx-secondary uppercase tracking-wider pt-2">Vehicle / Listed Property</div>
+            <div className="grid grid-cols-3 gap-4 mt-2">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs text-tx">
+                  <input
+                    type="checkbox"
+                    checked={asset.is_listed_property}
+                    onChange={(e) => save({ is_listed_property: e.target.checked })}
+                    className="rounded border-input-border"
+                  />
+                  Listed Property
+                </label>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Total Miles</label>
+                <input type="number" defaultValue={asset.vehicle_miles_total ?? ""} onBlur={(e) => save({ vehicle_miles_total: e.target.value ? parseInt(e.target.value) : null })} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Business Miles</label>
+                <input type="number" defaultValue={asset.vehicle_miles_business ?? ""} onBlur={(e) => save({ vehicle_miles_business: e.target.value ? parseInt(e.target.value) : null })} className={inputClass} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 5: Amortization (only if Intangibles group) */}
+        {showAmort && (
+          <div>
+            <div className="text-xs font-bold text-tx-secondary uppercase tracking-wider pt-2">Amortization</div>
+            <div className="grid grid-cols-3 gap-4 mt-2">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Amortization Code</label>
+                <select defaultValue={asset.amort_code} onChange={(e) => save({ amort_code: e.target.value, is_amortization: true })} className={inputClass}>
+                  <option value="">-- Select --</option>
+                  <option value="197">Section 197 (Intangibles)</option>
+                  <option value="195">Section 195 (Startup Costs)</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Amortization Months</label>
+                <input type="number" defaultValue={asset.amort_months ?? ""} onBlur={(e) => save({ amort_months: e.target.value ? parseInt(e.target.value) : null })} className={inputClass} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
