@@ -171,6 +171,10 @@ interface DepreciationAssetRow {
   is_amortization: boolean;
   amort_code: string;
   amort_months: number | null;
+  sales_price: string | null;
+  expenses_of_sale: string | null;
+  depreciation_recapture: string | null;
+  gain_loss_on_sale: string | null;
   imported_from_lacerte: boolean;
   lacerte_asset_no: number | null;
   sort_order: number;
@@ -4123,7 +4127,7 @@ function DepreciationSection({
     const res = await post(`/tax-returns/${taxReturnId}/depreciation/`, {
       description: "",
       group_label: "Machinery and Equipment",
-      date_acquired: new Date().toISOString().slice(0, 10),
+      date_acquired: "",
       cost_basis: "0",
       method: "200DB",
       convention: "HY",
@@ -4168,7 +4172,7 @@ function DepreciationSection({
 
   // Summary totals
   const totals = useMemo(() => {
-    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0;
+    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0, disposalGainLoss = 0;
     for (const a of assets) {
       sec179 += num(a.sec_179_elected);
       bonus += num(a.bonus_amount);
@@ -4177,8 +4181,11 @@ function DepreciationSection({
       total += curr;
       amtAdj += curr - num(a.amt_current_depreciation);
       stateDisallowed += num(a.state_bonus_disallowed);
+      if (a.date_sold && a.gain_loss_on_sale != null) {
+        disposalGainLoss += num(a.gain_loss_on_sale);
+      }
     }
-    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed };
+    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed, disposalGainLoss };
   }, [assets]);
 
   return (
@@ -4243,6 +4250,7 @@ function DepreciationSection({
                   <th className="text-right px-2 py-1 font-semibold">179/Bonus</th>
                   <th className="text-left px-2 py-1 font-semibold">Method</th>
                   <th className="text-right px-2 py-1 font-semibold">Current Depr</th>
+                  <th className="text-right px-2 py-1 font-semibold">Gain/Loss</th>
                   <th className="px-2 py-1"></th>
                 </tr>
               </thead>
@@ -4255,9 +4263,13 @@ function DepreciationSection({
                         <td colSpan={9} className="px-2 py-0.5 text-xs font-semibold text-tx-secondary">{groupLabel}</td>
                         <td className="px-2 py-0.5 text-right text-xs font-semibold tabular-nums text-tx-secondary">{fmt(groupTotal)}</td>
                         <td></td>
+                        <td></td>
                       </tr>
-                      {groupAssets.map((a) => (
-                        <tr key={a.id} className="hover:bg-surface-alt/30">
+                      {groupAssets.map((a) => {
+                        const disposed = !!a.date_sold;
+                        const rowClass = disposed ? "hover:bg-surface-alt/30 italic text-tx-muted" : "hover:bg-surface-alt/30";
+                        return (
+                        <tr key={a.id} className={rowClass}>
                           <td className="px-2 py-1 text-tx-muted">{a.asset_number}</td>
                           <td className="px-2 py-1 max-w-[180px] truncate">{a.description || "(No description)"}</td>
                           <td className="px-2 py-1 whitespace-nowrap">{a.date_acquired || "\u2014"}</td>
@@ -4272,14 +4284,20 @@ function DepreciationSection({
                           </td>
                           <td className="px-2 py-1 whitespace-nowrap text-tx-muted">{a.method_display}</td>
                           <td className="px-2 py-1 text-right tabular-nums font-medium">{fmt(num(a.current_depreciation))}</td>
-                          <td className="px-2 py-1 text-right whitespace-nowrap">
+                          <td className="px-2 py-1 text-right tabular-nums">
+                            {disposed && a.gain_loss_on_sale != null
+                              ? <span className={num(a.gain_loss_on_sale) >= 0 ? "text-tx" : "text-danger"}>{fmt(num(a.gain_loss_on_sale))}</span>
+                              : "\u2014"}
+                          </td>
+                          <td className="px-2 py-1 text-right whitespace-nowrap not-italic">
                             <button onClick={() => setEditingId(editingId === a.id ? null : a.id)} className="text-primary hover:underline mr-2">
                               {editingId === a.id ? "Close" : "Edit"}
                             </button>
                             <button onClick={() => deleteAsset(a.id)} className="text-danger hover:underline">Del</button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </Fragment>
                   );
                 })}
@@ -4289,6 +4307,7 @@ function DepreciationSection({
                   <tr className="bg-surface-alt font-semibold">
                     <td colSpan={9} className="px-2 py-1 text-right text-xs">Property Total:</td>
                     <td className="px-2 py-1 text-right tabular-nums text-xs">{fmt(propTotal)}</td>
+                    <td></td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -4306,6 +4325,7 @@ function DepreciationSection({
               <tr className="bg-surface-alt font-bold">
                 <td colSpan={9} className="px-3 py-1.5 text-right">Grand Total Current Depreciation:</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt(totals.total)}</td>
+                <td></td>
                 <td className="w-20"></td>
               </tr>
             </tbody>
@@ -4342,6 +4362,10 @@ function DepreciationSection({
             <span className="text-right tabular-nums font-medium">{fmt(totals.amtAdj)}</span>
             <span className="text-tx-secondary">GA Bonus Disallowed:</span>
             <span className="text-right tabular-nums font-medium">{fmt(totals.stateDisallowed)}</span>
+            {totals.disposalGainLoss !== 0 && (<>
+              <span className="text-tx-secondary">Disposal Gain/(Loss):</span>
+              <span className={`text-right tabular-nums font-medium ${totals.disposalGainLoss >= 0 ? "" : "text-danger"}`}>{fmt(totals.disposalGainLoss)}</span>
+            </>)}
           </div>
         </div>
       )}
@@ -4367,6 +4391,7 @@ function DepreciationEditForm({
   const [showAmt, setShowAmt] = useState(false);
   const [showVehicle, setShowVehicle] = useState(asset.group_label === "Vehicles");
   const [showAmort, setShowAmort] = useState(asset.group_label === "Intangibles/Amortization");
+  const [showDisposal, setShowDisposal] = useState(!!asset.date_sold);
 
   async function save(data: Record<string, unknown>) {
     setSaving(true);
@@ -4407,7 +4432,7 @@ function DepreciationEditForm({
 
         <div className="grid grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Property Label</label>
+            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Property / Location Group</label>
             <input
               type="text"
               list="property-labels"
@@ -4419,14 +4444,11 @@ function DepreciationEditForm({
             <datalist id="property-labels">
               {existingLabels.map((l) => <option key={l} value={l} />)}
             </datalist>
+            <p className="text-[10px] text-tx-muted mt-0.5">Group assets by property address or location. Leave blank for Page 1 business assets.</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Acquired</label>
-            <input type="date" defaultValue={asset.date_acquired} onBlur={(e) => save({ date_acquired: e.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
-            <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
+            <input type="date" defaultValue={asset.date_acquired || ""} onBlur={(e) => save({ date_acquired: e.target.value || null })} className={inputClass} />
           </div>
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Flow To</label>
@@ -4581,7 +4603,46 @@ function DepreciationEditForm({
           </div>
         )}
 
-        {/* Section 5: Amortization (only if Intangibles group) */}
+        {/* Section 5: Disposal Information (collapsible) */}
+        <div>
+          <button onClick={() => setShowDisposal(!showDisposal)} className="text-xs font-bold text-tx-secondary uppercase tracking-wider hover:text-tx pt-2">
+            {showDisposal ? "\u25BC" : "\u25B6"} Disposal Information
+          </button>
+          {showDisposal && (
+            <div className="grid grid-cols-4 gap-4 mt-2">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
+                <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Sales Price</label>
+                <CurrencyInput value={asset.sales_price || "0"} onValueChange={(v) => save({ sales_price: v })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Expenses of Sale</label>
+                <CurrencyInput value={asset.expenses_of_sale || "0"} onValueChange={(v) => save({ expenses_of_sale: v })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Depr. Recapture (1245/1250)</label>
+                <CurrencyInput value={asset.depreciation_recapture || "0"} onValueChange={(v) => save({ depreciation_recapture: v })} />
+              </div>
+              {asset.gain_loss_on_sale != null && (
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-0.5">Gain / (Loss) on Sale</label>
+                  <div className={`px-2 py-1 text-xs font-medium rounded-md border tabular-nums ${
+                    num(asset.gain_loss_on_sale) >= 0
+                      ? "text-yellow-700 bg-yellow-50 border-yellow-200"
+                      : "text-danger bg-red-50 border-red-200"
+                  }`}>
+                    {fmt(num(asset.gain_loss_on_sale))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Section 6: Amortization (only if Intangibles group) */}
         {showAmort && (
           <div>
             <div className="text-xs font-bold text-tx-secondary uppercase tracking-wider pt-2">Amortization</div>

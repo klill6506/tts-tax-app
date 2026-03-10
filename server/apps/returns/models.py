@@ -992,7 +992,7 @@ class DepreciationAsset(models.Model):
     )
 
     # Dates
-    date_acquired = models.DateField()
+    date_acquired = models.DateField(null=True, blank=True)
     date_sold = models.DateField(null=True, blank=True)
 
     # Basis
@@ -1103,6 +1103,22 @@ class DepreciationAsset(models.Model):
         help_text="Common codes: '197' (Section 197 intangibles), '195' (startup costs).",
     )
     amort_months = models.IntegerField(null=True, blank=True)
+
+    # Disposal information (populated when asset is sold)
+    sales_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    expenses_of_sale = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    depreciation_recapture = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Ordinary income recapture (Section 1245/1250).",
+    )
+    gain_loss_on_sale = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Computed: sales_price - (cost_basis - total_depreciation) - expenses_of_sale.",
+    )
 
     # Import tracking
     imported_from_lacerte = models.BooleanField(default=False)

@@ -232,6 +232,10 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
             "is_amortization",
             "amort_code",
             "amort_months",
+            "sales_price",
+            "expenses_of_sale",
+            "depreciation_recapture",
+            "gain_loss_on_sale",
             "imported_from_lacerte",
             "lacerte_asset_no",
             "sort_order",
@@ -243,6 +247,7 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
             "id", "asset_number", "bonus_amount",
             "current_depreciation", "amt_current_depreciation",
             "state_current_depreciation", "state_bonus_disallowed",
+            "gain_loss_on_sale",
             "created_at", "updated_at",
         )
 

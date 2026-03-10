@@ -339,6 +339,10 @@ def calculate_asset_depreciation(
     if asset.group_label == "Land" or asset.method == "NONE":
         return result
 
+    # No date acquired — cannot calculate
+    if not asset.date_acquired:
+        return result
+
     # Asset not yet placed in service
     if asset.date_acquired.year > tax_year:
         return result

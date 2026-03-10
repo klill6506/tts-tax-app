@@ -414,13 +414,16 @@ def aggregate_depreciation(tax_return) -> None:
         ])
 
         # Accumulate by destination
+        # current_depreciation includes 179 + bonus + regular MACRS.
+        # Section 179 flows ONLY to K11 — never to Page 1 / 8825 / Sched F.
         current = result["current_depreciation"]
+        flow_amount = current - asset.sec_179_elected
         if asset.flow_to == "page1":
-            page1_total += current
+            page1_total += flow_amount
         elif asset.flow_to == "8825" and asset.rental_property_id:
-            rental_totals[asset.rental_property_id] += current
+            rental_totals[asset.rental_property_id] += flow_amount
         elif asset.flow_to == "sched_f":
-            sched_f_total += current
+            sched_f_total += flow_amount
 
         # Accumulate summary totals
         if asset.sec_179_elected > 0:

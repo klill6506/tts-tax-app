@@ -1862,6 +1862,10 @@ class TaxReturnViewSet(
 
         # POST — auto-assign asset_number and suggest bonus_pct
         data = request.data.copy()
+        # Convert empty date strings to None for nullable DateFields
+        for date_field in ("date_acquired", "date_sold"):
+            if date_field in data and data[date_field] == "":
+                data[date_field] = None
         max_num = (
             DepreciationAsset.objects.filter(tax_return=tax_return)
             .order_by("-asset_number")
@@ -1871,7 +1875,7 @@ class TaxReturnViewSet(
         asset_number = max_num + 1
 
         # Auto-suggest bonus_pct if not provided
-        if "bonus_pct" not in data and "date_acquired" in data:
+        if "bonus_pct" not in data and data.get("date_acquired"):
             from apps.tts_forms.depreciation_engine import suggest_bonus_pct
             import datetime
             try:
@@ -1911,7 +1915,11 @@ class TaxReturnViewSet(
 
         # PATCH — auto-suggest bonus_pct on date_acquired change
         data = request.data.copy()
-        if "date_acquired" in data and "bonus_pct" not in data:
+        # Convert empty date strings to None for nullable DateFields
+        for date_field in ("date_acquired", "date_sold"):
+            if date_field in data and data[date_field] == "":
+                data[date_field] = None
+        if data.get("date_acquired") and "bonus_pct" not in data:
             from apps.tts_forms.depreciation_engine import suggest_bonus_pct
             import datetime
             try:
@@ -1926,8 +1934,17 @@ class TaxReturnViewSet(
 
         ser = DepreciationAssetSerializer(asset, data=data, partial=True)
         ser.is_valid(raise_exception=True)
-        ser.save()
-        return Response(ser.data)
+        saved = ser.save()
+
+        # Recompute gain/loss on sale when disposal fields change
+        if saved.date_sold and saved.sales_price is not None:
+            total_depr = (saved.prior_depreciation or Decimal("0")) + (saved.current_depreciation or Decimal("0"))
+            adjusted_basis = saved.cost_basis - total_depr
+            gain_loss = saved.sales_price - adjusted_basis - (saved.expenses_of_sale or Decimal("0"))
+            saved.gain_loss_on_sale = gain_loss
+            saved.save(update_fields=["gain_loss_on_sale", "updated_at"])
+
+        return Response(DepreciationAssetSerializer(saved).data)
 
     @action(detail=True, methods=["post"], url_path="depreciation/calculate")
     def depreciation_calculate(self, request, pk=None):
