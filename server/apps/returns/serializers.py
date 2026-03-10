@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
+    DepreciationAsset,
     Disposition,
     FormDefinition,
     FormFieldValue,
@@ -190,6 +191,82 @@ class DispositionSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class DepreciationAssetSerializer(serializers.ModelSerializer):
+    method_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DepreciationAsset
+        fields = (
+            "id",
+            "asset_number",
+            "description",
+            "group_label",
+            "property_label",
+            "date_acquired",
+            "date_sold",
+            "cost_basis",
+            "business_pct",
+            "method",
+            "convention",
+            "life",
+            "sec_179_elected",
+            "sec_179_prior",
+            "bonus_pct",
+            "bonus_amount",
+            "prior_depreciation",
+            "current_depreciation",
+            "amt_method",
+            "amt_life",
+            "amt_prior_depreciation",
+            "amt_current_depreciation",
+            "state_method",
+            "state_life",
+            "state_prior_depreciation",
+            "state_current_depreciation",
+            "state_bonus_disallowed",
+            "flow_to",
+            "rental_property",
+            "is_listed_property",
+            "vehicle_miles_total",
+            "vehicle_miles_business",
+            "is_amortization",
+            "amort_code",
+            "amort_months",
+            "imported_from_lacerte",
+            "lacerte_asset_no",
+            "sort_order",
+            "method_display",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id", "asset_number", "bonus_amount",
+            "current_depreciation", "amt_current_depreciation",
+            "state_current_depreciation", "state_bonus_disallowed",
+            "created_at", "updated_at",
+        )
+
+    def get_method_display(self, obj):
+        """Format: 'MACRS 200DB HY 7yr' or 'S/L MM 39yr' or '--'."""
+        if obj.method == "NONE" or obj.group_label == "Land":
+            return "\u2014"
+        if obj.is_amortization:
+            code = obj.amort_code or "Amort"
+            months = obj.amort_months or ""
+            return f"S/L {code} {months}mo" if months else f"S/L {code}"
+        parts = []
+        if obj.method in ("200DB", "150DB"):
+            parts.append(f"MACRS {obj.method}")
+        elif obj.method == "SL":
+            parts.append("S/L")
+        if obj.convention:
+            parts.append(obj.convention)
+        if obj.life is not None:
+            life_str = f"{float(obj.life):g}"
+            parts.append(f"{life_str}yr")
+        return " ".join(parts)
+
+
 class PreparerInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreparerInfo
@@ -337,6 +414,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     shareholders = ShareholderSerializer(many=True, read_only=True)
     rental_properties = RentalPropertySerializer(many=True, read_only=True)
     dispositions = DispositionSerializer(many=True, read_only=True)
+    depreciation_assets = DepreciationAssetSerializer(many=True, read_only=True)
     preparer_info = PreparerInfoSerializer(read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
     tax_year_id = serializers.UUIDField(source="tax_year.id", read_only=True)
@@ -417,6 +495,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "shareholders",
             "rental_properties",
             "dispositions",
+            "depreciation_assets",
             "preparer_info",
             "created_at",
             "updated_at",

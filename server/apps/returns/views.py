@@ -16,6 +16,7 @@ from apps.tts_forms.views import PDFRenderMixin
 
 from .compute import compute_return
 from .models import (
+    DepreciationAsset,
     Disposition,
     FormDefinition,
     FormFieldValue,
@@ -32,6 +33,7 @@ from .models import (
 )
 from .serializers import (
     CreateReturnSerializer,
+    DepreciationAssetSerializer,
     DispositionSerializer,
     FormDefinitionListSerializer,
     FormDefinitionSerializer,
@@ -1844,3 +1846,93 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Depreciation Assets
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="depreciation")
+    def depreciation(self, request, pk=None):
+        """List or create DepreciationAsset rows."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = DepreciationAsset.objects.filter(tax_return=tax_return)
+            return Response(DepreciationAssetSerializer(qs, many=True).data)
+
+        # POST — auto-assign asset_number and suggest bonus_pct
+        data = request.data.copy()
+        max_num = (
+            DepreciationAsset.objects.filter(tax_return=tax_return)
+            .order_by("-asset_number")
+            .values_list("asset_number", flat=True)
+            .first()
+        ) or 0
+        data["asset_number"] = max_num + 1
+
+        # Auto-suggest bonus_pct if not provided
+        if "bonus_pct" not in data and "date_acquired" in data:
+            from apps.tts_forms.depreciation_engine import suggest_bonus_pct
+            import datetime
+            try:
+                acq_date = datetime.date.fromisoformat(data["date_acquired"])
+                data["bonus_pct"] = str(suggest_bonus_pct(
+                    acq_date,
+                    group_label=data.get("group_label", ""),
+                    is_amortization=data.get("is_amortization", False),
+                ))
+            except (ValueError, TypeError):
+                pass
+
+        ser = DepreciationAssetSerializer(data=data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="depreciation/(?P<asset_id>[^/.]+)",
+    )
+    def depreciation_detail(self, request, pk=None, asset_id=None):
+        """Update or delete a single DepreciationAsset."""
+        tax_return = self.get_object()
+        try:
+            asset = DepreciationAsset.objects.get(
+                id=asset_id, tax_return=tax_return,
+            )
+        except DepreciationAsset.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            asset.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PATCH — auto-suggest bonus_pct on date_acquired change
+        data = request.data.copy()
+        if "date_acquired" in data and "bonus_pct" not in data:
+            from apps.tts_forms.depreciation_engine import suggest_bonus_pct
+            import datetime
+            try:
+                acq_date = datetime.date.fromisoformat(data["date_acquired"])
+                data["bonus_pct"] = str(suggest_bonus_pct(
+                    acq_date,
+                    group_label=data.get("group_label", asset.group_label),
+                    is_amortization=data.get("is_amortization", asset.is_amortization),
+                ))
+            except (ValueError, TypeError):
+                pass
+
+        ser = DepreciationAssetSerializer(asset, data=data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    @action(detail=True, methods=["post"], url_path="depreciation/calculate")
+    def depreciation_calculate(self, request, pk=None):
+        """Run depreciation engine on all assets and save results."""
+        tax_return = self.get_object()
+        from .compute import aggregate_depreciation
+        aggregate_depreciation(tax_return)
+        qs = DepreciationAsset.objects.filter(tax_return=tax_return)
+        return Response(DepreciationAssetSerializer(qs, many=True).data)
