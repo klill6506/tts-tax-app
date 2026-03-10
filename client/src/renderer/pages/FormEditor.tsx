@@ -4626,18 +4626,21 @@ function DepreciationEditForm({
                 <label className="block text-xs font-medium text-tx-secondary mb-0.5">Depr. Recapture (1245/1250)</label>
                 <CurrencyInput value={asset.depreciation_recapture ?? ""} onValueChange={(v) => save({ depreciation_recapture: v || null })} />
               </div>
-              {asset.gain_loss_on_sale != null && (
+              {asset.gain_loss_on_sale != null && (() => {
+                const gl = parseFloat(asset.gain_loss_on_sale || "0") || 0;
+                return (
                 <div>
                   <label className="block text-xs font-medium text-tx-secondary mb-0.5">Gain / (Loss) on Sale</label>
                   <div className={`px-2 py-1 text-xs font-medium rounded-md border tabular-nums ${
-                    num(asset.gain_loss_on_sale) >= 0
+                    gl >= 0
                       ? "text-yellow-700 bg-yellow-50 border-yellow-200"
                       : "text-danger bg-red-50 border-red-200"
                   }`}>
-                    {fmt(num(asset.gain_loss_on_sale))}
+                    {gl.toLocaleString("en-US", { style: "currency", currency: "USD" })}
                   </div>
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>
