@@ -410,6 +410,22 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
     elif tax_return.accounting_method == "accrual":
         field_values["B1_accrual"] = ("true", "boolean")
 
+    # M-1 Lines 5 and 6: DB has sub-lines (M1_5a/M1_5b, M1_6a/M1_6b)
+    # but the field map has M1_5 and M1_6 (totals). Synthesize totals for rendering.
+    def _fv_decimal(key):
+        val = field_values.get(key, ("", ""))[0]
+        try:
+            return Decimal(val) if val else ZERO
+        except InvalidOperation:
+            return ZERO
+
+    m1_5_total = _fv_decimal("M1_5a") + _fv_decimal("M1_5b")
+    if m1_5_total:
+        field_values["M1_5"] = (str(m1_5_total), "currency")
+    m1_6_total = _fv_decimal("M1_6a") + _fv_decimal("M1_6b")
+    if m1_6_total:
+        field_values["M1_6"] = (str(m1_6_total), "currency")
+
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)
 

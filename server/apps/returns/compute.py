@@ -125,6 +125,11 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ) - _d(v, "L26d")),
 
     # Schedule M-1
+    # Auto-populate M-1 adjustment items from Schedule K:
+    # Line 5a: Tax-exempt interest (income on books not on K)
+    ("M1_5a", lambda v: _d(v, "K16a")),
+    # Line 6b: Charitable contributions + Section 179 (deductions on K not on books)
+    ("M1_6b", lambda v: _sum(v, "K12a", "K11")),
     # Line 1 is back-computed from K18 so M-1 always reconciles:
     #   M1_8 = M1_4 - M1_7 = K18  →  M1_1 = K18 + M1_7 - (M1_2..M1_3c)
     ("M1_1", lambda v: (
