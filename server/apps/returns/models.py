@@ -973,7 +973,7 @@ class DepreciationAsset(models.Model):
     asset_number = models.IntegerField(
         help_text="Auto-assigned per return, display only.",
     )
-    description = models.CharField(max_length=200)
+    description = models.CharField(max_length=200, blank=True, default="")
 
     GROUP_CHOICES = [
         ("Buildings", "Buildings"),
