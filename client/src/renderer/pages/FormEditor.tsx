@@ -4616,15 +4616,15 @@ function DepreciationEditForm({
               </div>
               <div>
                 <label className="block text-xs font-medium text-tx-secondary mb-0.5">Sales Price</label>
-                <CurrencyInput value={asset.sales_price || "0"} onValueChange={(v) => save({ sales_price: v })} />
+                <CurrencyInput value={asset.sales_price ?? ""} onValueChange={(v) => save({ sales_price: v || null })} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-tx-secondary mb-0.5">Expenses of Sale</label>
-                <CurrencyInput value={asset.expenses_of_sale || "0"} onValueChange={(v) => save({ expenses_of_sale: v })} />
+                <CurrencyInput value={asset.expenses_of_sale ?? ""} onValueChange={(v) => save({ expenses_of_sale: v || null })} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-tx-secondary mb-0.5">Depr. Recapture (1245/1250)</label>
-                <CurrencyInput value={asset.depreciation_recapture || "0"} onValueChange={(v) => save({ depreciation_recapture: v })} />
+                <CurrencyInput value={asset.depreciation_recapture ?? ""} onValueChange={(v) => save({ depreciation_recapture: v || null })} />
               </div>
               {asset.gain_loss_on_sale != null && (
                 <div>
