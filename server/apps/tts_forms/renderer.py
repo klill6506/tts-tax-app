@@ -403,6 +403,13 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
     # E.g. B3="true" → B3_yes="X"; B3="false" → B3_no="X".
     expand_yes_no(field_values)
 
+    # Schedule B Line 1: Accounting method checkboxes
+    # Added AFTER expand_yes_no so it won't be mangled by the B-prefix expansion.
+    if tax_return.accounting_method == "cash":
+        field_values["B1_cash"] = ("true", "boolean")
+    elif tax_return.accounting_method == "accrual":
+        field_values["B1_accrual"] = ("true", "boolean")
+
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)
 
@@ -546,6 +553,12 @@ def _build_header_data(tax_return) -> dict[str, str]:
     # TODO: Add model field to make this configurable per return
     if "preparer_name" in header:
         header["chk_discuss_yes"] = "X"
+
+    # Accounting method checkboxes (Page 1, Line I)
+    if tax_return.accounting_method == "cash":
+        header["chk_accounting_cash"] = "X"
+    elif tax_return.accounting_method == "accrual":
+        header["chk_accounting_accrual"] = "X"
 
     return header
 
@@ -1056,23 +1069,25 @@ def render_7004(tax_return) -> bytes:
     }
 
     # Line 5a: tax year dates
-    if tax_return.tax_year_start:
-        begin = tax_return.tax_year_start
-    else:
-        from datetime import date
-        begin = date(year, 1, 1)
+    # Determine if this is a calendar year filer (Jan 1 – Dec 31)
+    from datetime import date
 
-    if tax_return.tax_year_end:
-        end = tax_return.tax_year_end
-    else:
-        from datetime import date
-        end = date(year, 12, 31)
+    begin = tax_return.tax_year_start or date(year, 1, 1)
+    end = tax_return.tax_year_end or date(year, 12, 31)
+    is_calendar_year = (begin.month == 1 and begin.day == 1
+                        and end.month == 12 and end.day == 31)
 
-    field_values["5a_year"] = (str(begin.year), "text")
-    field_values["5a_begin"] = (begin.strftime("%m/%d"), "text")
-    field_values["5a_begin_year"] = (str(begin.year)[-2:], "text")
-    field_values["5a_end"] = (end.strftime("%m/%d"), "text")
-    field_values["5a_end_year"] = (str(end.year)[-2:], "text")
+    if is_calendar_year:
+        # Calendar year: only fill the 2-digit year suffix ("25" for 2025)
+        # The form reads "calendar year 20__" — just the suffix goes here.
+        # Do NOT populate begin/end date fields for calendar year filers.
+        field_values["5a_year"] = (str(year)[-2:], "text")
+    else:
+        # Fiscal year: fill begin/end dates, leave calendar year field empty
+        field_values["5a_begin"] = (begin.strftime("%m/%d"), "text")
+        field_values["5a_begin_year"] = (str(begin.year)[-2:], "text")
+        field_values["5a_end"] = (end.strftime("%m/%d"), "text")
+        field_values["5a_end_year"] = (str(end.year)[-2:], "text")
 
     # Lines 6-8: financial amounts
     if tax_return.tentative_tax:

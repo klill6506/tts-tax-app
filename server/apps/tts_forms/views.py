@@ -115,7 +115,10 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-k1s")
     def render_k1s(self, request, pk=None):
         """Generate all Schedule K-1 PDFs for this tax return."""
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
+        compute_return(tax_return)
 
         form_code = tax_return.form_definition.code
         if form_code not in ("1120-S",):
@@ -150,7 +153,10 @@ class PDFRenderMixin:
     )
     def render_k1_single(self, request, pk=None, sh_id=None):
         """Generate a single K-1 PDF for one shareholder."""
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
+        compute_return(tax_return)
         try:
             sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
         except Shareholder.DoesNotExist:
@@ -277,11 +283,16 @@ class PDFRenderMixin:
     )
     def render_7203(self, request, pk=None, sh_id=None):
         """Generate Form 7203 for one shareholder."""
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
         try:
             sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
         except Shareholder.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+        # Ensure K-line values are fresh before computing 7203
+        compute_return(tax_return)
 
         try:
             from .renderer import render_7203 as do_render_7203
@@ -302,6 +313,8 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-7203s")
     def render_7203s(self, request, pk=None):
         """Generate all Form 7203s for this return, concatenated."""
+        from apps.returns.compute import compute_return
+
         tax_return = self.get_object()
 
         form_code = tax_return.form_definition.code
@@ -310,6 +323,9 @@ class PDFRenderMixin:
                 {"error": f"7203 generation not supported for {form_code}."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Ensure K-line values are fresh before computing 7203
+        compute_return(tax_return)
 
         try:
             from .renderer import render_all_7203s
