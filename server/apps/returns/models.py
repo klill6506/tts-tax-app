@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -953,3 +954,166 @@ class Disposition(models.Model):
 
     def __str__(self):
         return f"{self.description} ({self.term}: {self.gain_loss})"
+
+
+# ---------------------------------------------------------------------------
+# Depreciation Assets (internal depreciation module)
+# ---------------------------------------------------------------------------
+
+
+class DepreciationAsset(models.Model):
+    """A single depreciable asset on a tax return."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="depreciation_assets",
+    )
+    asset_number = models.IntegerField(
+        help_text="Auto-assigned per return, display only.",
+    )
+    description = models.CharField(max_length=200)
+
+    GROUP_CHOICES = [
+        ("Buildings", "Buildings"),
+        ("Machinery and Equipment", "Machinery and Equipment"),
+        ("Furniture and Fixtures", "Furniture and Fixtures"),
+        ("Land", "Land"),
+        ("Improvements", "Improvements"),
+        ("Vehicles", "Vehicles"),
+        ("Intangibles/Amortization", "Intangibles/Amortization"),
+    ]
+    group_label = models.CharField(max_length=100, choices=GROUP_CHOICES)
+    property_label = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Location/property name for grouping (e.g. '821 Hillside Drive'). "
+                  "Blank for page 1 business assets.",
+    )
+
+    # Dates
+    date_acquired = models.DateField()
+    date_sold = models.DateField(null=True, blank=True)
+
+    # Basis
+    cost_basis = models.DecimalField(max_digits=12, decimal_places=2)
+    business_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("100.00"),
+    )
+
+    # Method
+    METHOD_CHOICES = [
+        ("200DB", "200DB"),
+        ("150DB", "150DB"),
+        ("SL", "S/L"),
+        ("NONE", "None"),
+    ]
+    CONVENTION_CHOICES = [
+        ("HY", "HY"),
+        ("MQ", "MQ"),
+        ("MM", "MM"),
+    ]
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES)
+    convention = models.CharField(max_length=5, choices=CONVENTION_CHOICES)
+    life = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        help_text="Common lives: 3, 5, 7, 10, 15, 20, 27.5, 39",
+    )
+
+    # Section 179
+    sec_179_elected = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+    sec_179_prior = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+
+    # Bonus / SDA
+    bonus_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="Auto-suggested based on date_acquired per OBBBA rules, user can override.",
+    )
+    bonus_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+
+    # Regular depreciation
+    prior_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+    current_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+
+    # AMT depreciation
+    amt_method = models.CharField(max_length=10, blank=True, default="")
+    amt_life = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+    )
+    amt_prior_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+    amt_current_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+
+    # State depreciation (Georgia)
+    state_method = models.CharField(max_length=10, blank=True, default="")
+    state_life = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+    )
+    state_prior_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+    state_current_depreciation = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+    )
+    state_bonus_disallowed = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Federal bonus taken that state does not allow. "
+                  "Flows to GA-600S Schedule 1 as an addition.",
+    )
+
+    # Flow destination
+    FLOW_CHOICES = [
+        ("page1", "Page 1 (Line 14)"),
+        ("8825", "Form 8825"),
+        ("sched_f", "Schedule F"),
+    ]
+    flow_to = models.CharField(
+        max_length=10, choices=FLOW_CHOICES, default="page1",
+    )
+    rental_property = models.ForeignKey(
+        RentalProperty,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="depreciation_assets",
+        help_text="Only used when flow_to = '8825'.",
+    )
+
+    # Vehicles / Listed Property
+    is_listed_property = models.BooleanField(default=False)
+    vehicle_miles_total = models.IntegerField(null=True, blank=True)
+    vehicle_miles_business = models.IntegerField(null=True, blank=True)
+
+    # Amortization
+    is_amortization = models.BooleanField(default=False)
+    amort_code = models.CharField(
+        max_length=20, blank=True, default="",
+        help_text="Common codes: '197' (Section 197 intangibles), '195' (startup costs).",
+    )
+    amort_months = models.IntegerField(null=True, blank=True)
+
+    # Import tracking
+    imported_from_lacerte = models.BooleanField(default=False)
+    lacerte_asset_no = models.IntegerField(null=True, blank=True)
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "asset_number"]
+
+    def __str__(self):
+        return f"#{self.asset_number}: {self.description} ({self.group_label})"
