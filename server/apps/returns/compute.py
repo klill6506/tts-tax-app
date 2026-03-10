@@ -10,9 +10,13 @@ Usage:
     compute_return(tax_return)
 """
 
+import logging
+from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
-from .models import FormFieldValue, FormLine
+from .models import DepreciationAsset, FormFieldValue, FormLine
+
+logger = logging.getLogger(__name__)
 
 ZERO = Decimal("0.00")
 
@@ -360,12 +364,123 @@ FORMULA_REGISTRY: dict[str, list[tuple[str, callable]]] = {
 }
 
 
+def aggregate_depreciation(tax_return) -> None:
+    """
+    Run depreciation engine on all assets and flow totals to the return.
+
+    1. Calculates each asset's depreciation and saves results
+    2. Sums by flow_to destination:
+       - page1: total → Line 14 (DEP_TOTAL)
+       - 8825: sum per rental_property → RentalProperty.depreciation
+       - sched_f: total → F_DEP (Schedule F depreciation line)
+    3. Section 179 total → K11 (Schedule K line 11)
+    4. AMT adjustment stored for future Form 4626
+    5. State bonus disallowed → GA-600S Schedule 1 addition
+    """
+    from apps.tts_forms.depreciation_engine import calculate_asset_depreciation
+
+    assets = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+    ).select_related("rental_property")
+
+    if not assets.exists():
+        return
+
+    tax_year = tax_return.tax_year.year
+
+    # Aggregate by flow destination
+    page1_total = Decimal("0")
+    sched_f_total = Decimal("0")
+    rental_totals: dict = defaultdict(Decimal)  # rental_property_id → amount
+    sec_179_total = Decimal("0")
+    bonus_total = Decimal("0")
+    amt_adjustment_total = Decimal("0")
+    state_bonus_disallowed_total = Decimal("0")
+
+    for asset in assets:
+        result = calculate_asset_depreciation(asset, tax_year)
+
+        # Save calculated values back to asset
+        asset.current_depreciation = result["current_depreciation"]
+        asset.bonus_amount = result["bonus_amount"]
+        asset.amt_current_depreciation = result["amt_current_depreciation"]
+        asset.state_current_depreciation = result["state_current_depreciation"]
+        asset.state_bonus_disallowed = result["state_bonus_disallowed"]
+        asset.save(update_fields=[
+            "current_depreciation", "bonus_amount",
+            "amt_current_depreciation",
+            "state_current_depreciation", "state_bonus_disallowed",
+            "updated_at",
+        ])
+
+        # Accumulate by destination
+        current = result["current_depreciation"]
+        if asset.flow_to == "page1":
+            page1_total += current
+        elif asset.flow_to == "8825" and asset.rental_property_id:
+            rental_totals[asset.rental_property_id] += current
+        elif asset.flow_to == "sched_f":
+            sched_f_total += current
+
+        # Accumulate summary totals
+        if asset.sec_179_elected > 0:
+            sec_179_total += asset.sec_179_elected
+        bonus_total += result["bonus_amount"]
+        amt_adj = result["current_depreciation"] - result["amt_current_depreciation"]
+        amt_adjustment_total += amt_adj
+        state_bonus_disallowed_total += result["state_bonus_disallowed"]
+
+    # Write page 1 depreciation (Line 14)
+    _set_field_value(tax_return, "14", str(page1_total.quantize(Decimal("0.01"))))
+
+    # Write Schedule F depreciation
+    if sched_f_total:
+        _set_field_value(tax_return, "F16", str(sched_f_total.quantize(Decimal("0.01"))))
+
+    # Write to rental properties (Form 8825)
+    if rental_totals:
+        from .models import RentalProperty
+        for prop_id, amount in rental_totals.items():
+            RentalProperty.objects.filter(id=prop_id).update(
+                depreciation=amount.quantize(Decimal("0.01"))
+            )
+
+    # Write Section 179 to K11
+    if sec_179_total:
+        _set_field_value(tax_return, "K11", str(sec_179_total.quantize(Decimal("0.01"))))
+
+    logger.debug(
+        "Depreciation aggregated for return %s: page1=%s, 8825=%s props, "
+        "schedF=%s, 179=%s, bonus=%s, amt_adj=%s, state_disallowed=%s",
+        tax_return.id, page1_total, len(rental_totals), sched_f_total,
+        sec_179_total, bonus_total, amt_adjustment_total,
+        state_bonus_disallowed_total,
+    )
+
+
+def _set_field_value(tax_return, line_number: str, value: str) -> None:
+    """Set a FormFieldValue for a given line, creating if needed."""
+    try:
+        fv = FormFieldValue.objects.get(
+            tax_return=tax_return,
+            form_line__line_number=line_number,
+        )
+        if not fv.is_overridden and fv.value != value:
+            fv.value = value
+            fv.save(update_fields=["value", "updated_at"])
+    except FormFieldValue.DoesNotExist:
+        pass  # Line doesn't exist in this form — skip silently
+
+
 def compute_return(tax_return) -> int:
     """
     Evaluate all computed fields on a tax return and save them.
 
     Returns the number of fields updated.
     """
+    # Aggregate depreciation first so totals are available to formulas
+    aggregate_depreciation(tax_return)
+
     form_code = tax_return.form_definition.code
     formulas = FORMULA_REGISTRY.get(form_code)
     if not formulas:
