@@ -4168,7 +4168,7 @@ function DepreciationSection({
 
   // Summary totals
   const totals = useMemo(() => {
-    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0;
+    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtTotal = 0, stateDisallowed = 0;
     let disposalGainLoss = 0, disposalRecapture = 0, disposalAmtAdj = 0;
     for (const a of assets) {
       sec179 += num(a.sec_179_elected);
@@ -4176,7 +4176,7 @@ function DepreciationSection({
       const curr = num(a.current_depreciation);
       regular += curr - num(a.sec_179_elected) - num(a.bonus_amount);
       total += curr;
-      amtAdj += curr - num(a.amt_current_depreciation);
+      amtTotal += num(a.amt_current_depreciation);
       stateDisallowed += num(a.state_bonus_disallowed);
       if (a.date_sold && a.gain_loss_on_sale != null) {
         disposalGainLoss += num(a.gain_loss_on_sale);
@@ -4184,7 +4184,8 @@ function DepreciationSection({
         disposalAmtAdj += num(a.amt_gain_loss_on_sale) - num(a.gain_loss_on_sale);
       }
     }
-    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed, disposalGainLoss, disposalRecapture, disposalAmtAdj };
+    const amtPref = total - amtTotal;
+    return { sec179, bonus, regular: Math.max(0, regular), total, amtTotal, amtPref, stateDisallowed, disposalGainLoss, disposalRecapture, disposalAmtAdj };
   }, [assets]);
 
   return (
@@ -4242,6 +4243,7 @@ function DepreciationSection({
                   <th className="text-right px-2 py-1 font-semibold">179/Bonus</th>
                   <th className="text-left px-2 py-1 font-semibold">Method</th>
                   <th className="text-right px-2 py-1 font-semibold">Current Depr</th>
+                  <th className="text-right px-2 py-1 font-semibold">AMT Depr</th>
                   <th className="text-right px-2 py-1 font-semibold">Gain/Loss</th>
                   <th className="px-2 py-1"></th>
                 </tr>
@@ -4254,6 +4256,7 @@ function DepreciationSection({
                       <tr className="bg-surface-alt/50">
                         <td colSpan={9} className="px-2 py-0.5 text-xs font-semibold text-tx-secondary">{groupLabel}</td>
                         <td className="px-2 py-0.5 text-right text-xs font-semibold tabular-nums text-tx-secondary">{fmt(groupTotal)}</td>
+                        <td></td>
                         <td></td>
                         <td></td>
                       </tr>
@@ -4276,6 +4279,12 @@ function DepreciationSection({
                           </td>
                           <td className="px-2 py-1 whitespace-nowrap text-tx-muted">{a.method_display}</td>
                           <td className="px-2 py-1 text-right tabular-nums font-medium">{fmt(num(a.current_depreciation))}</td>
+                          <td className={`px-2 py-1 text-right tabular-nums ${
+                            a.method === "NONE" || a.group_label === "Land" ? "text-tx-muted"
+                            : Math.abs(num(a.amt_current_depreciation) - num(a.current_depreciation)) > 0.005 ? "text-amber-600 font-medium" : ""
+                          }`}>
+                            {a.method === "NONE" || a.group_label === "Land" ? "\u2014" : fmt(num(a.amt_current_depreciation))}
+                          </td>
                           <td className="px-2 py-1 text-right tabular-nums">
                             {disposed && a.gain_loss_on_sale != null
                               ? <span className={num(a.gain_loss_on_sale) >= 0 ? "text-tx" : "text-danger"}>{fmt(num(a.gain_loss_on_sale))}</span>
@@ -4301,6 +4310,7 @@ function DepreciationSection({
                     <td className="px-2 py-1 text-right tabular-nums text-xs">{fmt(propTotal)}</td>
                     <td></td>
                     <td></td>
+                    <td></td>
                   </tr>
                 </tfoot>
               )}
@@ -4317,6 +4327,7 @@ function DepreciationSection({
               <tr className="bg-surface-alt font-bold">
                 <td colSpan={9} className="px-3 py-1.5 text-right">Grand Total Current Depreciation:</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt(totals.total)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(totals.amtTotal)}</td>
                 <td></td>
                 <td className="w-20"></td>
               </tr>
@@ -4350,8 +4361,12 @@ function DepreciationSection({
             <span className="col-span-2 border-t border-border my-1"></span>
             <span className="text-tx font-bold">Total Current Depreciation:</span>
             <span className="text-right tabular-nums font-bold">{fmt(totals.total)}</span>
-            <span className="text-tx-secondary">AMT Adjustment:</span>
-            <span className="text-right tabular-nums font-medium">{fmt(totals.amtAdj)}</span>
+            <span className="text-tx-secondary">AMT Depreciation Total:</span>
+            <span className="text-right tabular-nums font-medium">{fmt(totals.amtTotal)}</span>
+            {totals.amtPref !== 0 && (<>
+              <span className="text-tx-secondary">AMT Preference Item:</span>
+              <span className="text-right tabular-nums font-medium text-amber-600">{fmt(totals.amtPref)}</span>
+            </>)}
             <span className="text-tx-secondary">GA Bonus Disallowed:</span>
             <span className="text-right tabular-nums font-medium">{fmt(totals.stateDisallowed)}</span>
             {totals.disposalGainLoss !== 0 && (<>
