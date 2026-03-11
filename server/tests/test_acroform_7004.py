@@ -22,17 +22,13 @@ from apps.tts_forms.field_maps.f7004_2025 import (
     HEADER_MAP as F7004_HEADER_MAP,
 )
 from apps.tts_forms.renderer import (
-    ACROFORM_HEADER_REGISTRY,
-    ACROFORM_REGISTRY,
+    ACROFORM_FORM_IDS,
+
     render,
 )
-
-
 _SERVER_DIR = Path(__file__).resolve().parent.parent
 _REPO_ROOT = _SERVER_DIR.parent
 _7004_PATH = _REPO_ROOT / "resources" / "irs_forms" / "2025" / "f7004.pdf"
-
-
 def _extract_text(pdf_bytes: bytes) -> str:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     text = ""
@@ -40,13 +36,9 @@ def _extract_text(pdf_bytes: bytes) -> str:
         text += page.get_text()
     doc.close()
     return text
-
-
 # ---------------------------------------------------------------------------
 # Field Map Validation
 # ---------------------------------------------------------------------------
-
-
 class TestF7004FieldMapValidation:
     @pytest.fixture(autouse=True)
     def _load_pdf_fields(self):
@@ -102,13 +94,9 @@ class TestF7004FieldMapValidation:
             f"{len(duplicates)} duplicate AcroForm names:\n"
             + "\n".join(duplicates)
         )
-
-
 # ---------------------------------------------------------------------------
 # AcroForm Filler
 # ---------------------------------------------------------------------------
-
-
 class TestF7004AcroFormFiller:
     @pytest.fixture(autouse=True)
     def _skip_if_no_pdf(self):
@@ -192,13 +180,9 @@ class TestF7004AcroFormFiller:
         widget_count = sum(1 for page in doc for _ in page.widgets())
         doc.close()
         assert widget_count == 0
-
-
 # ---------------------------------------------------------------------------
 # Renderer Integration
 # ---------------------------------------------------------------------------
-
-
 class TestF7004RendererIntegration:
     @pytest.fixture(autouse=True)
     def _skip_if_no_pdf(self):
@@ -206,8 +190,7 @@ class TestF7004RendererIntegration:
             pytest.skip("f7004.pdf not available")
 
     def test_7004_in_acroform_registry(self):
-        assert "f7004" in ACROFORM_REGISTRY
-        assert "f7004" in ACROFORM_HEADER_REGISTRY
+        assert "f7004" in ACROFORM_FORM_IDS
 
     def test_render_7004_uses_acroform(self):
         field_values = {

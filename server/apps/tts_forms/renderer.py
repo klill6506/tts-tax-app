@@ -5,7 +5,7 @@ Supports two rendering backends:
 1. AcroForm filling (preferred) — fills named fields in IRS fillable PDFs using pymupdf
 2. Coordinate overlay (legacy) — draws text at pixel positions using ReportLab + pypdf
 
-The renderer auto-selects the backend based on ACROFORM_REGISTRY. Forms registered
+The renderer auto-selects the backend based on ACROFORM_FORM_IDS. Forms registered
 there use AcroForm filling; all others fall back to coordinate overlay.
 
 Usage:
@@ -236,7 +236,7 @@ def render(
     Render a completed IRS form PDF.
 
     Auto-selects the rendering backend:
-    - AcroForm filling (preferred): if the form is in ACROFORM_REGISTRY
+    - AcroForm filling (preferred): if the form is in ACROFORM_FORM_IDS
     - Coordinate overlay (legacy): fallback for forms without AcroForm maps
 
     Args:

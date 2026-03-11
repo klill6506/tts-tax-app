@@ -11,7 +11,7 @@ Use get_field_maps(form_id, tax_year) to resolve the correct maps.
 Adding a new form:
     1. Run: python scripts/dump_acroform_fields.py resources/irs_forms/<year>/<form>.pdf --json
     2. Create field_maps/<form_id>_<year>.py with FIELD_MAP and HEADER_MAP
-    3. Register in renderer.py ACROFORM_REGISTRY
+    3. Register in renderer.py ACROFORM_FORM_IDS
     4. Run validation tests
 """
 

@@ -21,17 +21,13 @@ from apps.tts_forms.field_maps.f8825_2025 import (
     HEADER_MAP as F8825_HEADER_MAP,
 )
 from apps.tts_forms.renderer import (
-    ACROFORM_HEADER_REGISTRY,
-    ACROFORM_REGISTRY,
+    ACROFORM_FORM_IDS,
+
     render,
 )
-
-
 _SERVER_DIR = Path(__file__).resolve().parent.parent
 _REPO_ROOT = _SERVER_DIR.parent
 _8825_PATH = _REPO_ROOT / "resources" / "irs_forms" / "2025" / "f8825.pdf"
-
-
 def _extract_text(pdf_bytes: bytes) -> str:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     text = ""
@@ -39,13 +35,9 @@ def _extract_text(pdf_bytes: bytes) -> str:
         text += page.get_text()
     doc.close()
     return text
-
-
 # ---------------------------------------------------------------------------
 # Field Map Validation
 # ---------------------------------------------------------------------------
-
-
 class TestF8825FieldMapValidation:
     @pytest.fixture(autouse=True)
     def _load_pdf_fields(self):
@@ -101,13 +93,9 @@ class TestF8825FieldMapValidation:
             f"{len(duplicates)} duplicate AcroForm names:\n"
             + "\n".join(duplicates)
         )
-
-
 # ---------------------------------------------------------------------------
 # AcroForm Filler
 # ---------------------------------------------------------------------------
-
-
 class TestF8825AcroFormFiller:
     @pytest.fixture(autouse=True)
     def _skip_if_no_pdf(self):
@@ -197,13 +185,9 @@ class TestF8825AcroFormFiller:
         widget_count = sum(1 for page in doc for _ in page.widgets())
         doc.close()
         assert widget_count == 0
-
-
 # ---------------------------------------------------------------------------
 # Renderer Integration
 # ---------------------------------------------------------------------------
-
-
 class TestF8825RendererIntegration:
     @pytest.fixture(autouse=True)
     def _skip_if_no_pdf(self):
@@ -211,8 +195,7 @@ class TestF8825RendererIntegration:
             pytest.skip("f8825.pdf not available")
 
     def test_8825_in_acroform_registry(self):
-        assert "f8825" in ACROFORM_REGISTRY
-        assert "f8825" in ACROFORM_HEADER_REGISTRY
+        assert "f8825" in ACROFORM_FORM_IDS
 
     def test_render_8825_uses_acroform(self):
         field_values = {

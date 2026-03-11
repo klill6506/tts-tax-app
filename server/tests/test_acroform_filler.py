@@ -30,13 +30,11 @@ from apps.tts_forms.formatting import (
     is_truthy,
 )
 from apps.tts_forms.renderer import (
-    ACROFORM_HEADER_REGISTRY,
-    ACROFORM_REGISTRY,
+    ACROFORM_FORM_IDS,
+
     COORDINATE_REGISTRY,
     render,
 )
-
-
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -44,8 +42,6 @@ from apps.tts_forms.renderer import (
 _SERVER_DIR = Path(__file__).resolve().parent.parent
 _REPO_ROOT = _SERVER_DIR.parent
 _F1120S_PATH = _REPO_ROOT / "resources" / "irs_forms" / "2025" / "f1120s.pdf"
-
-
 def _extract_text(pdf_bytes: bytes) -> str:
     """Extract all text from a PDF (all pages concatenated)."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -54,21 +50,15 @@ def _extract_text(pdf_bytes: bytes) -> str:
         text += page.get_text()
     doc.close()
     return text
-
-
 def _extract_text_by_page(pdf_bytes: bytes) -> list[str]:
     """Extract text from each page of a PDF."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages = [page.get_text() for page in doc]
     doc.close()
     return pages
-
-
 # ---------------------------------------------------------------------------
 # Field Map Validation
 # ---------------------------------------------------------------------------
-
-
 class TestFieldMapValidation:
     """Verify every AcroField name in the field map exists in the actual PDF."""
 
@@ -149,13 +139,9 @@ class TestFieldMapValidation:
             f"{len(duplicates)} duplicate AcroForm names:\n"
             + "\n".join(duplicates[:10])
         )
-
-
 # ---------------------------------------------------------------------------
 # AcroForm Filler (text overlay)
 # ---------------------------------------------------------------------------
-
-
 class TestAcroFormFiller:
     """Test the fill_form function (text overlay approach)."""
 
@@ -300,13 +286,9 @@ class TestAcroFormFiller:
         assert "100,000" in pages[0], "Line 1a value not found on page 0"
         assert "50,000" in pages[2], "K1 value not found on page 2"
         assert "10,000" in pages[3], "L1a value not found on page 3"
-
-
 # ---------------------------------------------------------------------------
 # Renderer Integration
 # ---------------------------------------------------------------------------
-
-
 class TestRendererAcroFormIntegration:
     """Test that render() correctly routes to the AcroForm path."""
 
@@ -317,8 +299,7 @@ class TestRendererAcroFormIntegration:
 
     def test_f1120s_in_acroform_registry(self):
         """1120-S should be registered in both ACROFORM and COORDINATE registries."""
-        assert "f1120s" in ACROFORM_REGISTRY
-        assert "f1120s" in ACROFORM_HEADER_REGISTRY
+        assert "f1120s" in ACROFORM_FORM_IDS
         assert "f1120s" in COORDINATE_REGISTRY  # Kept as fallback
 
     def test_render_f1120s_uses_acroform(self):
@@ -342,8 +323,7 @@ class TestRendererAcroFormIntegration:
 
     def test_render_f1065_uses_coordinates(self):
         """render('f1065', ...) should still use coordinate overlay."""
-        # f1065 is not in ACROFORM_REGISTRY, so it falls back to coordinates
-        assert "f1065" not in ACROFORM_REGISTRY
+        # f1065 is not in ACROFORM_FORM_IDS, so it falls back to coordinates
         assert "f1065" in COORDINATE_REGISTRY
 
     def test_render_f1120s_with_statements(self):
@@ -369,13 +349,9 @@ class TestRendererAcroFormIntegration:
         assert len(reader.pages) == 6, (
             f"Expected 6 pages (5 form + 1 statement), got {len(reader.pages)}"
         )
-
-
 # ---------------------------------------------------------------------------
 # Formatting Module
 # ---------------------------------------------------------------------------
-
-
 class TestFormattingModule:
     """Test the shared formatting functions."""
 
