@@ -1293,6 +1293,386 @@ def render_8453s(tax_return) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Form 4562 rendering (Depreciation and Amortization)
+# ---------------------------------------------------------------------------
+
+
+def render_4562(tax_return) -> bytes:
+    """
+    Render Form 4562 (Depreciation and Amortization) for a tax return.
+
+    Reads DepreciationAsset model instances and populates:
+    - Part I: Section 179 deduction worksheet
+    - Part II: Special Depreciation Allowance (Bonus)
+    - Part III: MACRS Depreciation (grouped by recovery period)
+    - Part V: Listed Property (vehicles)
+    - Part VI: Amortization (Section 197 / startup costs)
+    - Line 22: Total depreciation
+    """
+    from apps.returns.models import DepreciationAsset
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "activity_desc": entity.business_activity or "",
+        "ein": entity.ein or "",
+    }
+
+    assets = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+    ).order_by("sort_order", "asset_number")
+
+    field_values: dict[str, tuple[str, str]] = {}
+
+    # -----------------------------------------------------------------------
+    # Part I: Section 179
+    # -----------------------------------------------------------------------
+    sec_179_limit = Decimal("2500000")
+    sec_179_phaseout = Decimal("4000000")
+    total_179_cost = ZERO
+    total_179_elected = ZERO
+
+    sec_179_assets = [a for a in assets if a.sec_179_elected and a.sec_179_elected > 0]
+    for a in sec_179_assets:
+        total_179_cost += a.cost_basis
+        total_179_elected += a.sec_179_elected
+
+    if sec_179_assets:
+        field_values["F4562_1"] = (str(sec_179_limit), "currency")
+        field_values["F4562_2"] = (str(total_179_cost), "currency")
+        field_values["F4562_3"] = (str(sec_179_phaseout), "currency")
+
+        # Line 4: Reduction = max(0, total_cost - phaseout)
+        reduction = max(ZERO, total_179_cost - sec_179_phaseout)
+        field_values["F4562_4"] = (str(reduction), "currency")
+
+        # Line 5: Dollar limitation = max(0, limit - reduction)
+        dollar_limit = max(ZERO, sec_179_limit - reduction)
+        field_values["F4562_5"] = (str(dollar_limit), "currency")
+
+        # Lines 6-7: Individual 179 property rows (up to 2 in the table)
+        for i, a in enumerate(sec_179_assets[:2], start=1):
+            field_values[f"L6R{i}_desc"] = (a.description[:40] if a.description else "", "text")
+            field_values[f"L6R{i}_cost"] = (str(a.cost_basis), "currency")
+            field_values[f"L6R{i}_elected"] = (str(a.sec_179_elected), "currency")
+
+        # Line 8: Total elected cost
+        field_values["F4562_8"] = (str(total_179_elected), "currency")
+
+        # Line 9: Tentative deduction = min(line 5, line 8)
+        tentative = min(dollar_limit, total_179_elected)
+        field_values["F4562_9"] = (str(tentative), "currency")
+
+        # Line 10: Carryover of disallowed deduction from prior year (not tracked yet)
+        # Line 11: Business income limitation (not tracked yet)
+
+        # Line 12: Section 179 expense deduction = tentative (simplified)
+        field_values["F4562_12"] = (str(tentative), "currency")
+
+        # Line 13: Carryover to next year = max(0, total_elected - tentative)
+        carryover = max(ZERO, total_179_elected - tentative)
+        if carryover > 0:
+            field_values["F4562_13"] = (str(carryover), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part II: Special Depreciation Allowance (Bonus)
+    # -----------------------------------------------------------------------
+    bonus_assets = [a for a in assets if a.bonus_amount and a.bonus_amount > 0
+                    and not a.is_amortization]
+    total_bonus = sum(a.bonus_amount for a in bonus_assets)
+
+    if total_bonus > 0:
+        field_values["F4562_14"] = (str(total_bonus), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part III: MACRS Depreciation
+    # -----------------------------------------------------------------------
+    # Line 17: MACRS deductions for assets placed in service in prior years
+    prior_year_assets = [
+        a for a in assets
+        if a.date_acquired
+        and a.date_acquired.year < tax_return.tax_year.year
+        and not a.is_amortization
+        and a.method != "NONE"
+        and a.group_label != "Land"
+    ]
+    prior_year_depr = sum(a.current_depreciation for a in prior_year_assets)
+    if prior_year_depr > 0:
+        field_values["F4562_17"] = (str(prior_year_depr), "currency")
+
+    # Section B: GDS MACRS assets placed in service THIS year
+    # Group by recovery period → populate lines 19a-19i
+    current_year_assets = [
+        a for a in assets
+        if a.date_acquired
+        and a.date_acquired.year == tax_return.tax_year.year
+        and not a.is_amortization
+        and a.method != "NONE"
+        and a.group_label != "Land"
+        and not a.is_listed_property
+    ]
+
+    # MACRS life → IRS line mapping
+    macrs_line_map = {
+        Decimal("3"): "a", Decimal("3.0"): "a",
+        Decimal("5"): "b", Decimal("5.0"): "b",
+        Decimal("7"): "c", Decimal("7.0"): "c",
+        Decimal("10"): "d", Decimal("10.0"): "d",
+        Decimal("15"): "e", Decimal("15.0"): "e",
+        Decimal("20"): "f", Decimal("20.0"): "f",
+        Decimal("25"): "g", Decimal("25.0"): "g",
+        Decimal("27.5"): "h",
+        Decimal("39"): "i", Decimal("39.0"): "i",
+    }
+
+    # Aggregate by life
+    life_groups: dict[str, dict] = {}
+    for a in current_year_assets:
+        line_letter = macrs_line_map.get(a.life, "")
+        if not line_letter:
+            continue
+        if line_letter not in life_groups:
+            life_groups[line_letter] = {
+                "basis": ZERO,
+                "depr": ZERO,
+                "period": str(a.life) if a.life else "",
+                "convention": a.convention or "",
+                "method": a.method or "",
+                "placed": "",
+            }
+        life_groups[line_letter]["basis"] += (
+            a.cost_basis - a.sec_179_elected - a.bonus_amount
+        )
+        life_groups[line_letter]["depr"] += a.current_depreciation - a.sec_179_elected - a.bonus_amount
+
+    # Map "a"-"i" to 19a-19i lines (Section B uses single-row suffix)
+    # For 27.5-year and 39-year, there are two sub-rows (_1 and _2) — use first
+    for letter, data in life_groups.items():
+        suffix = letter
+        if data["basis"] > 0 or data["depr"] > 0:
+            if data["placed"]:
+                field_values[f"L19{suffix}_placed"] = (data["placed"], "text")
+            field_values[f"L19{suffix}_basis"] = (str(data["basis"]), "currency")
+            field_values[f"L19{suffix}_period"] = (data["period"], "text")
+            field_values[f"L19{suffix}_convention"] = (data["convention"], "text")
+            method_display = {
+                "200DB": "200DB", "150DB": "150DB", "SL": "S/L",
+            }.get(data["method"], data["method"])
+            field_values[f"L19{suffix}_method"] = (method_display, "text")
+            field_values[f"L19{suffix}_depr"] = (str(data["depr"]), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part V: Listed Property (vehicles)
+    # -----------------------------------------------------------------------
+    vehicle_assets = [a for a in assets if a.is_listed_property]
+    total_listed_depr = ZERO
+    for i, va in enumerate(vehicle_assets[:3], start=1):
+        field_values[f"LP26R{i}_desc"] = (va.description[:20] if va.description else "", "text")
+        if va.date_acquired:
+            field_values[f"LP26R{i}_placed"] = (va.date_acquired.strftime("%m/%d/%y"), "text")
+        field_values[f"LP26R{i}_cost"] = (str(va.cost_basis), "currency")
+        bus_pct = f"{va.business_pct:.0f}%"
+        field_values[f"LP26R{i}_buspct"] = (bus_pct, "text")
+        field_values[f"LP26R{i}_depr"] = (str(va.current_depreciation), "currency")
+        total_listed_depr += va.current_depreciation
+        # Method/convention
+        method_display = {
+            "200DB": "200DB", "150DB": "150DB", "SL": "S/L",
+        }.get(va.method, va.method)
+        field_values[f"LP26R{i}_method"] = (method_display, "text")
+
+    if total_listed_depr > 0:
+        field_values["F4562_21"] = (str(total_listed_depr), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part VI: Amortization
+    # -----------------------------------------------------------------------
+    amort_assets = [a for a in assets if a.is_amortization]
+    total_amort = ZERO
+
+    for i, aa in enumerate(amort_assets[:2], start=1):
+        field_values[f"AM42R{i}_desc"] = (aa.description[:30] if aa.description else "", "text")
+        if aa.date_acquired:
+            field_values[f"AM42R{i}_date"] = (aa.date_acquired.strftime("%m/%d/%y"), "text")
+        field_values[f"AM42R{i}_amount"] = (str(aa.cost_basis), "currency")
+        field_values[f"AM42R{i}_code"] = (aa.amort_code or "197", "text")
+        field_values[f"AM42R{i}_period"] = (str(aa.amort_months or 180), "text")
+        field_values[f"AM42R{i}_deduction"] = (str(aa.current_depreciation), "currency")
+        total_amort += aa.current_depreciation
+
+    if total_amort > 0:
+        field_values["F4562_44"] = (str(total_amort), "currency")
+
+    # -----------------------------------------------------------------------
+    # Line 22: Total depreciation (all parts combined)
+    # -----------------------------------------------------------------------
+    total_depr = sum(
+        a.current_depreciation for a in assets
+        if a.group_label != "Land" and a.method != "NONE"
+    )
+    if total_depr > 0:
+        field_values["F4562_22"] = (str(total_depr), "currency")
+
+    return render(
+        form_id="f4562",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Form 4797 rendering (Sales of Business Property)
+# ---------------------------------------------------------------------------
+
+
+def render_4797(tax_return) -> bytes:
+    """
+    Render Form 4797 (Sales of Business Property) for a tax return.
+
+    Data source: DepreciationAsset instances with date_sold populated.
+    Only depreciation asset disposals — does NOT pull from Disposition model.
+
+    Populates:
+    - Part I: Section 1231 gains (long-term capital gains from asset sales)
+    - Part II: Ordinary gains (depreciation recapture)
+    - Part III: Recapture detail (Section 1245/1250 analysis)
+    """
+    from apps.returns.models import DepreciationAsset
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    # Get all disposed assets (have a date_sold)
+    disposed = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+        date_sold__isnull=False,
+    ).order_by("sort_order", "asset_number")
+
+    if not disposed.exists():
+        # Return a blank form
+        return render(
+            form_id="f4797",
+            tax_year=tax_year_applicable,
+            field_values={},
+            header_data=header_data,
+        )
+
+    field_values: dict[str, tuple[str, str]] = {}
+
+    # -----------------------------------------------------------------------
+    # Part I: Section 1231 gains/losses (long-term, held > 1 year)
+    # Assets with capital_gain (portion above depreciation recapture)
+    # -----------------------------------------------------------------------
+    part1_assets = [
+        a for a in disposed
+        if a.capital_gain and a.capital_gain != 0
+    ]
+
+    total_part1 = ZERO
+    for i, a in enumerate(part1_assets[:4], start=1):
+        total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+        field_values[f"P1_2R{i}_desc"] = (a.description[:20] if a.description else "", "text")
+        if a.date_acquired:
+            field_values[f"P1_2R{i}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
+        if a.date_sold:
+            field_values[f"P1_2R{i}_sold"] = (a.date_sold.strftime("%m/%d/%y"), "text")
+        if a.sales_price:
+            field_values[f"P1_2R{i}_gross"] = (str(a.sales_price), "currency")
+        field_values[f"P1_2R{i}_depr"] = (str(total_depr), "currency")
+        field_values[f"P1_2R{i}_cost"] = (str(a.cost_basis), "currency")
+        field_values[f"P1_2R{i}_gain"] = (str(a.capital_gain), "currency")
+        total_part1 += a.capital_gain
+
+    if total_part1 != 0:
+        field_values["P4797_7"] = (str(total_part1), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part II: Ordinary Gains and Losses (depreciation recapture)
+    # -----------------------------------------------------------------------
+    part2_assets = [
+        a for a in disposed
+        if a.depreciation_recapture and a.depreciation_recapture != 0
+    ]
+
+    total_ordinary = ZERO
+    for i, a in enumerate(part2_assets[:4], start=1):
+        total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+        field_values[f"P2_10R{i}_desc"] = (a.description[:20] if a.description else "", "text")
+        if a.date_acquired:
+            field_values[f"P2_10R{i}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
+        if a.date_sold:
+            field_values[f"P2_10R{i}_sold"] = (a.date_sold.strftime("%m/%d/%y"), "text")
+        if a.sales_price:
+            field_values[f"P2_10R{i}_gross"] = (str(a.sales_price), "currency")
+        field_values[f"P2_10R{i}_depr"] = (str(total_depr), "currency")
+        field_values[f"P2_10R{i}_cost"] = (str(a.cost_basis), "currency")
+        field_values[f"P2_10R{i}_gain"] = (str(a.depreciation_recapture), "currency")
+        total_ordinary += a.depreciation_recapture
+
+    if total_ordinary != 0:
+        field_values["P4797_17"] = (str(total_ordinary), "currency")
+        field_values["P4797_18"] = (str(total_ordinary), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part III: Recapture detail (Section 1245/1250)
+    # First 4 disposed assets get individual recapture analysis
+    # -----------------------------------------------------------------------
+    recapture_assets = list(disposed[:4])
+    cols = ["a", "b", "c", "d"]
+
+    for i, a in enumerate(recapture_assets):
+        col = cols[i]
+        total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+
+        # Line 19: Description of Section 1245/1250 property (Part III Table 1)
+        field_values[f"P3_19R{i+1}_desc"] = (a.description[:30] if a.description else "", "text")
+
+        # Line 20: Gross sales price
+        if a.sales_price:
+            field_values[f"P3_20_{col}"] = (str(a.sales_price), "currency")
+
+        # Line 21: Cost or other basis plus improvements and expense of sale
+        cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
+        field_values[f"P3_21_{col}"] = (str(cost_plus), "currency")
+
+        # Line 22: Depreciation allowed or allowable
+        field_values[f"P3_22_{col}"] = (str(total_depr), "currency")
+
+        # Line 23: Adjusted basis (L21 - L22)
+        adjusted_basis = cost_plus - total_depr
+        field_values[f"P3_23_{col}"] = (str(adjusted_basis), "currency")
+
+        # Line 24: Total gain (L20 - L23)
+        total_gain = (a.sales_price or ZERO) - adjusted_basis
+        field_values[f"P3_24_{col}"] = (str(total_gain), "currency")
+
+        # Line 25a: Section 1245 recapture (lesser of L22 or L24)
+        if a.depreciation_recapture and a.depreciation_recapture > 0:
+            field_values[f"P3_25a_{col}"] = (str(a.depreciation_recapture), "currency")
+
+        # Line 25b: Section 1250 recapture (for real property — usually 0 for personal property)
+
+        # Line 26: Section 1231 gain (total gain - recapture)
+        if a.capital_gain and a.capital_gain != 0:
+            field_values[f"P3_29a_{col}"] = (str(a.capital_gain), "currency")
+
+    return render(
+        form_id="f4797",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Complete Return rendering (all forms combined)
 # ---------------------------------------------------------------------------
 
@@ -1414,6 +1794,23 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             _append(render_8825(tax_return))
     except Exception as e:
         logger.warning("render_complete: 8825 failed: %s", e)
+
+    # 3b. Form 4562 (Depreciation) — only if depreciation assets exist
+    try:
+        from apps.returns.models import DepreciationAsset
+        if DepreciationAsset.objects.filter(tax_return=tax_return).exists():
+            _append(render_4562(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 4562 failed: %s", e)
+
+    # 3c. Form 4797 (Sales of Business Property) — only if disposed assets exist
+    try:
+        if DepreciationAsset.objects.filter(
+            tax_return=tax_return, date_sold__isnull=False,
+        ).exists():
+            _append(render_4797(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 4797 failed: %s", e)
 
     # 4-6: Shareholder-level forms (1120-S only)
     form_code = tax_return.form_definition.code

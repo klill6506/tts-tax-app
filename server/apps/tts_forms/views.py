@@ -37,6 +37,8 @@ from apps.returns.models import Shareholder, TaxReturn
 from .renderer import (
     PRINT_PACKAGES,
     render_1125a,
+    render_4562,
+    render_4797,
     render_7004,
     render_8825,
     render_all_k1s,
@@ -350,6 +352,68 @@ class PDFRenderMixin:
     # ------------------------------------------------------------------
     # Form 7004 rendering (Extension)
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Form 4562 rendering (Depreciation and Amortization)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-4562")
+    def render_4562_pdf(self, request, pk=None):
+        """Generate Form 4562 (Depreciation and Amortization) for this tax return."""
+        from apps.returns.compute import compute_return
+
+        tax_return = self.get_object()
+        compute_return(tax_return)
+
+        try:
+            pdf_bytes = render_4562(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"4562_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Form 4797 rendering (Sales of Business Property)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-4797")
+    def render_4797_pdf(self, request, pk=None):
+        """Generate Form 4797 (Sales of Business Property) for this tax return."""
+        from apps.returns.compute import compute_return
+
+        tax_return = self.get_object()
+        compute_return(tax_return)
+
+        try:
+            pdf_bytes = render_4797(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"4797_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     # ------------------------------------------------------------------
     # Complete return rendering (all forms combined)
