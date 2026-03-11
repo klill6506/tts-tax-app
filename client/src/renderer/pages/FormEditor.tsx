@@ -4149,6 +4149,13 @@ function DepreciationSection({
     await onRefresh();
   }
 
+  async function calculateAll() {
+    setSaving(true);
+    await post(`/tax-returns/${taxReturnId}/depreciation/calculate/`);
+    await onRefresh();
+    setSaving(false);
+  }
+
   async function deleteAsset(id: string) {
     if (!confirm("Delete this asset?")) return;
     await del(`/tax-returns/${taxReturnId}/depreciation/${id}/`);
@@ -4196,6 +4203,15 @@ function DepreciationSection({
           <p className="text-xs text-tx-muted">Assets flow to Page 1 Line 14, Form 8825, or Schedule F.</p>
         </div>
         <div className="flex gap-2">
+          {assets.length > 0 && (
+            <button
+              onClick={calculateAll}
+              disabled={saving}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+            >
+              Calculate All
+            </button>
+          )}
           <button
             onClick={addAsset}
             disabled={saving}

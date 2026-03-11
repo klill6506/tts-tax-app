@@ -617,6 +617,7 @@ def _auto_calculate_asset(asset, tax_return):
 
     # Run depreciation engine
     result = calculate_asset_depreciation(asset, tax_year)
+
     asset.current_depreciation = result["current_depreciation"]
     asset.bonus_amount = result["bonus_amount"]
     asset.amt_current_depreciation = result["amt_current_depreciation"]
@@ -1971,8 +1972,10 @@ class TaxReturnViewSet(
         # asset_number is read_only on serializer, pass via save()
         saved = ser.save(tax_return=tax_return, asset_number=asset_number)
 
-        # Auto-calculate depreciation on creation
+        # Auto-calculate depreciation on creation + flow totals to return
         saved = _auto_calculate_asset(saved, tax_return)
+        from .compute import aggregate_depreciation
+        aggregate_depreciation(tax_return)
 
         return Response(DepreciationAssetSerializer(saved).data, status=status.HTTP_201_CREATED)
 
@@ -1993,6 +1996,9 @@ class TaxReturnViewSet(
 
         if request.method == "DELETE":
             asset.delete()
+            # Re-aggregate totals after deletion
+            from .compute import aggregate_depreciation
+            aggregate_depreciation(tax_return)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         # PATCH — auto-suggest bonus_pct on date_acquired change
@@ -2018,8 +2024,10 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         saved = ser.save()
 
-        # Auto-calculate depreciation on every save
+        # Auto-calculate depreciation on every save + flow totals to return
         saved = _auto_calculate_asset(saved, tax_return)
+        from .compute import aggregate_depreciation
+        aggregate_depreciation(tax_return)
 
         return Response(DepreciationAssetSerializer(saved).data)
 
