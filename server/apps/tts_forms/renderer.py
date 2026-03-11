@@ -55,23 +55,7 @@ from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
 
 # AcroForm-based rendering (new, preferred)
 from .acroform_filler import fill_form as _acroform_fill
-from .field_maps import FieldMap as _FieldMap
-from .field_maps.f1120s import FIELD_MAP as F1120S_ACRO_FIELD_MAP
-from .field_maps.f1120s import HEADER_MAP as F1120S_ACRO_HEADER_MAP
-from .field_maps.f1120sk1 import FIELD_MAP as F1120SK1_ACRO_FIELD_MAP
-from .field_maps.f1120sk1 import HEADER_MAP as F1120SK1_ACRO_HEADER_MAP
-from .field_maps.f7004 import FIELD_MAP as F7004_ACRO_FIELD_MAP
-from .field_maps.f7004 import HEADER_MAP as F7004_ACRO_HEADER_MAP
-from .field_maps.f8879s import FIELD_MAP as F8879S_ACRO_FIELD_MAP
-from .field_maps.f8879s import HEADER_MAP as F8879S_ACRO_HEADER_MAP
-from .field_maps.f8453s import FIELD_MAP as F8453S_ACRO_FIELD_MAP
-from .field_maps.f8453s import HEADER_MAP as F8453S_ACRO_HEADER_MAP
-from .field_maps.f1125a import FIELD_MAP as F1125A_ACRO_FIELD_MAP
-from .field_maps.f1125a import HEADER_MAP as F1125A_ACRO_HEADER_MAP
-from .field_maps.f8825 import FIELD_MAP as F8825_ACRO_FIELD_MAP
-from .field_maps.f8825 import HEADER_MAP as F8825_ACRO_HEADER_MAP
-from .field_maps.f7203 import FIELD_MAP as F7203_ACRO_FIELD_MAP
-from .field_maps.f7203 import HEADER_MAP as F7203_ACRO_HEADER_MAP
+from .field_maps import get_field_maps as _get_field_maps
 from .formatting import expand_yes_no, format_currency, format_value
 
 from .invoice import render_invoice
@@ -115,27 +99,9 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "fga600s": FGA600S_HEADER_FIELDS,
 }
 
-# AcroForm field maps keyed by form_id (preferred over coordinates)
-ACROFORM_REGISTRY: dict[str, _FieldMap] = {
-    "f1120s": F1120S_ACRO_FIELD_MAP,
-    "f1120sk1": F1120SK1_ACRO_FIELD_MAP,
-    "f7004": F7004_ACRO_FIELD_MAP,
-    "f8879s": F8879S_ACRO_FIELD_MAP,
-    "f8453s": F8453S_ACRO_FIELD_MAP,
-    "f1125a": F1125A_ACRO_FIELD_MAP,
-    "f8825": F8825_ACRO_FIELD_MAP,
-    "f7203": F7203_ACRO_FIELD_MAP,
-}
-
-ACROFORM_HEADER_REGISTRY: dict[str, _FieldMap] = {
-    "f1120s": F1120S_ACRO_HEADER_MAP,
-    "f1120sk1": F1120SK1_ACRO_HEADER_MAP,
-    "f7004": F7004_ACRO_HEADER_MAP,
-    "f8879s": F8879S_ACRO_HEADER_MAP,
-    "f8453s": F8453S_ACRO_HEADER_MAP,
-    "f1125a": F1125A_ACRO_HEADER_MAP,
-    "f8825": F8825_ACRO_HEADER_MAP,
-    "f7203": F7203_ACRO_HEADER_MAP,
+# AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
+ACROFORM_FORM_IDS: set[str] = {
+    "f1120s", "f1120sk1", "f7004", "f8879s", "f8453s", "f1125a", "f8825", "f7203",
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -291,18 +257,22 @@ def render(
         )
 
     # --- Try AcroForm path first (preferred) ---
-    acro_field_map = ACROFORM_REGISTRY.get(form_id)
-    if acro_field_map:
-        acro_header_map = ACROFORM_HEADER_REGISTRY.get(form_id)
-        form_bytes = _acroform_fill(
-            template_path=template_path,
-            field_values=field_values,
-            field_map=acro_field_map,
-            header_data=header_data,
-            header_map=acro_header_map,
-        )
-    else:
-        # --- Coordinate overlay fallback ---
+    form_bytes = None
+    if form_id in ACROFORM_FORM_IDS:
+        try:
+            acro_field_map, acro_header_map = _get_field_maps(form_id, tax_year)
+            form_bytes = _acroform_fill(
+                template_path=template_path,
+                field_values=field_values,
+                field_map=acro_field_map,
+                header_data=header_data,
+                header_map=acro_header_map or None,
+            )
+        except ValueError:
+            pass  # Fall through to coordinate overlay
+
+    # --- Coordinate overlay fallback ---
+    if form_bytes is None:
         coord_field_map = COORDINATE_REGISTRY.get(form_id)
         if not coord_field_map:
             raise ValueError(

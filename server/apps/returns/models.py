@@ -14,7 +14,7 @@ class FormDefinition(models.Model):
     """A type of tax form, e.g. '1120-S'."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    code = models.CharField(max_length=30, unique=True)  # e.g. "1120-S"
+    code = models.CharField(max_length=30)  # e.g. "1120-S"
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, default="")
     tax_year_applicable = models.IntegerField(
@@ -24,6 +24,7 @@ class FormDefinition(models.Model):
 
     class Meta:
         ordering = ["code"]
+        unique_together = [("code", "tax_year_applicable")]
 
     def __str__(self):
         return f"{self.code} ({self.tax_year_applicable})"

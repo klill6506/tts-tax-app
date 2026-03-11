@@ -186,12 +186,19 @@ SECTIONS = [
 class Command(BaseCommand):
     help = "Seed the Form 1065 definition with sections and lines."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--year", type=int, default=2025,
+            help="Tax year to seed (default: 2025)",
+        )
+
     def handle(self, *args, **options):
+        year = options["year"]
         form, created = FormDefinition.objects.update_or_create(
             code="1065",
+            tax_year_applicable=year,
             defaults={
                 "name": "U.S. Return of Partnership Income",
-                "tax_year_applicable": 2025,
             },
         )
         action = "Created" if created else "Updated"

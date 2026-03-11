@@ -284,12 +284,19 @@ SECTIONS = [
 class Command(BaseCommand):
     help = "Seed the Form 1120 definition with sections and lines."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--year", type=int, default=2025,
+            help="Tax year to seed (default: 2025)",
+        )
+
     def handle(self, *args, **options):
+        year = options["year"]
         form, created = FormDefinition.objects.update_or_create(
             code="1120",
+            tax_year_applicable=year,
             defaults={
                 "name": "U.S. Corporation Income Tax Return",
-                "tax_year_applicable": 2025,
             },
         )
         action = "Created" if created else "Updated"

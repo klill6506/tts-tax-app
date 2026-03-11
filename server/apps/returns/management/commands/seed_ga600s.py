@@ -178,12 +178,19 @@ SECTIONS = [
 class Command(BaseCommand):
     help = "Seed the Georgia Form 600S definition with sections and lines."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--year", type=int, default=2024,
+            help="Tax year to seed (default: 2024)",
+        )
+
     def handle(self, *args, **options):
+        year = options["year"]
         form, created = FormDefinition.objects.update_or_create(
             code="GA-600S",
+            tax_year_applicable=year,
             defaults={
                 "name": "Georgia S Corporation Tax Return",
-                "tax_year_applicable": 2024,
             },
         )
         action = "Created" if created else "Updated"

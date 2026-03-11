@@ -806,10 +806,12 @@ class TaxReturnViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        form_def = FormDefinition.objects.filter(code=form_code).first()
+        form_def = FormDefinition.objects.filter(
+            code=form_code, tax_year_applicable=tax_year.year,
+        ).first()
         if not form_def:
             return Response(
-                {"error": f"Form {form_code} definition not found. Run the seed command."},
+                {"error": f"Form {form_code} definition not found for {tax_year.year}. Run the seed command."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

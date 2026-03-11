@@ -88,7 +88,9 @@ class Command(BaseCommand):
         # Cache form definitions
         form_defs = {}
         for code in ENTITY_FORM_MAP.values():
-            fd = FormDefinition.objects.filter(code=code).first()
+            fd = FormDefinition.objects.filter(
+                code=code, tax_year_applicable=year,
+            ).first() or FormDefinition.objects.filter(code=code).first()
             if fd:
                 form_defs[code] = fd
 

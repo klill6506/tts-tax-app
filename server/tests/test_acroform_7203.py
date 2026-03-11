@@ -19,7 +19,7 @@ import fitz
 import pytest
 
 from apps.tts_forms.acroform_filler import fill_form
-from apps.tts_forms.field_maps.f7203 import (
+from apps.tts_forms.field_maps.f7203_2025 import (
     FIELD_MAP as F7203_FIELD_MAP,
     HEADER_MAP as F7203_HEADER_MAP,
 )

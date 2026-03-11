@@ -17,7 +17,7 @@ import pytest
 from pypdf import PdfReader
 
 from apps.tts_forms.acroform_filler import fill_form
-from apps.tts_forms.field_maps.f1120sk1 import (
+from apps.tts_forms.field_maps.f1120sk1_2025 import (
     FIELD_MAP as K1_FIELD_MAP,
     HEADER_MAP as K1_HEADER_MAP,
 )

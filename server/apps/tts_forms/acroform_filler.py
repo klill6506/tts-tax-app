@@ -8,7 +8,7 @@ modifying form fields at all — text is drawn directly onto the page.
 
 Usage:
     from apps.tts_forms.acroform_filler import fill_form
-    from apps.tts_forms.field_maps.f1120s import FIELD_MAP, HEADER_MAP
+    from apps.tts_forms.field_maps.f1120s_2025 import FIELD_MAP, HEADER_MAP
 
     pdf_bytes = fill_form(
         template_path="resources/irs_forms/2025/f1120s.pdf",
