@@ -235,7 +235,11 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
             "sales_price",
             "expenses_of_sale",
             "depreciation_recapture",
+            "capital_gain",
             "gain_loss_on_sale",
+            "amt_gain_loss_on_sale",
+            "amt_depreciation_recapture",
+            "amt_capital_gain",
             "imported_from_lacerte",
             "lacerte_asset_no",
             "sort_order",
@@ -247,7 +251,8 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
             "id", "asset_number", "bonus_amount",
             "current_depreciation", "amt_current_depreciation",
             "state_current_depreciation", "state_bonus_disallowed",
-            "gain_loss_on_sale",
+            "depreciation_recapture", "capital_gain", "gain_loss_on_sale",
+            "amt_gain_loss_on_sale", "amt_depreciation_recapture", "amt_capital_gain",
             "created_at", "updated_at",
         )
 

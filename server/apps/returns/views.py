@@ -608,6 +608,82 @@ class FormDefinitionViewSet(
         return FormDefinitionListSerializer
 
 
+def _auto_calculate_asset(asset, tax_return):
+    """Run depreciation engine + disposal calculations on a single asset, save results."""
+    from apps.tts_forms.depreciation_engine import calculate_asset_depreciation
+
+    ZERO = Decimal("0")
+    tax_year = tax_return.tax_year.year
+
+    # Run depreciation engine
+    result = calculate_asset_depreciation(asset, tax_year)
+    asset.current_depreciation = result["current_depreciation"]
+    asset.bonus_amount = result["bonus_amount"]
+    asset.amt_current_depreciation = result["amt_current_depreciation"]
+    asset.state_current_depreciation = result["state_current_depreciation"]
+    asset.state_bonus_disallowed = result["state_bonus_disallowed"]
+
+    update_fields = [
+        "current_depreciation", "bonus_amount",
+        "amt_current_depreciation",
+        "state_current_depreciation", "state_bonus_disallowed",
+        "updated_at",
+    ]
+
+    # Run disposal calculations if date_sold + sales_price are set
+    if asset.date_sold and asset.sales_price is not None:
+        sp = asset.sales_price
+        exp = asset.expenses_of_sale or ZERO
+        cb = asset.cost_basis or ZERO
+
+        # Regular
+        total_depr = (
+            (asset.prior_depreciation or ZERO) +
+            asset.current_depreciation +
+            (asset.sec_179_elected or ZERO) +
+            asset.bonus_amount
+        )
+        adj_basis = cb - total_depr
+        total_gain = sp - exp - adj_basis
+        depr_recapture = max(ZERO, min(total_gain, total_depr)) if total_gain > ZERO else ZERO
+        asset.gain_loss_on_sale = total_gain
+        asset.depreciation_recapture = depr_recapture
+        asset.capital_gain = total_gain - depr_recapture
+
+        # AMT
+        amt_total_depr = (
+            (asset.amt_prior_depreciation or ZERO) +
+            asset.amt_current_depreciation +
+            (asset.sec_179_elected or ZERO)
+        )
+        amt_adj_basis = cb - amt_total_depr
+        amt_total_gain = sp - exp - amt_adj_basis
+        amt_depr_recapture = max(ZERO, min(amt_total_gain, amt_total_depr)) if amt_total_gain > ZERO else ZERO
+        asset.amt_gain_loss_on_sale = amt_total_gain
+        asset.amt_depreciation_recapture = amt_depr_recapture
+        asset.amt_capital_gain = amt_total_gain - amt_depr_recapture
+
+        update_fields += [
+            "gain_loss_on_sale", "depreciation_recapture", "capital_gain",
+            "amt_gain_loss_on_sale", "amt_depreciation_recapture", "amt_capital_gain",
+        ]
+    else:
+        # Clear disposal fields if date_sold or sales_price removed
+        asset.gain_loss_on_sale = None
+        asset.depreciation_recapture = None
+        asset.capital_gain = None
+        asset.amt_gain_loss_on_sale = None
+        asset.amt_depreciation_recapture = None
+        asset.amt_capital_gain = None
+        update_fields += [
+            "gain_loss_on_sale", "depreciation_recapture", "capital_gain",
+            "amt_gain_loss_on_sale", "amt_depreciation_recapture", "amt_capital_gain",
+        ]
+
+    asset.save(update_fields=update_fields)
+    return asset
+
+
 class TaxReturnViewSet(
     PDFRenderMixin,
     AuditViewSetMixin,
@@ -1891,8 +1967,12 @@ class TaxReturnViewSet(
         ser = DepreciationAssetSerializer(data=data)
         ser.is_valid(raise_exception=True)
         # asset_number is read_only on serializer, pass via save()
-        ser.save(tax_return=tax_return, asset_number=asset_number)
-        return Response(ser.data, status=status.HTTP_201_CREATED)
+        saved = ser.save(tax_return=tax_return, asset_number=asset_number)
+
+        # Auto-calculate depreciation on creation
+        saved = _auto_calculate_asset(saved, tax_return)
+
+        return Response(DepreciationAssetSerializer(saved).data, status=status.HTTP_201_CREATED)
 
     @action(
         detail=True,
@@ -1936,13 +2016,8 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         saved = ser.save()
 
-        # Recompute gain/loss on sale when disposal fields change
-        if saved.date_sold and saved.sales_price is not None:
-            total_depr = (saved.prior_depreciation or Decimal("0")) + (saved.current_depreciation or Decimal("0"))
-            adjusted_basis = saved.cost_basis - total_depr
-            gain_loss = saved.sales_price - adjusted_basis - (saved.expenses_of_sale or Decimal("0"))
-            saved.gain_loss_on_sale = gain_loss
-            saved.save(update_fields=["gain_loss_on_sale", "updated_at"])
+        # Auto-calculate depreciation on every save
+        saved = _auto_calculate_asset(saved, tax_return)
 
         return Response(DepreciationAssetSerializer(saved).data)
 

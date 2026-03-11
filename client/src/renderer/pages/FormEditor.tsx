@@ -174,7 +174,11 @@ interface DepreciationAssetRow {
   sales_price: string | null;
   expenses_of_sale: string | null;
   depreciation_recapture: string | null;
+  capital_gain: string | null;
   gain_loss_on_sale: string | null;
+  amt_gain_loss_on_sale: string | null;
+  amt_depreciation_recapture: string | null;
+  amt_capital_gain: string | null;
   imported_from_lacerte: boolean;
   lacerte_asset_no: number | null;
   sort_order: number;
@@ -4117,7 +4121,6 @@ function DepreciationSection({
 }) {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [calculating, setCalculating] = useState(false);
 
   const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
   const num = (s: string | null | undefined) => parseFloat(s || "0") || 0;
@@ -4152,13 +4155,6 @@ function DepreciationSection({
     await onRefresh();
   }
 
-  async function calculateAll() {
-    setCalculating(true);
-    await post(`/tax-returns/${taxReturnId}/depreciation/calculate/`, {});
-    await onRefresh();
-    setCalculating(false);
-  }
-
   // Group assets by property_label then group_label
   const grouped = useMemo(() => {
     const byProperty: Record<string, DepreciationAssetRow[]> = {};
@@ -4172,7 +4168,8 @@ function DepreciationSection({
 
   // Summary totals
   const totals = useMemo(() => {
-    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0, disposalGainLoss = 0;
+    let sec179 = 0, bonus = 0, regular = 0, total = 0, amtAdj = 0, stateDisallowed = 0;
+    let disposalGainLoss = 0, disposalRecapture = 0, disposalAmtAdj = 0;
     for (const a of assets) {
       sec179 += num(a.sec_179_elected);
       bonus += num(a.bonus_amount);
@@ -4183,9 +4180,11 @@ function DepreciationSection({
       stateDisallowed += num(a.state_bonus_disallowed);
       if (a.date_sold && a.gain_loss_on_sale != null) {
         disposalGainLoss += num(a.gain_loss_on_sale);
+        disposalRecapture += num(a.depreciation_recapture);
+        disposalAmtAdj += num(a.amt_gain_loss_on_sale) - num(a.gain_loss_on_sale);
       }
     }
-    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed, disposalGainLoss };
+    return { sec179, bonus, regular: Math.max(0, regular), total, amtAdj, stateDisallowed, disposalGainLoss, disposalRecapture, disposalAmtAdj };
   }, [assets]);
 
   return (
@@ -4196,13 +4195,6 @@ function DepreciationSection({
           <p className="text-xs text-tx-muted">Assets flow to Page 1 Line 14, Form 8825, or Schedule F.</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={calculateAll}
-            disabled={calculating || assets.length === 0}
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
-          >
-            {calculating ? "Calculating..." : "Calculate All"}
-          </button>
           <button
             onClick={addAsset}
             disabled={saving}
@@ -4363,8 +4355,15 @@ function DepreciationSection({
             <span className="text-tx-secondary">GA Bonus Disallowed:</span>
             <span className="text-right tabular-nums font-medium">{fmt(totals.stateDisallowed)}</span>
             {totals.disposalGainLoss !== 0 && (<>
-              <span className="text-tx-secondary">Disposal Gain/(Loss):</span>
+              <span className="col-span-2 border-t border-border my-1"></span>
+              <span className="text-tx-secondary">Total Disposal Gains:</span>
               <span className={`text-right tabular-nums font-medium ${totals.disposalGainLoss >= 0 ? "" : "text-danger"}`}>{fmt(totals.disposalGainLoss)}</span>
+              <span className="text-tx-secondary">Total Depr Recapture:</span>
+              <span className="text-right tabular-nums font-medium">{fmt(totals.disposalRecapture)}</span>
+              {totals.disposalAmtAdj !== 0 && (<>
+                <span className="text-tx-secondary">Total AMT Adjustment:</span>
+                <span className="text-right tabular-nums font-medium">{fmt(totals.disposalAmtAdj)}</span>
+              </>)}
             </>)}
           </div>
         </div>
@@ -4604,46 +4603,102 @@ function DepreciationEditForm({
         )}
 
         {/* Section 5: Disposal Information (collapsible) */}
-        <div>
-          <button onClick={() => setShowDisposal(!showDisposal)} className="text-xs font-bold text-tx-secondary uppercase tracking-wider hover:text-tx pt-2">
-            {showDisposal ? "\u25BC" : "\u25B6"} Disposal Information
-          </button>
-          {showDisposal && (
-            <div className="grid grid-cols-4 gap-4 mt-2">
-              <div>
-                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
-                <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Sales Price</label>
-                <CurrencyInput value={asset.sales_price ?? ""} onValueChange={(v) => save({ sales_price: v || null })} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Expenses of Sale</label>
-                <CurrencyInput value={asset.expenses_of_sale ?? ""} onValueChange={(v) => save({ expenses_of_sale: v || null })} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-tx-secondary mb-0.5">Depr. Recapture (1245/1250)</label>
-                <CurrencyInput value={asset.depreciation_recapture ?? ""} onValueChange={(v) => save({ depreciation_recapture: v || null })} />
-              </div>
-              {asset.gain_loss_on_sale != null && (() => {
-                const gl = parseFloat(asset.gain_loss_on_sale || "0") || 0;
-                return (
-                <div>
-                  <label className="block text-xs font-medium text-tx-secondary mb-0.5">Gain / (Loss) on Sale</label>
-                  <div className={`px-2 py-1 text-xs font-medium rounded-md border tabular-nums ${
-                    gl >= 0
-                      ? "text-yellow-700 bg-yellow-50 border-yellow-200"
-                      : "text-danger bg-red-50 border-red-200"
-                  }`}>
-                    {gl.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+        {(() => {
+          const p = (s: string | null | undefined) => parseFloat(s || "0") || 0;
+          const f = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+          const hasDisposal = asset.gain_loss_on_sale != null;
+          const regGain = p(asset.gain_loss_on_sale);
+          const amtGain = p(asset.amt_gain_loss_on_sale);
+          const amtDiff = hasDisposal && Math.abs(amtGain - regGain) > 0.005;
+          const amtAdj = amtGain - regGain;
+          // Yellow computed style
+          const yel = "px-2 py-0.5 text-xs tabular-nums text-yellow-700 bg-yellow-50 rounded border border-yellow-200 text-right font-medium";
+          // Grey read-only
+          const gry = "px-2 py-0.5 text-xs tabular-nums text-tx-muted italic text-right";
+          // Red for losses
+          const redVal = "px-2 py-0.5 text-xs tabular-nums text-danger bg-red-50 rounded border border-red-200 text-right font-medium";
+          const valStyle = (n: number) => n < 0 ? redVal : yel;
+          return (
+          <div>
+            <button onClick={() => setShowDisposal(!showDisposal)} className="text-xs font-bold text-tx-secondary uppercase tracking-wider hover:text-tx pt-2">
+              {showDisposal ? "\u25BC" : "\u25B6"} Disposal Information
+            </button>
+            {showDisposal && (
+              <div className="mt-2 space-y-3">
+                {/* Date Sold input */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
+                    <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
                   </div>
                 </div>
-                );
-              })()}
-            </div>
-          )}
-        </div>
+
+                {/* Two-column breakdown table */}
+                <table className="text-xs w-full max-w-lg">
+                  <thead>
+                    <tr>
+                      <th className="text-left px-2 py-1 font-semibold text-tx-secondary w-48"></th>
+                      <th className="text-right px-2 py-1 font-semibold text-tx-secondary w-36">Regular</th>
+                      <th className="text-right px-2 py-1 font-semibold text-tx-secondary w-36">AMT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="px-2 py-1 text-tx-secondary">Sales Price:</td>
+                      <td className="px-2 py-1"><CurrencyInput value={asset.sales_price ?? ""} onValueChange={(v) => save({ sales_price: v || null })} /></td>
+                      <td className={gry}>{hasDisposal ? f(p(asset.sales_price)) : "\u2014"}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1 text-tx-secondary">Less: Expenses of Sale:</td>
+                      <td className="px-2 py-1"><CurrencyInput value={asset.expenses_of_sale ?? ""} onValueChange={(v) => save({ expenses_of_sale: v || null })} /></td>
+                      <td className={gry}>{hasDisposal ? `(${f(p(asset.expenses_of_sale))})` : "\u2014"}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1 text-tx-muted italic">Less: Adjusted Basis:</td>
+                      <td className={gry}>{hasDisposal ? (() => {
+                        const adjBasis = p(asset.cost_basis) - p(asset.prior_depreciation) - p(asset.current_depreciation) - p(asset.sec_179_elected) - p(asset.bonus_amount);
+                        return `(${f(Math.abs(adjBasis))})`;
+                      })() : "\u2014"}</td>
+                      <td className={gry}>{hasDisposal ? (() => {
+                        const amtAdjBasis = p(asset.cost_basis) - p(asset.amt_prior_depreciation) - p(asset.amt_current_depreciation) - p(asset.sec_179_elected);
+                        return `(${f(Math.abs(amtAdjBasis))})`;
+                      })() : "\u2014"}</td>
+                    </tr>
+                    <tr className="border-t border-border">
+                      <td className="px-2 py-1 font-bold text-tx">{regGain < 0 ? "Total Loss:" : "Total Gain:"}</td>
+                      <td className={valStyle(regGain)}>{hasDisposal ? f(regGain) : "\u2014"}</td>
+                      <td className={valStyle(amtGain)}>{hasDisposal ? f(amtGain) : "\u2014"}</td>
+                    </tr>
+                    {hasDisposal && regGain > 0 && (
+                      <>
+                        <tr>
+                          <td className="px-2 py-1 pl-6 text-tx-secondary">Capital Gain:</td>
+                          <td className={yel}>{f(p(asset.capital_gain))}</td>
+                          <td className={yel}>{f(p(asset.amt_capital_gain))}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1 pl-6 text-tx-secondary">Depr Recapture (1245):</td>
+                          <td className={yel}>{f(p(asset.depreciation_recapture))}</td>
+                          <td className={yel}>{f(p(asset.amt_depreciation_recapture))}</td>
+                        </tr>
+                      </>
+                    )}
+                    {hasDisposal && (
+                      <tr>
+                        <td className="px-2 py-1 text-tx-secondary">AMT Adjustment:</td>
+                        <td className={gry}></td>
+                        <td className={amtDiff ? (amtAdj > 0 ? redVal : yel) : gry}>
+                          {amtDiff ? f(amtAdj) : "No AMT Difference"}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          );
+        })()}
 
         {/* Section 6: Amortization (only if Intangibles group) */}
         {showAmort && (

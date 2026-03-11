@@ -1111,13 +1111,28 @@ class DepreciationAsset(models.Model):
     expenses_of_sale = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True,
     )
+    # Regular disposal computed fields
     depreciation_recapture = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Ordinary income recapture (Section 1245/1250).",
     )
+    capital_gain = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Computed: total_gain - depreciation_recapture.",
+    )
     gain_loss_on_sale = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True,
-        help_text="Computed: sales_price - (cost_basis - total_depreciation) - expenses_of_sale.",
+        help_text="Computed: sales_price - adjusted_basis - expenses_of_sale.",
+    )
+    # AMT disposal computed fields
+    amt_gain_loss_on_sale = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    amt_depreciation_recapture = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    amt_capital_gain = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
     )
 
     # Import tracking
