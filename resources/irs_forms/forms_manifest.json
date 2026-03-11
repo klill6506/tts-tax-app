@@ -203,6 +203,71 @@
       "local_path": "../state_forms/GA/2024/ga600s.pdf",
       "pages": 7,
       "notes": "Georgia Form 600S - S Corporation Tax Return. State form, not IRS."
+    },
+    {
+      "form_id": "f4797",
+      "form_code": "4797",
+      "title": "Sales of Business Property",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f4797.pdf",
+      "revision_date": "2024-12",
+      "sha256": "e8ab787f2caab6a5f22894e4d13585afafaefcbc59428b70e590a84ea8cf9b54",
+      "local_path": "2025/f4797.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "Sales of business property (Section 1231, recapture, ordinary gains). 182 AcroForm fields (all text)"
+    },
+    {
+      "form_id": "f1120ssd",
+      "form_code": "1120-S-SD",
+      "title": "Schedule D (Form 1120-S) - Capital Gains and Losses",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1120ssd.pdf",
+      "revision_date": "2024-12",
+      "sha256": "8fdd83e437cd27eb1a7fe9095973304171d48c3d82dba130a15864333c76a078",
+      "local_path": "2025/f1120ssd.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "S-Corp Schedule D - capital gains and losses and built-in gains. 53 AcroForm fields (2 checkbox + 51 text)"
+    },
+    {
+      "form_id": "f8949",
+      "form_code": "8949",
+      "title": "Sales and Other Dispositions of Capital Assets",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f8949.pdf",
+      "revision_date": "2024-12",
+      "sha256": "274513891e4e281d11e14286f14b9df724c24b6030fca0f0681da64fb2e7f525",
+      "local_path": "2025/f8949.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "Per-transaction capital asset sales detail. Part I short-term, Part II long-term. 202 AcroForm fields (12 checkbox + 190 text)"
+    },
+    {
+      "form_id": "f1125e",
+      "form_code": "1125-E",
+      "title": "Compensation of Officers",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1125e.pdf",
+      "revision_date": "2024-12",
+      "sha256": "7d3295ba7039b4b0e84786f75f481dd1ca98df10c0695fade6fdaacc6817e729",
+      "local_path": "2025/f1125e.pdf",
+      "pages": 1,
+      "has_acroform": true,
+      "notes": "Officer compensation schedule - up to 20 officers. Attached to 1120-S, 1065, or 1120. 125 AcroForm fields (all text)"
+    },
+    {
+      "form_id": "f4562",
+      "form_code": "4562",
+      "title": "Depreciation and Amortization",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f4562.pdf",
+      "revision_date": "2024-12",
+      "sha256": "c05f9d1f5e26b1b21e18b0a13adbbcd3d568bb9f3ca53bd7bba7c795c7799b4a",
+      "local_path": "2025/f4562.pdf",
+      "pages": 3,
+      "has_acroform": true,
+      "notes": "Depreciation and amortization summary. Section 179, MACRS, amortization, listed property. 277 AcroForm fields (54 checkbox + 223 text)"
     }
   ]
 }

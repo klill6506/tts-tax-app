@@ -102,6 +102,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 # AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
 ACROFORM_FORM_IDS: set[str] = {
     "f1120s", "f1120sk1", "f7004", "f8879s", "f8453s", "f1125a", "f8825", "f7203",
+    "f4797", "f1120ssd", "f8949", "f1125e", "f4562",
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -350,6 +351,11 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
         "1065": "f1065",
         "1120": "f1120",
         "GA-600S": "fga600s",
+        "4797": "f4797",
+        "1120-S-SD": "f1120ssd",
+        "8949": "f8949",
+        "1125-E": "f1125e",
+        "4562": "f4562",
     }
     form_id = form_code_to_id.get(form_code)
     if not form_id:
@@ -815,6 +821,60 @@ def render_1125a(tax_return) -> bytes:
 
     return render(
         form_id="f1125a",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Form 1125-E rendering (Compensation of Officers)
+# ---------------------------------------------------------------------------
+
+
+def render_1125e(tax_return) -> bytes:
+    """
+    Render Form 1125-E (Compensation of Officers) for a tax return.
+
+    Reads Officer model instances and renders them into the 1125-E table.
+    """
+    from apps.returns.models import Officer
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    officers = Officer.objects.filter(tax_return=tax_return).order_by(
+        "sort_order", "name"
+    )
+
+    field_values: dict[str, tuple[str, str]] = {}
+    total_comp = Decimal("0")
+
+    for i, officer in enumerate(officers[:20], start=1):
+        prefix = f"E1R{i}"
+        field_values[f"{prefix}_name"] = (officer.name, "text")
+        if officer.ssn:
+            field_values[f"{prefix}_ssn"] = (officer.ssn, "text")
+        if officer.percent_time:
+            field_values[f"{prefix}_pct_time"] = (str(officer.percent_time), "text")
+        if officer.percent_ownership:
+            field_values[f"{prefix}_pct_own"] = (str(officer.percent_ownership), "text")
+        if officer.compensation:
+            field_values[f"{prefix}_comp"] = (str(officer.compensation), "currency")
+            total_comp += officer.compensation
+
+    if total_comp:
+        field_values["E2"] = (str(total_comp), "currency")
+        # Line 4 = Line 2 - Line 3 (Line 3 is comp claimed on other returns, usually 0)
+        field_values["E4"] = (str(total_comp), "currency")
+
+    return render(
+        form_id="f1125e",
         tax_year=tax_year_applicable,
         field_values=field_values,
         header_data=header_data,
@@ -1339,6 +1399,14 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             _append(render_1125a(tax_return))
     except Exception as e:
         logger.warning("render_complete: 1125-A failed: %s", e)
+
+    # 2b. Form 1125-E (Officer Compensation) — only if officers exist
+    try:
+        from apps.returns.models import Officer
+        if Officer.objects.filter(tax_return=tax_return).exists():
+            _append(render_1125e(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: 1125-E failed: %s", e)
 
     # 3. Form 8825 (Rental Real Estate) — only if rental properties exist
     try:
