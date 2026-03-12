@@ -15,6 +15,7 @@ import FormEditor from "./pages/FormEditor";
 import FormPreview from "./pages/FormPreview";
 import ReturnManager from "./pages/ReturnManager";
 import PreparerManager from "./pages/PreparerManager";
+import PrintPackageManager from "./pages/PrintPackageManager";
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ function AppRoutes() {
 
         {/* Admin */}
         <Route path="/admin/preparers" element={<PreparerManager />} />
+        <Route path="/admin/print-packages" element={<PrintPackageManager />} />
 
         {/* Trial Balance & Form Editor */}
         <Route path="/tax-years/:taxYearId/trial-balance" element={<TrialBalance />} />

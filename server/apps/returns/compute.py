@@ -107,12 +107,13 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("K10", lambda v: _d(v, "F34")),
     # K16c = nondeductible expenses (meals nondeductible portion auto-populates)
     ("K16c", lambda v: _d(v, "D_MEALS_NONDED")),
-    # K18 = total income/loss reconciliation
-    # (income items positive, deduction items negative)
+    # K18 = income/loss reconciliation (= M-1 Line 8)
+    # Only income (K1-K10) and deduction (K11, K12a) items.
+    # K16a/K16b/K16c are separately stated items that flow through M-1
+    # adjustments (M1_5a, M1_3b) — including them here would double-count.
     ("K18", lambda v: (
         _sum(v, "K1", "K2", "K3", "K4", "K5a", "K6", "K7", "K8a", "K9", "K10")
         - _d(v, "K11") - _d(v, "K12a")
-        + _d(v, "K16a") + _d(v, "K16b") - _d(v, "K16c")
     )),
 
     # Schedule L — Balance Sheet

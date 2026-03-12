@@ -101,3 +101,38 @@ class Preparer(models.Model):
 
     def __str__(self):
         return f"{self.name} (PTIN: {self.ptin or 'N/A'})"
+
+
+class PrintPackage(models.Model):
+    """A print package definition that controls which forms appear in the
+    print dropdown and what label to show.  The actual form assembly is
+    handled by the renderer using the ``code`` value."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="print_packages",
+    )
+    name = models.CharField(max_length=100)
+    code = models.CharField(
+        max_length=30,
+        help_text="Internal code used by the renderer (e.g. 'client', 'filing').",
+    )
+    description = models.CharField(max_length=500, blank=True, default="")
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["firm", "code"],
+                name="unique_package_code_per_firm",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"

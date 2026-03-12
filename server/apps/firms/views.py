@@ -1,9 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
-from .models import Preparer
+from .models import Preparer, PrintPackage
 from .permissions import IsFirmMember
-from .serializers import PreparerSerializer, PreparerListSerializer
+from .serializers import PreparerSerializer, PreparerListSerializer, PrintPackageSerializer
 
 
 class PreparerViewSet(viewsets.ModelViewSet):
@@ -18,6 +18,19 @@ class PreparerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Preparer.objects.filter(firm=self.request.firm)
+
+    def perform_create(self, serializer):
+        serializer.save(firm=self.request.firm)
+
+
+class PrintPackageViewSet(viewsets.ModelViewSet):
+    """CRUD for firm-level print packages."""
+
+    permission_classes = [IsFirmMember]
+    serializer_class = PrintPackageSerializer
+
+    def get_queryset(self):
+        return PrintPackage.objects.filter(firm=self.request.firm)
 
     def perform_create(self, serializer):
         serializer.save(firm=self.request.firm)

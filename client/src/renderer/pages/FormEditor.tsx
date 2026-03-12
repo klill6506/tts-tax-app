@@ -790,7 +790,7 @@ export default function FormEditor() {
       </div>
 
       {/* Primary tab bar — Input / Forms / Diagnostics */}
-      <div className="mb-4 flex items-center gap-0 border-b-2 border-border">
+      <div className="sticky top-0 z-10 bg-surface -mx-6 px-6 mb-4 flex items-center gap-0 border-b-2 border-border">
         {(["input", "forms", "diagnostics"] as const).map((tab) => (
           <button
             key={tab}
@@ -810,7 +810,7 @@ export default function FormEditor() {
       {primaryTab === "input" && (
         <>
           {/* Section tab bar */}
-          <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
+          <div className="sticky top-[42px] z-10 bg-surface -mx-6 px-6 mb-4 flex flex-wrap gap-1 border-b border-border">
             {sectionTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -5594,7 +5594,8 @@ function ReturnStatusPill({ status }: { status: string }) {
 // Forms Tab — full-width continuous return viewer
 // ---------------------------------------------------------------------------
 
-const PRINT_PACKAGES = [
+// Hardcoded fallback (used if API hasn't loaded yet)
+const DEFAULT_PRINT_PACKAGES = [
   { value: "", label: "All Forms" },
   { value: "client", label: "Client Copy" },
   { value: "filing", label: "Filing Copy" },
@@ -5603,18 +5604,7 @@ const PRINT_PACKAGES = [
   { value: "k1s", label: "K-1 Package" },
   { value: "invoice", label: "Invoice Only" },
   { value: "letter", label: "Letter Only" },
-] as const;
-
-const PACKAGE_FILE_LABELS: Record<string, string> = {
-  "": "Complete",
-  client: "ClientCopy",
-  filing: "FilingCopy",
-  extension: "Extension",
-  state: "StateOnly",
-  k1s: "K1s",
-  invoice: "Invoice",
-  letter: "Letter",
-};
+];
 
 function FormsTab({
   taxReturnId,
@@ -5628,10 +5618,23 @@ function FormsTab({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
   const pdfUrlRef = useRef<string | null>(null);
+  const [packages, setPackages] = useState(DEFAULT_PRINT_PACKAGES);
 
   const formCode = returnData.form_code;
   const entityName = returnData.entity_name;
   const year = returnData.year;
+
+  // Fetch print packages from API
+  useEffect(() => {
+    get("/print-packages/").then((res) => {
+      if (res.ok && Array.isArray(res.data)) {
+        const apiPkgs = (res.data as { code: string; name: string; is_active: boolean }[])
+          .filter((p) => p.is_active)
+          .map((p) => ({ value: p.code === "all" ? "" : p.code, label: p.name }));
+        if (apiPkgs.length > 0) setPackages(apiPkgs);
+      }
+    });
+  }, []);
 
   // Load the complete return PDF (all forms combined)
   async function loadComplete(pkg?: string) {
@@ -5675,7 +5678,8 @@ function FormsTab({
 
   function handleDownload() {
     if (!pdfUrl) return;
-    const label = PACKAGE_FILE_LABELS[selectedPackage] || "Complete";
+    const match = packages.find((p) => p.value === selectedPackage);
+    const label = (match?.label || "Complete").replace(/\s+/g, "");
     const safeName = entityName.replace(/\s+/g, "_");
     const a = document.createElement("a");
     a.href = pdfUrl;
@@ -5697,7 +5701,7 @@ function FormsTab({
             disabled={loading}
             className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-tx focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           >
-            {PRINT_PACKAGES.map((p) => (
+            {packages.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
               </option>
@@ -5736,7 +5740,7 @@ function FormsTab({
       )}
       {pdfUrl && !loading && (
         <iframe
-          src={pdfUrl}
+          src={`${pdfUrl}#zoom=page-width`}
           className="flex-1 border-0"
           title="Complete Return PDF"
         />

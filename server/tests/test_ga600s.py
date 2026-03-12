@@ -26,7 +26,7 @@ def seeded(db):
     """Seed GA 600S form definition."""
     cmd = SeedGA600SCommand()
     cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
-    cmd.handle()
+    cmd.handle(year=2024)
     cmd.stdout.close()
     return FormDefinition.objects.get(code="GA-600S")
 
@@ -53,7 +53,7 @@ class TestSeedGA600S:
     def test_seed_is_idempotent(self, seeded):
         cmd = SeedGA600SCommand()
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
-        cmd.handle()
+        cmd.handle(year=2024)
         cmd.stdout.close()
         assert FormLine.objects.filter(section__form=seeded).count() == 85
 
@@ -125,6 +125,7 @@ class TestGA600SFormulas:
         vals = self._run_formulas({
             "S6_1": Decimal("100000"),   # ordinary income
             "S5_4": Decimal("1.000000"),  # 100% GA ratio
+            "GA_PTET": Decimal("1"),     # PTET elected — triggers income tax
         })
         # Schedule 6: total fed income = 100K, no additions/subtractions
         assert vals["S6_7"] == Decimal("100000.00")
@@ -154,6 +155,7 @@ class TestGA600SFormulas:
         vals = self._run_formulas({
             "S6_1": Decimal("500000"),
             "S5_4": Decimal("0.400000"),  # 40% GA ratio
+            "GA_PTET": Decimal("1"),     # PTET elected
         })
         assert vals["S5_3"] == Decimal("500000.00")
         assert vals["S5_5"] == Decimal("200000.00")
@@ -183,6 +185,7 @@ class TestGA600SFormulas:
             "S3_1": Decimal("0"),
             "S3_5": Decimal("1.000000"),
             "S4_2a": Decimal("4000"),  # estimated payment (income)
+            "GA_PTET": Decimal("1"),   # PTET elected
         })
         # Income tax = 5390, payment = 4000
         assert vals["S4_1a"] == Decimal("5390.00")
@@ -197,6 +200,7 @@ class TestGA600SFormulas:
             "S3_1": Decimal("0"),
             "S3_5": Decimal("1.000000"),
             "S4_2a": Decimal("6000"),  # overpaid
+            "GA_PTET": Decimal("1"),   # PTET elected
         })
         assert vals["S4_5a"] == ZERO  # no balance due
         assert vals["S4_6a"] == Decimal("610.00")  # 6000 - 5390

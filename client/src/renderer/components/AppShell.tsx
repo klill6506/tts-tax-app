@@ -92,6 +92,7 @@ const MENUS: MenuGroup[] = [
     label: "Admin",
     items: [
       { label: "Preparer Manager", to: "/admin/preparers" },
+      { label: "Print Packages", to: "/admin/print-packages" },
       { divider: true, label: "" },
       { label: "Firm Settings", to: "/admin/firm", disabled: true },
       { label: "User Management", to: "/admin/users", disabled: true },
