@@ -5332,11 +5332,11 @@ function FieldRowWithSub({
 }
 
 /**
- * Arrow key navigation: move focus to next/previous input field.
- * Prevents default on ArrowDown/ArrowUp so number inputs don't increment.
+ * Arrow/Enter key navigation: move focus to next/previous input field.
+ * Enter and ArrowDown move to next field; ArrowUp moves to previous.
  */
 function handleArrowNav(e: React.KeyboardEvent<HTMLInputElement>) {
-  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter") return;
   e.preventDefault();
   const inputs = Array.from(
     document.querySelectorAll<HTMLInputElement>(
@@ -5345,7 +5345,7 @@ function handleArrowNav(e: React.KeyboardEvent<HTMLInputElement>) {
   );
   const idx = inputs.indexOf(e.currentTarget);
   if (idx < 0) return;
-  const next = e.key === "ArrowDown" ? idx + 1 : idx - 1;
+  const next = e.key === "ArrowUp" ? idx - 1 : idx + 1;
   if (next >= 0 && next < inputs.length) {
     inputs[next].focus();
   }

@@ -43,6 +43,7 @@ from .renderer import (
     render_8825,
     render_all_k1s,
     render_complete_return,
+    render_depreciation_schedule,
     render_k1,
     render_tax_return,
 )
@@ -410,6 +411,37 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         filename = f"4797_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # Depreciation Schedule rendering
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-depreciation-schedule")
+    def render_depreciation_schedule_pdf(self, request, pk=None):
+        """Generate a depreciation schedule report for this tax return."""
+        from apps.returns.compute import compute_return
+
+        tax_return = self.get_object()
+        compute_return(tax_return)
+
+        try:
+            pdf_bytes = render_depreciation_schedule(tax_return)
+        except FileNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"DeprSchedule_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

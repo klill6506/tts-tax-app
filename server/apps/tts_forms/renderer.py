@@ -1632,8 +1632,12 @@ def render_4797(tax_return) -> bytes:
         col = cols[i]
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
 
-        # Line 19: Description of Section 1245/1250 property (Part III Table 1)
+        # Line 19: Description + dates (Part III Table 1)
         field_values[f"P3_19R{i+1}_desc"] = (a.description[:30] if a.description else "", "text")
+        if a.date_acquired:
+            field_values[f"P3_19R{i+1}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
+        if a.date_sold:
+            field_values[f"P3_19R{i+1}_sold"] = (a.date_sold.strftime("%m/%d/%y"), "text")
 
         # Line 20: Gross sales price
         if a.sales_price:
@@ -1670,6 +1674,277 @@ def render_4797(tax_return) -> bytes:
         field_values=field_values,
         header_data=header_data,
     )
+
+
+# ---------------------------------------------------------------------------
+# Depreciation Schedule rendering (standalone report)
+# ---------------------------------------------------------------------------
+
+
+def render_depreciation_schedule(tax_return) -> bytes:
+    """
+    Render a printable depreciation schedule report in landscape orientation.
+
+    Groups assets by flow_destination (Page 1 / Form 8825 / Schedule F),
+    shows a table with columns: Description, Date Acquired, Cost Basis, Method,
+    Life, Prior Depreciation, Bonus, Section 179, Current Depreciation, Total.
+    Includes totals per group and a summary section.
+
+    Returns:
+        PDF file content as bytes (landscape letter).
+    """
+    from apps.returns.models import DepreciationAsset
+
+    entity = tax_return.tax_year.entity
+    entity_name = entity.legal_name or entity.name
+    year = tax_return.tax_year.year
+
+    assets = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+    ).order_by("flow_to", "group_label", "description")
+
+    if not assets.exists():
+        # Return a single blank page
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf, pagesize=(792, 612))  # landscape
+        c.showPage()
+        c.save()
+        buf.seek(0)
+        return buf.getvalue()
+
+    # Group assets by flow_destination
+    flow_labels = {
+        "page1": "Page 1",
+        "8825": "Form 8825",
+        "sched_f": "Schedule F",
+    }
+    groups: dict[str, list] = {}
+    for a in assets:
+        key = a.flow_to or "page1"
+        groups.setdefault(key, []).append(a)
+
+    PAGE_W, PAGE_H = 792, 612  # landscape letter
+    LEFT = 36
+    TOP = PAGE_H - 36
+    RIGHT = PAGE_W - 36
+    USABLE = RIGHT - LEFT
+
+    # Column positions (x offsets from LEFT)
+    # Description(150), DateAcq(55), Cost(70), Method(55), Life(30), Prior(70), Bonus(60), 179(60), Current(70), Total(70)
+    COL_WIDTHS = [150, 55, 70, 55, 30, 70, 60, 60, 70, 70]
+    COL_HEADERS = ["Description", "Date Acq", "Cost Basis", "Method", "Life", "Prior Depr", "Bonus", "Sec 179", "Curr Depr", "Total Depr"]
+
+    col_x = []
+    x = LEFT
+    for w in COL_WIDTHS:
+        col_x.append(x)
+        x += w
+
+    HEADER_FONT = "Helvetica-Bold"
+    BODY_FONT = "Courier"
+    TITLE_SIZE = 12
+    COL_HEADER_SIZE = 7
+    DATA_SIZE = 8
+    ROW_H = 12
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
+
+    def _fmt(val, is_currency=True):
+        """Format a Decimal as whole dollars with commas."""
+        if val is None:
+            return ""
+        d = Decimal(str(val))
+        if d == 0:
+            return ""
+        if d < 0:
+            return f"({abs(d):,.0f})"
+        return f"{d:,.0f}"
+
+    def _method_display(a):
+        """Format method as MACRS 200DB HY 5yr style."""
+        if a.is_amortization:
+            code = a.amort_code or "197"
+            months = a.amort_months or 180
+            return f"S/L {code} {months}mo"
+        method = a.method or ""
+        conv = a.convention or "HY"
+        life = a.life
+        if life is None:
+            return method
+        life_str = f"{int(life)}yr" if life == int(life) else f"{life}yr"
+        if method == "NONE":
+            return "LAND"
+        return f"{method} {conv} {life_str}"
+
+    for flow_key, group_assets in groups.items():
+        flow_label = flow_labels.get(flow_key, flow_key)
+        y = TOP
+
+        # Page title
+        c.setFont(HEADER_FONT, TITLE_SIZE)
+        c.drawCentredString(PAGE_W / 2, y, "DEPRECIATION SCHEDULE")
+        y -= ROW_H + 2
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(PAGE_W / 2, y, f"{entity_name} \u2014 {year} Tax Return")
+        y -= ROW_H
+        c.drawCentredString(PAGE_W / 2, y, f"Flow: {flow_label}")
+        y -= ROW_H + 8
+
+        # Column headers
+        c.setFont(HEADER_FONT, COL_HEADER_SIZE)
+        for i, hdr in enumerate(COL_HEADERS):
+            if i >= 5:  # numeric columns right-aligned
+                c.drawRightString(col_x[i] + COL_WIDTHS[i] - 2, y, hdr)
+            else:
+                c.drawString(col_x[i] + 2, y, hdr)
+        y -= 2
+
+        # Header underline
+        c.setLineWidth(0.5)
+        c.line(LEFT, y, RIGHT, y)
+        y -= ROW_H
+
+        # Totals accumulators
+        t_cost = ZERO
+        t_prior = ZERO
+        t_bonus = ZERO
+        t_179 = ZERO
+        t_current = ZERO
+        t_total = ZERO
+
+        # Data rows
+        c.setFont(BODY_FONT, DATA_SIZE)
+        for a in group_assets:
+            if y < 80:  # need space for totals + summary
+                c.showPage()
+                c.setPageSize((PAGE_W, PAGE_H))
+                y = TOP
+                # Re-draw column headers on new page
+                c.setFont(HEADER_FONT, COL_HEADER_SIZE)
+                for i, hdr in enumerate(COL_HEADERS):
+                    if i >= 5:
+                        c.drawRightString(col_x[i] + COL_WIDTHS[i] - 2, y, hdr)
+                    else:
+                        c.drawString(col_x[i] + 2, y, hdr)
+                y -= 2
+                c.line(LEFT, y, RIGHT, y)
+                y -= ROW_H
+                c.setFont(BODY_FONT, DATA_SIZE)
+
+            is_disposed = a.date_sold is not None
+            prefix = "*" if is_disposed else ""
+
+            # Description
+            desc = f"{prefix}{a.description or ''}"[:22]
+            c.drawString(col_x[0] + 2, y, desc)
+
+            # Date Acquired
+            if a.date_acquired:
+                c.drawString(col_x[1] + 2, y, a.date_acquired.strftime("%m/%Y"))
+
+            # Cost Basis
+            c.drawRightString(col_x[2] + COL_WIDTHS[2] - 2, y, _fmt(a.cost_basis))
+
+            # Method
+            c.drawString(col_x[3] + 2, y, _method_display(a)[:8])
+
+            # Life
+            if a.life is not None:
+                life_str = str(int(a.life)) if a.life == int(a.life) else str(a.life)
+                c.drawRightString(col_x[4] + COL_WIDTHS[4] - 2, y, life_str)
+
+            # Prior Depreciation
+            c.drawRightString(col_x[5] + COL_WIDTHS[5] - 2, y, _fmt(a.prior_depreciation))
+
+            # Bonus
+            c.drawRightString(col_x[6] + COL_WIDTHS[6] - 2, y, _fmt(a.bonus_amount))
+
+            # Section 179
+            c.drawRightString(col_x[7] + COL_WIDTHS[7] - 2, y, _fmt(a.sec_179_elected))
+
+            # Current Depreciation
+            c.drawRightString(col_x[8] + COL_WIDTHS[8] - 2, y, _fmt(a.current_depreciation))
+
+            # Total Depreciation
+            total_depr = (
+                (a.prior_depreciation or ZERO)
+                + (a.current_depreciation or ZERO)
+                + (a.bonus_amount or ZERO)
+                + (a.sec_179_elected or ZERO)
+            )
+            c.drawRightString(col_x[9] + COL_WIDTHS[9] - 2, y, _fmt(total_depr))
+
+            # Accumulate totals
+            t_cost += a.cost_basis or ZERO
+            t_prior += a.prior_depreciation or ZERO
+            t_bonus += a.bonus_amount or ZERO
+            t_179 += a.sec_179_elected or ZERO
+            t_current += a.current_depreciation or ZERO
+            t_total += total_depr
+
+            y -= ROW_H
+
+        # Totals row
+        c.setLineWidth(0.5)
+        c.line(LEFT, y + ROW_H - 2, RIGHT, y + ROW_H - 2)
+        c.setFont(HEADER_FONT, DATA_SIZE)
+        c.drawString(col_x[0] + 2, y, "TOTALS")
+        c.drawRightString(col_x[2] + COL_WIDTHS[2] - 2, y, _fmt(t_cost))
+        c.drawRightString(col_x[5] + COL_WIDTHS[5] - 2, y, _fmt(t_prior))
+        c.drawRightString(col_x[6] + COL_WIDTHS[6] - 2, y, _fmt(t_bonus))
+        c.drawRightString(col_x[7] + COL_WIDTHS[7] - 2, y, _fmt(t_179))
+        c.drawRightString(col_x[8] + COL_WIDTHS[8] - 2, y, _fmt(t_current))
+        c.drawRightString(col_x[9] + COL_WIDTHS[9] - 2, y, _fmt(t_total))
+        y -= ROW_H + 4
+        c.line(LEFT, y + ROW_H - 2, RIGHT, y + ROW_H - 2)
+        y -= ROW_H
+
+        # Summary section
+        c.setFont(BODY_FONT, DATA_SIZE)
+        summary_label_x = LEFT + 20
+        summary_val_x = LEFT + 280
+        regular = t_current
+        total_all = t_179 + t_bonus + regular
+
+        summary_items = [
+            ("Section 179 Expense:", t_179),
+            ("Bonus Depreciation:", t_bonus),
+            ("Regular MACRS Depreciation:", regular),
+            ("Total Depreciation:", total_all),
+        ]
+
+        # AMT adjustment total
+        amt_adj = ZERO
+        for a in group_assets:
+            fed_total = (a.prior_depreciation or ZERO) + (a.current_depreciation or ZERO)
+            amt_total = (a.amt_prior_depreciation or ZERO) + (a.amt_current_depreciation or ZERO)
+            amt_adj += amt_total - fed_total
+        summary_items.append(("AMT Adjustment:", amt_adj))
+
+        # GA bonus disallowed total
+        ga_disallowed = sum(
+            (a.state_bonus_disallowed or ZERO) for a in group_assets
+        )
+        summary_items.append(("GA Bonus Disallowed:", ga_disallowed))
+
+        for label, val in summary_items:
+            c.drawString(summary_label_x, y, label)
+            c.drawRightString(summary_val_x, y, f"$ {_fmt(val) or '0'}")
+            y -= ROW_H
+
+        # Mark disposed assets footnote
+        has_disposed = any(a.date_sold is not None for a in group_assets)
+        if has_disposed:
+            y -= ROW_H * 0.5
+            c.setFont("Helvetica", 7)
+            c.drawString(LEFT + 2, y, "* Disposed assets")
+
+        c.showPage()
+
+    c.save()
+    buf.seek(0)
+    return buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -1811,6 +2086,13 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             _append(render_4797(tax_return))
     except Exception as e:
         logger.warning("render_complete: 4797 failed: %s", e)
+
+    # 3e. Depreciation Schedule (if depreciation assets exist)
+    try:
+        if DepreciationAsset.objects.filter(tax_return=tax_return).exists():
+            _append(render_depreciation_schedule(tax_return))
+    except Exception as e:
+        logger.warning("render_complete: depreciation schedule failed: %s", e)
 
     # 3d. Meals and Entertainment Statement — if meals data exists
     try:

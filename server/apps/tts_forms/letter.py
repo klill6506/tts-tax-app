@@ -1,9 +1,10 @@
 """
 Client Letter PDF generator.
 
-Renders a professional client transmittal letter with a page border,
-centered letterhead, and left-aligned body.  Uses LTR_* fields from
-the Admin tab.
+Renders a professional client transmittal letter with:
+- Thin page border (0.5" from edges)
+- Centered letterhead (firm name, address, phone)
+- Left-aligned body (date, client address, paragraphs, closing)
 
 Usage:
     from apps.tts_forms.letter import render_letter
@@ -22,9 +23,9 @@ PAGE_WIDTH, PAGE_HEIGHT = LETTER_SIZE
 
 # Border: 0.5" from page edges
 BORDER_MARGIN = 0.5 * inch
-BORDER_LINE_WIDTH = 0.75  # points
+BORDER_LINE_WIDTH = 0.5  # points
 
-# Content margins: 0.3" inside the border
+# Content margins inside the border
 CONTENT_INSET = 0.3 * inch
 LEFT_MARGIN = BORDER_MARGIN + CONTENT_INSET
 RIGHT_MARGIN = BORDER_MARGIN + CONTENT_INSET
@@ -32,12 +33,16 @@ TOP_MARGIN = BORDER_MARGIN + CONTENT_INSET
 BOTTOM_MARGIN = BORDER_MARGIN + CONTENT_INSET
 USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 
+# Fonts
 HEADER_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica"
-HEADER_SIZE = 12
-BODY_SIZE = 10
+
+# Sizes
+FIRM_NAME_SIZE = 14
+FIRM_DETAIL_SIZE = 10
+BODY_SIZE = 11
 SMALL_SIZE = 9
-LINE_HEIGHT = 14
+BODY_LEADING = 15  # line height for body text
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +50,6 @@ LINE_HEIGHT = 14
 # ---------------------------------------------------------------------------
 
 def _get_field_value(tax_return, line_number: str) -> str:
-    """Get a single FormFieldValue by line_number."""
     from apps.returns.models import FormFieldValue
 
     try:
@@ -69,7 +73,7 @@ def _to_decimal(value: str) -> Decimal:
 
 
 def _fmt_amount(value: str) -> str:
-    """Format as whole dollars, no dollar sign: 1,234 or (1,234)."""
+    """Format as whole dollars: 1,234 or (1,234)."""
     d = _to_decimal(value)
     if d < 0:
         return f"({abs(d):,.0f})"
@@ -77,9 +81,8 @@ def _fmt_amount(value: str) -> str:
 
 
 def _wrap_text(text: str, c: canvas.Canvas, font: str, size: float, max_width: float) -> list[str]:
-    """Word-wrap text to fit within max_width."""
     words = text.split()
-    lines = []
+    lines: list[str] = []
     current = ""
     for word in words:
         test = f"{current} {word}".strip()
@@ -105,29 +108,27 @@ class LetterWriter:
         self.c = c
         self.y = PAGE_HEIGHT - TOP_MARGIN
 
-    def _check_page(self, needed: float = LINE_HEIGHT * 2):
+    def _check_page(self, needed: float = BODY_LEADING * 2):
         if self.y < BOTTOM_MARGIN + needed:
             self._draw_border()
             self.c.showPage()
             self.y = PAGE_HEIGHT - TOP_MARGIN
 
     def skip(self, lines: float = 1):
-        self.y -= LINE_HEIGHT * lines
+        self.y -= BODY_LEADING * lines
         self._check_page()
 
     def write(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE, indent: float = 0):
         self._check_page()
         self.c.setFont(font, size)
         self.c.drawString(LEFT_MARGIN + indent, self.y, text)
-        self.y -= LINE_HEIGHT
+        self.y -= BODY_LEADING
 
     def write_centered(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE):
-        """Write text centered horizontally on the page."""
         self._check_page()
         self.c.setFont(font, size)
-        center_x = PAGE_WIDTH / 2
-        self.c.drawCentredString(center_x, self.y, text)
-        self.y -= LINE_HEIGHT
+        self.c.drawCentredString(PAGE_WIDTH / 2, self.y, text)
+        self.y -= BODY_LEADING
 
     def write_wrapped(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE, indent: float = 0):
         max_w = USABLE_WIDTH - indent
@@ -136,16 +137,9 @@ class LetterWriter:
             self._check_page()
             self.c.setFont(font, size)
             self.c.drawString(LEFT_MARGIN + indent, self.y, line)
-            self.y -= LINE_HEIGHT
-
-    def write_right(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE):
-        self._check_page()
-        self.c.setFont(font, size)
-        self.c.drawRightString(PAGE_WIDTH - RIGHT_MARGIN, self.y, text)
-        self.y -= LINE_HEIGHT
+            self.y -= BODY_LEADING
 
     def _draw_border(self):
-        """Draw a thin rectangle border on the current page."""
         self.c.setLineWidth(BORDER_LINE_WIDTH)
         self.c.rect(
             BORDER_MARGIN,
@@ -166,7 +160,7 @@ def render_letter(tax_return) -> bytes:
     form_code = tax_return.form_definition.code
     today_str = date.today().strftime("%B %d, %Y")
 
-    # Firm info
+    # Firm info from PreparerInfo
     firm_name = ""
     firm_address = ""
     firm_csz = ""
@@ -186,7 +180,7 @@ def render_letter(tax_return) -> bytes:
         pass
 
     # Entity info
-    entity_name = entity.legal_name or entity.name
+    entity_name = (entity.legal_name or entity.name or "").upper()
     entity_addr = entity.address_line1 or ""
     entity_csz = ", ".join(p for p in [entity.city, entity.state] if p)
     if entity.zip_code:
@@ -209,10 +203,9 @@ def render_letter(tax_return) -> bytes:
         if _to_decimal(amt) > 0:
             est_taxes.append((dt, amt))
 
-    # Check for state return
     has_state = tax_return.state_returns.exists()
 
-    # Form name for letter
+    # Form name for letter text
     form_name_map = {
         "1120-S": "S Corporation Income Tax",
         "1065": "Partnership",
@@ -224,23 +217,29 @@ def render_letter(tax_return) -> bytes:
     c = canvas.Canvas(buf, pagesize=LETTER_SIZE)
     w = LetterWriter(c)
 
-    # --- Centered Letterhead ---
+    # -----------------------------------------------------------------------
+    # Centered Letterhead
+    # -----------------------------------------------------------------------
     if firm_name:
-        w.write_centered(firm_name, HEADER_FONT, HEADER_SIZE)
+        w.write_centered(firm_name, HEADER_FONT, FIRM_NAME_SIZE)
     if firm_address:
-        w.write_centered(firm_address, BODY_FONT, BODY_SIZE)
+        w.write_centered(firm_address, BODY_FONT, FIRM_DETAIL_SIZE)
     if firm_csz:
-        w.write_centered(firm_csz, BODY_FONT, BODY_SIZE)
+        w.write_centered(firm_csz, BODY_FONT, FIRM_DETAIL_SIZE)
     if firm_phone:
-        w.write_centered(f"Phone: {firm_phone}", BODY_FONT, BODY_SIZE)
+        w.write_centered(firm_phone, BODY_FONT, FIRM_DETAIL_SIZE)
 
     w.skip(1.5)
 
-    # --- Date (left-aligned) ---
+    # -----------------------------------------------------------------------
+    # Date (left-aligned)
+    # -----------------------------------------------------------------------
     w.write(today_str)
     w.skip(1)
 
-    # --- Client address block ---
+    # -----------------------------------------------------------------------
+    # Client address block
+    # -----------------------------------------------------------------------
     w.write(entity_name)
     if entity_addr:
         w.write(entity_addr)
@@ -249,11 +248,15 @@ def render_letter(tax_return) -> bytes:
 
     w.skip(1)
 
-    # --- Salutation ---
+    # -----------------------------------------------------------------------
+    # Salutation
+    # -----------------------------------------------------------------------
     w.write("Dear Client:")
     w.skip(0.5)
 
-    # --- Federal paragraph ---
+    # -----------------------------------------------------------------------
+    # Federal paragraph
+    # -----------------------------------------------------------------------
     is_electronic = filing_method and filing_method.lower() in ("e-file", "electronic")
     fed_bal = _to_decimal(fed_balance)
 
@@ -274,14 +277,16 @@ def render_letter(tax_return) -> bytes:
         fed_text += " No tax is payable with the filing of this return."
     elif fed_bal > 0:
         fed_text += (
-            f" There is a balance of {_fmt_amount(fed_balance)} payable by "
+            f" There is a balance of ${_fmt_amount(fed_balance)} payable by "
             f"{fed_due_date or 'the due date shown on the return'}."
         )
 
     w.write_wrapped(fed_text)
     w.skip(0.5)
 
-    # --- EFTPS paragraph (only if federal balance > 0) ---
+    # -----------------------------------------------------------------------
+    # EFTPS paragraph (only if federal balance > 0)
+    # -----------------------------------------------------------------------
     if fed_bal > 0:
         w.write_wrapped(
             "The payment(s) due must be electronically deposited through the "
@@ -291,7 +296,9 @@ def render_letter(tax_return) -> bytes:
         )
         w.skip(0.5)
 
-    # --- Georgia paragraph (only if state return exists) ---
+    # -----------------------------------------------------------------------
+    # Georgia paragraph (only if state return exists)
+    # -----------------------------------------------------------------------
     if has_state:
         ga_bal = _to_decimal(ga_balance)
         is_state_electronic = st_filing and st_filing.lower() in ("e-file", "electronic")
@@ -312,7 +319,7 @@ def render_letter(tax_return) -> bytes:
             ga_text += " No tax is payable with the filing of this return."
         elif ga_bal > 0:
             ga_text += (
-                f" There is a balance of {_fmt_amount(ga_balance)} payable by "
+                f" There is a balance of ${_fmt_amount(ga_balance)} payable by "
                 f"{ga_due_date or 'the due date shown on the return'}."
             )
 
@@ -332,7 +339,9 @@ def render_letter(tax_return) -> bytes:
 
         w.skip(0.5)
 
-    # --- K-1 paragraph (always for 1120-S) ---
+    # -----------------------------------------------------------------------
+    # K-1 paragraph (always for 1120-S)
+    # -----------------------------------------------------------------------
     if form_code == "1120-S":
         w.write_wrapped(
             f"You must distribute a copy of the {year} Schedule K-1 to each "
@@ -341,60 +350,62 @@ def render_letter(tax_return) -> bytes:
         )
         w.skip(0.5)
 
-    # --- Estimated tax table ---
+    # -----------------------------------------------------------------------
+    # Estimated tax table
+    # -----------------------------------------------------------------------
     if est_taxes:
         w.write_wrapped(
             f"The following estimated tax payments are due for tax year {year + 1}:"
         )
         w.skip(0.5)
 
-        # Table header
         col1_x = LEFT_MARGIN + 36
         col2_x = LEFT_MARGIN + 200
         w.c.setFont(HEADER_FONT, SMALL_SIZE)
         w.c.drawString(col1_x, w.y, "Due Date")
         w.c.drawRightString(col2_x + 80, w.y, "Federal")
-        w.y -= LINE_HEIGHT
+        w.y -= BODY_LEADING
 
-        # Separator
+        # Separator line
         w.c.setLineWidth(0.25)
-        w.c.line(col1_x, w.y + LINE_HEIGHT * 0.4, col2_x + 80, w.y + LINE_HEIGHT * 0.4)
+        w.c.line(col1_x, w.y + BODY_LEADING * 0.4, col2_x + 80, w.y + BODY_LEADING * 0.4)
 
-        # Rows
         total_est = Decimal("0")
         w.c.setFont(BODY_FONT, SMALL_SIZE)
         for dt, amt in est_taxes:
             w.c.drawString(col1_x, w.y, dt or "")
             w.c.drawRightString(col2_x + 80, w.y, _fmt_amount(amt))
             total_est += _to_decimal(amt)
-            w.y -= LINE_HEIGHT
+            w.y -= BODY_LEADING
 
-        # Total
+        # Total line
         w.c.setLineWidth(0.5)
-        w.c.line(col2_x + 10, w.y + LINE_HEIGHT * 0.4, col2_x + 80, w.y + LINE_HEIGHT * 0.4)
+        w.c.line(col2_x + 10, w.y + BODY_LEADING * 0.4, col2_x + 80, w.y + BODY_LEADING * 0.4)
         w.c.setFont(HEADER_FONT, SMALL_SIZE)
         w.c.drawString(col1_x, w.y, "Total")
         w.c.drawRightString(col2_x + 80, w.y, _fmt_amount(str(total_est)))
-        w.y -= LINE_HEIGHT
+        w.y -= BODY_LEADING
 
         w.skip(0.5)
 
-    # --- Custom note ---
+    # -----------------------------------------------------------------------
+    # Custom note
+    # -----------------------------------------------------------------------
     if custom_note:
         w.write_wrapped(custom_note)
         w.skip(0.5)
 
-    # --- Closing ---
+    # -----------------------------------------------------------------------
+    # Closing
+    # -----------------------------------------------------------------------
     w.write_wrapped("Please call if you have any questions.")
     w.skip(1.5)
     w.write("Sincerely,")
     w.skip(2)
     if preparer_name:
         w.write(preparer_name)
-    if firm_name:
-        w.write(firm_name)
 
-    # Draw border on the final page, then finish
+    # Draw border on the final page
     w._draw_border()
     c.showPage()
     c.save()

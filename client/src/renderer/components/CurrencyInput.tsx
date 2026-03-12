@@ -86,16 +86,21 @@ export default function CurrencyInput({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={(e) => {
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (
+          e.key === "ArrowDown" ||
+          e.key === "ArrowUp" ||
+          e.key === "Enter"
+        ) {
           e.preventDefault();
           const inputs = Array.from(
             document.querySelectorAll<HTMLInputElement>(
-              'input[type="text"]:not([readonly])',
+              'input[type="text"]:not([readonly]), select:not([disabled])',
             ),
           );
           const idx = inputs.indexOf(e.currentTarget);
           if (idx < 0) return;
-          const next = e.key === "ArrowDown" ? idx + 1 : idx - 1;
+          const next =
+            e.key === "ArrowUp" ? idx - 1 : idx + 1;
           if (next >= 0 && next < inputs.length) {
             inputs[next].focus();
           }
