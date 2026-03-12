@@ -8,25 +8,27 @@ function formatCurrency(raw: string): string {
   if (!raw || raw === "" || raw === "-") return "";
   const num = parseFloat(raw);
   if (isNaN(num) || num === 0) return "";
-  const abs = Math.abs(num);
+  const rounded = Math.round(num);
+  const abs = Math.abs(rounded);
   const formatted = abs.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   });
-  if (num < 0) return `($${formatted})`;
-  return `$${formatted}`;
+  if (rounded < 0) return `(${formatted})`;
+  return formatted;
 }
 
 function parseCurrency(input: string): string {
   if (!input || input.trim() === "") return "";
   let cleaned = input.replace(/[$,\s]/g, "");
-  // Accounting-style negatives: (123.45) → -123.45
+  // Accounting-style negatives: (123) → -123
   if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
     cleaned = "-" + cleaned.slice(1, -1);
   }
   const num = parseFloat(cleaned);
   if (isNaN(num)) return "";
-  return num.toString();
+  // Whole dollars only — round to nearest integer
+  return Math.round(num).toString();
 }
 
 // ---------------------------------------------------------------------------
@@ -77,12 +79,28 @@ export default function CurrencyInput({
     <input
       ref={inputRef}
       type="text"
-      inputMode="decimal"
+      inputMode="numeric"
       value={displayValue}
       readOnly={readOnly}
       onChange={(e) => setDisplayValue(e.target.value)}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const inputs = Array.from(
+            document.querySelectorAll<HTMLInputElement>(
+              'input[type="text"]:not([readonly])',
+            ),
+          );
+          const idx = inputs.indexOf(e.currentTarget);
+          if (idx < 0) return;
+          const next = e.key === "ArrowDown" ? idx + 1 : idx - 1;
+          if (next >= 0 && next < inputs.length) {
+            inputs[next].focus();
+          }
+        }
+      }}
       className={`w-full rounded-md border border-input-border px-2 py-1 text-right text-sm tabular-nums shadow-sm
         placeholder:text-tx-muted
         focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring

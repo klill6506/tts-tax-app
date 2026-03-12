@@ -1,8 +1,9 @@
 """
 Client Letter PDF generator.
 
-Renders a professional client transmittal letter matching the Lacerte format.
-Uses LTR_* fields from the Admin tab.
+Renders a professional client transmittal letter with a page border,
+centered letterhead, and left-aligned body.  Uses LTR_* fields from
+the Admin tab.
 
 Usage:
     from apps.tts_forms.letter import render_letter
@@ -18,10 +19,17 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
 PAGE_WIDTH, PAGE_HEIGHT = LETTER_SIZE
-LEFT_MARGIN = 1.0 * inch
-RIGHT_MARGIN = 1.0 * inch
-TOP_MARGIN = 0.75 * inch
-BOTTOM_MARGIN = 0.75 * inch
+
+# Border: 0.5" from page edges
+BORDER_MARGIN = 0.5 * inch
+BORDER_LINE_WIDTH = 0.75  # points
+
+# Content margins: 0.3" inside the border
+CONTENT_INSET = 0.3 * inch
+LEFT_MARGIN = BORDER_MARGIN + CONTENT_INSET
+RIGHT_MARGIN = BORDER_MARGIN + CONTENT_INSET
+TOP_MARGIN = BORDER_MARGIN + CONTENT_INSET
+BOTTOM_MARGIN = BORDER_MARGIN + CONTENT_INSET
 USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 
 HEADER_FONT = "Helvetica-Bold"
@@ -31,6 +39,10 @@ BODY_SIZE = 10
 SMALL_SIZE = 9
 LINE_HEIGHT = 14
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _get_field_value(tax_return, line_number: str) -> str:
     """Get a single FormFieldValue by line_number."""
@@ -56,11 +68,12 @@ def _to_decimal(value: str) -> Decimal:
         return Decimal("0")
 
 
-def _fmt_currency(value: str) -> str:
+def _fmt_amount(value: str) -> str:
+    """Format as whole dollars, no dollar sign: 1,234 or (1,234)."""
     d = _to_decimal(value)
     if d < 0:
-        return f"(${abs(d):,.2f})"
-    return f"${d:,.2f}"
+        return f"({abs(d):,.0f})"
+    return f"{abs(d):,.0f}"
 
 
 def _wrap_text(text: str, c: canvas.Canvas, font: str, size: float, max_width: float) -> list[str]:
@@ -81,6 +94,10 @@ def _wrap_text(text: str, c: canvas.Canvas, font: str, size: float, max_width: f
     return lines or [""]
 
 
+# ---------------------------------------------------------------------------
+# LetterWriter
+# ---------------------------------------------------------------------------
+
 class LetterWriter:
     """Stateful writer that tracks y position and handles page breaks."""
 
@@ -90,6 +107,7 @@ class LetterWriter:
 
     def _check_page(self, needed: float = LINE_HEIGHT * 2):
         if self.y < BOTTOM_MARGIN + needed:
+            self._draw_border()
             self.c.showPage()
             self.y = PAGE_HEIGHT - TOP_MARGIN
 
@@ -101,6 +119,14 @@ class LetterWriter:
         self._check_page()
         self.c.setFont(font, size)
         self.c.drawString(LEFT_MARGIN + indent, self.y, text)
+        self.y -= LINE_HEIGHT
+
+    def write_centered(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE):
+        """Write text centered horizontally on the page."""
+        self._check_page()
+        self.c.setFont(font, size)
+        center_x = PAGE_WIDTH / 2
+        self.c.drawCentredString(center_x, self.y, text)
         self.y -= LINE_HEIGHT
 
     def write_wrapped(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE, indent: float = 0):
@@ -118,12 +144,20 @@ class LetterWriter:
         self.c.drawRightString(PAGE_WIDTH - RIGHT_MARGIN, self.y, text)
         self.y -= LINE_HEIGHT
 
-    def draw_line(self):
-        self._check_page()
-        self.c.setLineWidth(0.5)
-        self.c.line(LEFT_MARGIN, self.y, PAGE_WIDTH - RIGHT_MARGIN, self.y)
-        self.y -= LINE_HEIGHT * 0.5
+    def _draw_border(self):
+        """Draw a thin rectangle border on the current page."""
+        self.c.setLineWidth(BORDER_LINE_WIDTH)
+        self.c.rect(
+            BORDER_MARGIN,
+            BORDER_MARGIN,
+            PAGE_WIDTH - 2 * BORDER_MARGIN,
+            PAGE_HEIGHT - 2 * BORDER_MARGIN,
+        )
 
+
+# ---------------------------------------------------------------------------
+# Main renderer
+# ---------------------------------------------------------------------------
 
 def render_letter(tax_return) -> bytes:
     """Render a client transmittal letter PDF."""
@@ -190,19 +224,19 @@ def render_letter(tax_return) -> bytes:
     c = canvas.Canvas(buf, pagesize=LETTER_SIZE)
     w = LetterWriter(c)
 
-    # --- Firm Header ---
+    # --- Centered Letterhead ---
     if firm_name:
-        w.write(firm_name, HEADER_FONT, HEADER_SIZE)
+        w.write_centered(firm_name, HEADER_FONT, HEADER_SIZE)
     if firm_address:
-        w.write(firm_address, BODY_FONT, BODY_SIZE)
+        w.write_centered(firm_address, BODY_FONT, BODY_SIZE)
     if firm_csz:
-        w.write(firm_csz, BODY_FONT, BODY_SIZE)
+        w.write_centered(firm_csz, BODY_FONT, BODY_SIZE)
     if firm_phone:
-        w.write(f"Phone: {firm_phone}", BODY_FONT, BODY_SIZE)
+        w.write_centered(f"Phone: {firm_phone}", BODY_FONT, BODY_SIZE)
 
     w.skip(1.5)
 
-    # --- Date ---
+    # --- Date (left-aligned) ---
     w.write(today_str)
     w.skip(1)
 
@@ -224,28 +258,27 @@ def render_letter(tax_return) -> bytes:
     fed_bal = _to_decimal(fed_balance)
 
     if is_electronic:
-        w.write_wrapped(
+        fed_text = (
             f"Your {year} Federal {form_name} return will be electronically filed "
             f"with the Internal Revenue Service upon receipt of a signed "
-            f"Form 8879-CORP, IRS e-file Signature Authorization."
+            f"Form 8879-CORP, E-file Authorization for Corporations."
         )
     else:
-        w.write_wrapped(
+        fed_text = (
             f"Enclosed is your {year} Federal {form_name} return. "
             f"Please sign the return and mail it to the Internal Revenue Service "
             f"at the address shown on the return."
         )
 
-    w.skip(0.5)
-
     if fed_bal == 0:
-        w.write_wrapped("No tax is payable with the filing of this return.")
+        fed_text += " No tax is payable with the filing of this return."
     elif fed_bal > 0:
-        w.write_wrapped(
-            f"There is a balance of {_fmt_currency(fed_balance)} payable by "
+        fed_text += (
+            f" There is a balance of {_fmt_amount(fed_balance)} payable by "
             f"{fed_due_date or 'the due date shown on the return'}."
         )
 
+    w.write_wrapped(fed_text)
     w.skip(0.5)
 
     # --- EFTPS paragraph (only if federal balance > 0) ---
@@ -264,30 +297,32 @@ def render_letter(tax_return) -> bytes:
         is_state_electronic = st_filing and st_filing.lower() in ("e-file", "electronic")
 
         if is_state_electronic:
-            w.write_wrapped(
+            ga_text = (
                 f"Your {year} Georgia {form_name} return will be electronically "
-                f"filed with the Georgia Department of Revenue upon receipt of a "
-                f"signed GA-8453 S, Georgia Individual Income Tax Declaration for "
-                f"Electronic Filing."
+                f"filed with the State of Georgia upon receipt of a "
+                f"signed GA-8453 S."
             )
         else:
-            w.write_wrapped(
+            ga_text = (
                 f"Enclosed is your {year} Georgia {form_name} return. "
                 f"Please sign and mail to the Georgia Department of Revenue."
             )
 
-        w.skip(0.5)
-
         if ga_bal == 0:
-            w.write_wrapped(
-                "No tax is payable with the filing of your Georgia return."
-            )
+            ga_text += " No tax is payable with the filing of this return."
         elif ga_bal > 0:
+            ga_text += (
+                f" There is a balance of {_fmt_amount(ga_balance)} payable by "
+                f"{ga_due_date or 'the due date shown on the return'}."
+            )
+
+        w.write_wrapped(ga_text)
+
+        if ga_bal > 0:
+            w.skip(0.5)
             w.write_wrapped(
-                f"There is a balance of {_fmt_currency(ga_balance)} payable by "
-                f"{ga_due_date or 'the due date shown on the return'}. "
-                f"Make the check payable to Georgia Department of Revenue. "
-                f"Mail the payment with Form PV CORP to:"
+                "Make the check payable to Georgia Department of Revenue. "
+                "Mail the payment with Form PV CORP to:"
             )
             w.skip(0.5)
             w.write("Georgia Department of Revenue", indent=36)
@@ -295,6 +330,15 @@ def render_letter(tax_return) -> bytes:
             w.write("P.O. Box 740318", indent=36)
             w.write("Atlanta, GA 30374-0318", indent=36)
 
+        w.skip(0.5)
+
+    # --- K-1 paragraph (always for 1120-S) ---
+    if form_code == "1120-S":
+        w.write_wrapped(
+            f"You must distribute a copy of the {year} Schedule K-1 to each "
+            f"shareholder. Be sure to give each shareholder a copy of the "
+            f"Shareholder's Instructions for Schedule K-1 (Form 1120S)."
+        )
         w.skip(0.5)
 
     # --- Estimated tax table ---
@@ -321,7 +365,7 @@ def render_letter(tax_return) -> bytes:
         w.c.setFont(BODY_FONT, SMALL_SIZE)
         for dt, amt in est_taxes:
             w.c.drawString(col1_x, w.y, dt or "")
-            w.c.drawRightString(col2_x + 80, w.y, _fmt_currency(amt))
+            w.c.drawRightString(col2_x + 80, w.y, _fmt_amount(amt))
             total_est += _to_decimal(amt)
             w.y -= LINE_HEIGHT
 
@@ -330,7 +374,7 @@ def render_letter(tax_return) -> bytes:
         w.c.line(col2_x + 10, w.y + LINE_HEIGHT * 0.4, col2_x + 80, w.y + LINE_HEIGHT * 0.4)
         w.c.setFont(HEADER_FONT, SMALL_SIZE)
         w.c.drawString(col1_x, w.y, "Total")
-        w.c.drawRightString(col2_x + 80, w.y, _fmt_currency(str(total_est)))
+        w.c.drawRightString(col2_x + 80, w.y, _fmt_amount(str(total_est)))
         w.y -= LINE_HEIGHT
 
         w.skip(0.5)
@@ -338,16 +382,6 @@ def render_letter(tax_return) -> bytes:
     # --- Custom note ---
     if custom_note:
         w.write_wrapped(custom_note)
-        w.skip(0.5)
-
-    # --- K-1 reminder (1120-S only) ---
-    if form_code == "1120-S":
-        w.write_wrapped(
-            f"You must distribute a copy of the {year} Schedule K-1 to each "
-            f"shareholder of the corporation. Each shareholder should use the "
-            f"information reported on their K-1 to complete their individual "
-            f"income tax return."
-        )
         w.skip(0.5)
 
     # --- Closing ---
@@ -360,6 +394,8 @@ def render_letter(tax_return) -> bytes:
     if firm_name:
         w.write(firm_name)
 
+    # Draw border on the final page, then finish
+    w._draw_border()
     c.showPage()
     c.save()
     buf.seek(0)

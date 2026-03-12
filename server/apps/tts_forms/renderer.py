@@ -671,7 +671,7 @@ def render_k1(tax_return, shareholder) -> bytes:
             continue
         if amount == 0:
             continue
-        share = (amount * ownership_pct).quantize(Decimal("0.01"))
+        share = (amount * ownership_pct).quantize(Decimal("1"))
         field_values[k1_line] = (str(share), "currency")
 
     # K16 sub-items (code+amount pairs)
@@ -684,7 +684,7 @@ def render_k1(tax_return, shareholder) -> bytes:
             if not raw:
                 continue
             try:
-                amount = (Decimal(raw) * ownership_pct).quantize(Decimal("0.01"))
+                amount = (Decimal(raw) * ownership_pct).quantize(Decimal("1"))
             except InvalidOperation:
                 continue
         if amount == 0:
@@ -1811,6 +1811,55 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             _append(render_4797(tax_return))
     except Exception as e:
         logger.warning("render_complete: 4797 failed: %s", e)
+
+    # 3d. Meals and Entertainment Statement — if meals data exists
+    try:
+        meals_50 = FormFieldValue.objects.filter(
+            tax_return=tax_return, form_line__line_number="D_MEALS_50",
+        ).exclude(value__in=["", "0"]).first()
+        meals_dot = FormFieldValue.objects.filter(
+            tax_return=tax_return, form_line__line_number="D_MEALS_DOT",
+        ).exclude(value__in=["", "0"]).first()
+        entertainment = FormFieldValue.objects.filter(
+            tax_return=tax_return, form_line__line_number="D_ENTERTAINMENT",
+        ).exclude(value__in=["", "0"]).first()
+        if meals_50 or meals_dot or entertainment:
+            from decimal import Decimal as D
+            items = []
+            total_nonded = D("0")
+            if meals_50:
+                amt = D(meals_50.value.replace(",", ""))
+                ded = (amt * D("0.50")).quantize(D("1"))
+                nonded = amt - ded
+                items.append({"description": "Meals (50% deductible)", "amount": str(amt)})
+                items.append({"description": "  Deductible portion (50%)", "amount": str(ded)})
+                items.append({"description": "  Nondeductible portion (50%)", "amount": str(nonded)})
+                total_nonded += nonded
+            if meals_dot:
+                amt = D(meals_dot.value.replace(",", ""))
+                ded = (amt * D("0.80")).quantize(D("1"))
+                nonded = amt - ded
+                items.append({"description": "DOT Meals (80% deductible)", "amount": str(amt)})
+                items.append({"description": "  Deductible portion (80%)", "amount": str(ded)})
+                items.append({"description": "  Nondeductible portion (20%)", "amount": str(nonded)})
+                total_nonded += nonded
+            if entertainment:
+                amt = D(entertainment.value.replace(",", ""))
+                items.append({"description": "Entertainment (0% deductible)", "amount": str(amt)})
+                total_nonded += amt
+            items.append({"description": "", "amount": ""})
+            items.append({"description": "Total nondeductible → K-16c, M-1 line 3b", "amount": str(total_nonded)})
+            year = tax_return.tax_year.year
+            stmt_bytes = render_statement_pages([{
+                "title": f"Form 1120-S ({year}) — Meals and Entertainment Statement",
+                "subtitle": "IRC Sec. 274 Limitation",
+                "form_code": "1120-S",
+                "items": items,
+            }])
+            if stmt_bytes:
+                _append(stmt_bytes)
+    except Exception as e:
+        logger.warning("render_complete: meals statement failed: %s", e)
 
     # 4-6: Shareholder-level forms (1120-S only)
     form_code = tax_return.form_definition.code

@@ -14,11 +14,11 @@ import logging
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
-from .models import DepreciationAsset, FormFieldValue, FormLine
+from .models import DepreciationAsset, FieldType, FormFieldValue, FormLine
 
 logger = logging.getLogger(__name__)
 
-ZERO = Decimal("0.00")
+ZERO = Decimal("0")
 
 
 def _d(values: dict[str, Decimal], line: str) -> Decimal:
@@ -50,13 +50,27 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("3", lambda v: _d(v, "1c") - _d(v, "2")),
     ("6", lambda v: _d(v, "3") + _d(v, "4") + _d(v, "5")),
 
+    # Meals — deductible portions
+    # 50% of D_MEALS_50, 80% of D_MEALS_DOT, 0% of D_ENTERTAINMENT
+    ("D_MEALS_DED", lambda v: (
+        (_d(v, "D_MEALS_50") * Decimal("0.50"))
+        + (_d(v, "D_MEALS_DOT") * Decimal("0.80"))
+    )),
+    # Meals — nondeductible portion (flows to K16c, M1_3b, M2_5a)
+    ("D_MEALS_NONDED", lambda v: (
+        (_d(v, "D_MEALS_50") * Decimal("0.50"))
+        + (_d(v, "D_MEALS_DOT") * Decimal("0.20"))
+        + _d(v, "D_ENTERTAINMENT")
+    )),
+
     # Page 1 — Deductions
     # Line 19 = sum of named "other deductions" (D_*) + free-form rows
+    # Meals: only the deductible portion flows here
     ("19", lambda v: _sum(
         v,
         "D_ACCT", "D_ANSW", "D_AUTO", "D_BANK", "D_COMM", "D_DELI",
-        "D_DUES", "D_GIFT", "D_INSU", "D_JANI", "D_LAUN", "D_LEGA",
-        "D_MEAL", "D_MISC", "D_OFFI", "D_ORGN", "D_OUTS", "D_PARK",
+        "D_DUES", "D_GIFT", "D_INSU", "D_JANI", "D_LAUN", "D_LICE", "D_LEGA",
+        "D_MEALS_DED", "D_MISC", "D_OFFI", "D_ORGN", "D_OUTS", "D_PARK",
         "D_POST", "D_PRNT", "D_SECU", "D_SUPP", "D_TELE", "D_TOOL",
         "D_TRAV", "D_UNIF", "D_UTIL", "D_WAST",
         "D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6",
@@ -91,6 +105,8 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("K1", lambda v: _d(v, "21")),
     # K10 = net farm profit/loss (from Schedule F)
     ("K10", lambda v: _d(v, "F34")),
+    # K16c = nondeductible expenses (meals nondeductible portion auto-populates)
+    ("K16c", lambda v: _d(v, "D_MEALS_NONDED")),
     # K18 = total income/loss reconciliation
     # (income items positive, deduction items negative)
     ("K18", lambda v: (
@@ -118,20 +134,13 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
         + _d(v, "L11d") - _d(v, "L11e")
         + _d(v, "L13d") - _d(v, "L13e")
     )),
-    # Total liabilities & equity
-    ("L28a", lambda v: _sum(
-        v, "L16a", "L17a", "L18a", "L19a", "L20a", "L21a",
-        "L22a", "L23a", "L24a", "L25a", "L27a",
-    ) - _d(v, "L26a")),
-    ("L28d", lambda v: _sum(
-        v, "L16d", "L17d", "L18d", "L19d", "L20d", "L21d",
-        "L22d", "L23d", "L24d", "L25d", "L27d",
-    ) - _d(v, "L26d")),
 
     # Schedule M-1
     # Auto-populate M-1 adjustment items from Schedule K:
     # Line 5a: Tax-exempt interest (income on books not on K)
     ("M1_5a", lambda v: _d(v, "K16a")),
+    # Line 3b: Meals/entertainment nondeductible (expenses on books not on K)
+    ("M1_3b", lambda v: _d(v, "D_MEALS_NONDED")),
     # Line 6b: Charitable contributions + Section 179 (deductions on K not on books)
     ("M1_6b", lambda v: _sum(v, "K12a", "K11")),
     # Line 1 is back-computed from K18 so M-1 always reconciles:
@@ -174,6 +183,20 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
         - _d(v, "M2_4d") - _d(v, "M2_5d")
     )),
     ("M2_8d", lambda v: _d(v, "M2_6d") - _d(v, "M2_7d")),
+
+    # Schedule L — Retained earnings & total (depend on M-2 results)
+    # L24 = sum of all M-2 column ending balances (AAA + OAA + STPI + E&P)
+    ("L24a", lambda v: _sum(v, "M2_1a", "M2_1b", "M2_1c", "M2_1d")),
+    ("L24d", lambda v: _sum(v, "M2_8a", "M2_8b", "M2_8c", "M2_8d")),
+    # L27 = Total liabilities and shareholders' equity
+    ("L27a", lambda v: _sum(
+        v, "L16a", "L17a", "L18a", "L19a", "L20a", "L21a",
+        "L22a", "L23a", "L24a", "L25a",
+    ) - _d(v, "L26a")),
+    ("L27d", lambda v: _sum(
+        v, "L16d", "L17d", "L18d", "L19d", "L20d", "L21d",
+        "L22d", "L23d", "L24d", "L25d",
+    ) - _d(v, "L26d")),
 ]
 
 # ---------------------------------------------------------------------------
@@ -225,7 +248,7 @@ FORMULAS_1120: list[tuple[str, callable]] = [
     ("C21", lambda v: _d(v, "C19")),
     # Schedule J
     ("J1", lambda v: _d(v, "30")),
-    ("J2", lambda v: (_d(v, "J1") * Decimal("0.21")).quantize(Decimal("0.01"))),
+    ("J2", lambda v: (_d(v, "J1") * Decimal("0.21")).quantize(Decimal("1"))),
     ("J4", lambda v: _d(v, "J2") + _d(v, "J3")),
     ("J5e", lambda v: _sum(v, "J5a", "J5b", "J5c", "J5d")),
     ("J6", lambda v: max(ZERO, _d(v, "J4") - _d(v, "J5e"))),
@@ -318,7 +341,8 @@ FORMULAS_GA600S: list[tuple[str, callable]] = [
     ("S1_1", lambda v: _d(v, "S5_7")),
     ("S1_3", lambda v: _d(v, "S1_1") + _d(v, "S1_2")),
     ("S1_6", lambda v: _d(v, "S1_3") - _d(v, "S1_4") - _d(v, "S1_5")),
-    ("S1_7", lambda v: max(ZERO, _d(v, "S1_6")) * Decimal("0.0539")),
+    # Income tax only applies if PTET is elected; most S-Corps owe $0
+    ("S1_7", lambda v: max(ZERO, _d(v, "S1_6")) * Decimal("0.0539") if _d(v, "GA_PTET") > 0 else ZERO),
 
     # Schedule 3 — Net Worth Tax
     ("S3_4", lambda v: _sum(v, "S3_1", "S3_2", "S3_3")),
@@ -434,23 +458,23 @@ def aggregate_depreciation(tax_return) -> None:
         state_bonus_disallowed_total += result["state_bonus_disallowed"]
 
     # Write page 1 depreciation (Line 14)
-    _set_field_value(tax_return, "14", str(page1_total.quantize(Decimal("0.01"))))
+    _set_field_value(tax_return, "14", str(page1_total.quantize(Decimal("1"))))
 
     # Write Schedule F depreciation
     if sched_f_total:
-        _set_field_value(tax_return, "F16", str(sched_f_total.quantize(Decimal("0.01"))))
+        _set_field_value(tax_return, "F16", str(sched_f_total.quantize(Decimal("1"))))
 
     # Write to rental properties (Form 8825)
     if rental_totals:
         from .models import RentalProperty
         for prop_id, amount in rental_totals.items():
             RentalProperty.objects.filter(id=prop_id).update(
-                depreciation=amount.quantize(Decimal("0.01"))
+                depreciation=amount.quantize(Decimal("1"))
             )
 
     # Write Section 179 to K11
     if sec_179_total:
-        _set_field_value(tax_return, "K11", str(sec_179_total.quantize(Decimal("0.01"))))
+        _set_field_value(tax_return, "K11", str(sec_179_total.quantize(Decimal("1"))))
 
     logger.debug(
         "Depreciation aggregated for return %s: page1=%s, 8825=%s props, "
@@ -518,10 +542,13 @@ def compute_return(tax_return) -> int:
         ln = fv.form_line.line_number
         fv_by_line[ln] = fv
         if fv.value:
-            try:
-                values[ln] = Decimal(fv.value)
-            except InvalidOperation:
-                values[ln] = ZERO
+            if fv.form_line.field_type == FieldType.BOOLEAN:
+                values[ln] = Decimal("1") if fv.value.lower() in ("true", "1", "yes") else ZERO
+            else:
+                try:
+                    values[ln] = Decimal(fv.value)
+                except InvalidOperation:
+                    values[ln] = ZERO
         else:
             values[ln] = ZERO
 
@@ -535,7 +562,7 @@ def compute_return(tax_return) -> int:
         if fv and fv.is_overridden:
             continue
 
-        result = formula_fn(values).quantize(Decimal("0.01"))
+        result = formula_fn(values).quantize(Decimal("1"))
         values[line_number] = result  # update for downstream formulas
 
         if fv:

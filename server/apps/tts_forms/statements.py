@@ -65,8 +65,8 @@ def _format_amount(value: str) -> str:
     except InvalidOperation:
         return value
     if d < 0:
-        return f"({abs(d):,.2f})"
-    return f"{d:,.2f}"
+        return f"({abs(d):,.0f})"
+    return f"{d:,.0f}"
 
 
 def render_statement_pages(pages: list[dict]) -> bytes | None:
@@ -133,7 +133,7 @@ def _draw_statement_page(c: canvas.Canvas, page_def: dict) -> None:
 
     # --- Items ---
     c.setFont(BODY_FONT, BODY_SIZE)
-    total = Decimal("0.00")
+    total = Decimal("0")
 
     for item in items:
         if y < BOTTOM_MARGIN + LINE_HEIGHT * 3:
@@ -182,8 +182,8 @@ def _draw_statement_page(c: canvas.Canvas, page_def: dict) -> None:
     c.setFont(HEADER_FONT, BODY_SIZE)
     c.drawString(DESC_COL_X, y, "Total")
     if total < 0:
-        c.drawRightString(AMOUNT_COL_X, y, f"({abs(total):,.2f})")
+        c.drawRightString(AMOUNT_COL_X, y, f"({abs(total):,.0f})")
     else:
-        c.drawRightString(AMOUNT_COL_X, y, f"{total:,.2f}")
+        c.drawRightString(AMOUNT_COL_X, y, f"{total:,.0f}")
 
     c.showPage()

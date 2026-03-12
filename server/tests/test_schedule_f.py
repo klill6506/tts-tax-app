@@ -99,7 +99,7 @@ class TestScheduleFFormulas:
         """Run all 1120-S formulas on given initial values."""
         values = {k: v for k, v in initial_values.items()}
         for line_number, formula_fn in FORMULAS_1120S:
-            values[line_number] = formula_fn(values).quantize(Decimal("0.01"))
+            values[line_number] = formula_fn(values).quantize(Decimal("1"))
         return values
 
     # -- Farm Income (Part I) --

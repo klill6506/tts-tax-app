@@ -94,8 +94,8 @@ def tb_balance_check(tax_year: TaxYear) -> list[dict]:
                 "severity": "error",
                 "message": (
                     f"Trial Balance is out of balance. "
-                    f"Debits: {total_debit:,.2f}, Credits: {total_credit:,.2f}, "
-                    f"Difference: {abs(diff):,.2f}"
+                    f"Debits: {total_debit:,.0f}, Credits: {total_credit:,.0f}, "
+                    f"Difference: {abs(diff):,.0f}"
                 ),
                 "details": {
                     "upload_id": str(upload.id),
@@ -163,8 +163,8 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
                 "severity": "error",
                 "message": (
                     f"Balance Sheet (BOY) out of balance. "
-                    f"Assets: {assets_boy:,.2f}, Liabilities + Equity: {liab_boy:,.2f}, "
-                    f"Difference: {abs(diff):,.2f}"
+                    f"Assets: {assets_boy:,.0f}, Liabilities + Equity: {liab_boy:,.0f}, "
+                    f"Difference: {abs(diff):,.0f}"
                 ),
                 "details": {"period": "boy", "assets": str(assets_boy), "liab_equity": str(liab_boy)},
             })
@@ -178,8 +178,8 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
                 "severity": "error",
                 "message": (
                     f"Balance Sheet (EOY) out of balance. "
-                    f"Assets: {assets_eoy:,.2f}, Liabilities + Equity: {liab_eoy:,.2f}, "
-                    f"Difference: {abs(diff):,.2f}"
+                    f"Assets: {assets_eoy:,.0f}, Liabilities + Equity: {liab_eoy:,.0f}, "
+                    f"Difference: {abs(diff):,.0f}"
                 ),
                 "details": {"period": "eoy", "assets": str(assets_eoy), "liab_equity": str(liab_eoy)},
             })
@@ -199,8 +199,8 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
                     "severity": "error",
                     "message": (
                         f"Balance Sheet ({label}) out of balance. "
-                        f"Assets: {assets:,.2f}, Liabilities + Equity: {liab:,.2f}, "
-                        f"Difference: {abs(diff):,.2f}"
+                        f"Assets: {assets:,.0f}, Liabilities + Equity: {liab:,.0f}, "
+                        f"Difference: {abs(diff):,.0f}"
                     ),
                     "details": {"period": label.lower(), "assets": str(assets), "liab_equity": str(liab)},
                 })
@@ -235,8 +235,8 @@ def math_m1_reconciliation_check(tax_year: TaxYear) -> list[dict]:
             "severity": "warning",
             "message": (
                 f"Schedule M-1 does not reconcile. "
-                f"M-1 Line 8: {m1_8:,.2f}, Schedule K Line 18: {k18:,.2f}, "
-                f"Difference: {abs(diff):,.2f}"
+                f"M-1 Line 8: {m1_8:,.0f}, Schedule K Line 18: {k18:,.0f}, "
+                f"Difference: {abs(diff):,.0f}"
             ),
             "details": {"m1_8": str(m1_8), "k18": str(k18), "difference": str(diff)},
         }]
@@ -266,9 +266,9 @@ def math_m2_check(tax_year: TaxYear) -> list[dict]:
         return [{
             "severity": "warning",
             "message": (
-                f"Schedule M-2 ending balance ({m2_8:,.2f}) does not match "
-                f"Balance Sheet retained earnings L24d ({retained:,.2f}). "
-                f"Difference: {abs(diff):,.2f}"
+                f"Schedule M-2 ending balance ({m2_8:,.0f}) does not match "
+                f"Balance Sheet retained earnings L24d ({retained:,.0f}). "
+                f"Difference: {abs(diff):,.0f}"
             ),
             "details": {"m2_8": str(m2_8), "l24d": str(retained), "difference": str(diff)},
         }]
@@ -292,8 +292,8 @@ def math_page1_income_check(tax_year: TaxYear) -> list[dict]:
             findings.append({
                 "severity": "error",
                 "message": (
-                    f"Page 1 Line 6 ({actual_6:,.2f}) does not equal "
-                    f"Lines 3+4+5 ({expected_6:,.2f})."
+                    f"Page 1 Line 6 ({actual_6:,.0f}) does not equal "
+                    f"Lines 3+4+5 ({expected_6:,.0f})."
                 ),
                 "details": {"line": "6", "expected": str(expected_6), "actual": str(actual_6)},
             })
@@ -305,8 +305,8 @@ def math_page1_income_check(tax_year: TaxYear) -> list[dict]:
             findings.append({
                 "severity": "error",
                 "message": (
-                    f"Page 1 Line 21 ({actual_21:,.2f}) does not equal "
-                    f"Line 6 minus Line 20 ({expected_21:,.2f})."
+                    f"Page 1 Line 21 ({actual_21:,.0f}) does not equal "
+                    f"Line 6 minus Line 20 ({expected_21:,.0f})."
                 ),
                 "details": {"line": "21", "expected": str(expected_21), "actual": str(actual_21)},
             })

@@ -308,7 +308,18 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["1c", (v) => val(v, "1a") - val(v, "1b")],
   ["3", (v) => val(v, "1c") - val(v, "2")],
   ["6", (v) => val(v, "3") + val(v, "4") + val(v, "5")],
+  // Meals — deductible portions
+  ["D_MEALS_DED", (v) => val(v, "D_MEALS_50") * 0.50 + val(v, "D_MEALS_DOT") * 0.80],
+  ["D_MEALS_NONDED", (v) => val(v, "D_MEALS_50") * 0.50 + val(v, "D_MEALS_DOT") * 0.20 + val(v, "D_ENTERTAINMENT")],
   // Page 1 — Deductions
+  ["19", (v) => sumLines(v,
+    "D_ACCT","D_ANSW","D_AUTO","D_BANK","D_COMM","D_DELI",
+    "D_DUES","D_GIFT","D_INSU","D_JANI","D_LAUN","D_LICE","D_LEGA",
+    "D_MEALS_DED","D_MISC","D_OFFI","D_ORGN","D_OUTS","D_PARK",
+    "D_POST","D_PRNT","D_SECU","D_SUPP","D_TELE","D_TOOL",
+    "D_TRAV","D_UNIF","D_UTIL","D_WAST",
+    "D_FREE1","D_FREE2","D_FREE3","D_FREE4","D_FREE5","D_FREE6",
+  )],
   ["20", (v) => sumLines(v, "7","8","9","10","11","12","13","14","15","16","17","18","19")],
   ["21", (v) => val(v, "6") - val(v, "20")],
   // Page 1 — Tax and Payments
@@ -316,6 +327,8 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["23d", (v) => val(v, "23a") + val(v, "23b") + val(v, "23c")],
   ["25", (v) => Math.max(0, val(v, "22c") - val(v, "23d"))],
   ["26", (v) => Math.max(0, val(v, "23d") - val(v, "22c"))],
+  // Schedule K — nondeductible expenses
+  ["K16c", (v) => val(v, "D_MEALS_NONDED")],
   // Schedule L — Balance Sheet (inventory flows from COGS)
   ["L3a", (v) => val(v, "A1")],
   ["L3d", (v) => val(v, "A7")],
@@ -329,9 +342,8 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
     + val(v, "L10d") - val(v, "L10e")
     + val(v, "L11d") - val(v, "L11e")
     + val(v, "L13d") - val(v, "L13e")],
-  ["L28a", (v) => sumLines(v, "L16a","L17a","L18a","L19a","L20a","L21a","L22a","L23a","L24a","L25a","L27a") - val(v, "L26a")],
-  ["L28d", (v) => sumLines(v, "L16d","L17d","L18d","L19d","L20d","L21d","L22d","L23d","L24d","L25d","L27d") - val(v, "L26d")],
   // Schedule M-1
+  ["M1_3b", (v) => val(v, "D_MEALS_NONDED")],
   ["M1_4", (v) => sumLines(v, "M1_1","M1_2","M1_3a","M1_3b","M1_3c")],
   ["M1_7", (v) => sumLines(v, "M1_5a","M1_5b","M1_6a","M1_6b")],
   ["M1_8", (v) => val(v, "M1_4") - val(v, "M1_7")],
@@ -339,7 +351,9 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Column (a) AAA
   ["M2_2a", (v) => Math.max(0, val(v, "21"))],
   ["M2_4a", (v) => Math.max(0, -val(v, "21"))],
+  ["M2_5a", (v) => sumLines(v, "K12a","K11","K16c")],
   ["M2_6a", (v) => val(v, "M2_1a") + val(v, "M2_2a") + val(v, "M2_3a") - val(v, "M2_4a") - val(v, "M2_5a")],
+  ["M2_7a", (v) => val(v, "K16d")],
   ["M2_8a", (v) => val(v, "M2_6a") - val(v, "M2_7a")],
   // Column (b) OAA
   ["M2_6b", (v) => val(v, "M2_1b") + val(v, "M2_2b") + val(v, "M2_3b") - val(v, "M2_4b") - val(v, "M2_5b")],
@@ -350,6 +364,11 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Column (d) Accu E&P
   ["M2_6d", (v) => val(v, "M2_1d") + val(v, "M2_2d") + val(v, "M2_3d") - val(v, "M2_4d") - val(v, "M2_5d")],
   ["M2_8d", (v) => val(v, "M2_6d") - val(v, "M2_7d")],
+  // Schedule L — Retained earnings & total (depend on M-2)
+  ["L24a", (v) => sumLines(v, "M2_1a","M2_1b","M2_1c","M2_1d")],
+  ["L24d", (v) => sumLines(v, "M2_8a","M2_8b","M2_8c","M2_8d")],
+  ["L27a", (v) => sumLines(v, "L16a","L17a","L18a","L19a","L20a","L21a","L22a","L23a","L24a","L25a") - val(v, "L26a")],
+  ["L27d", (v) => sumLines(v, "L16d","L17d","L18d","L19d","L20d","L21d","L22d","L23d","L24d","L25d") - val(v, "L26d")],
   // Schedule F — Farm Income
   ["F1c", (v) => val(v, "F1a") - val(v, "F1b")],
   ["F9", (v) => sumLines(v, "F1c","F2","F3","F4","F5","F6","F7","F8")],
@@ -378,7 +397,8 @@ const FORMULAS_GA600S: [string, (v: Record<string, number>) => number][] = [
   ["S1_1", (v) => val(v, "S5_7")],
   ["S1_3", (v) => val(v, "S1_1") + val(v, "S1_2")],
   ["S1_6", (v) => val(v, "S1_3") - val(v, "S1_4") - val(v, "S1_5")],
-  ["S1_7", (v) => Math.max(0, val(v, "S1_6")) * 0.0539],
+  // Income tax only applies when PTET is elected; most S-Corps owe $0
+  ["S1_7", (v) => val(v, "GA_PTET") > 0 ? Math.max(0, val(v, "S1_6")) * 0.0539 : 0],
   // Schedule 3
   ["S3_4", (v) => sumLines(v, "S3_1","S3_2","S3_3")],
   ["S3_6", (v) => val(v, "S3_4") * val(v, "S3_5")],
@@ -431,7 +451,7 @@ function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue
   for (const [lineNum, fn] of formulas) {
     const result = fn(numValues);
     numValues[lineNum] = result; // update for downstream formulas
-    computedValues[lineNum] = result.toFixed(2);
+    computedValues[lineNum] = Math.round(result).toString();
   }
 
   // Return updated field values with computed results applied
@@ -569,12 +589,9 @@ export default function FormEditor() {
 
   const isStateReturn = returnData?.form_code === "GA-600S";
 
-  // If user navigates directly to a state return, redirect to the federal return's State tab
-  useEffect(() => {
-    if (isStateReturn && returnData?.federal_return_id) {
-      navigate(`/tax-returns/${returnData.federal_return_id}/editor`, { replace: true });
-    }
-  }, [isStateReturn, returnData?.federal_return_id]);
+  // State returns are hidden from the Return Manager list, so users
+  // access them only via the federal return's State tab.  No redirect
+  // needed — let the editor load GA_SECTION_TABS normally.
 
   const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
   const sectionTabs = useMemo(() => {
@@ -2018,6 +2035,7 @@ const DEDUCTION_LINE_RANGE = ["7", "8", "9", "10", "11", "12", "13", "14", "15",
 /** Computed summary lines shown after deductions. */
 const DEDUCTION_SUMMARY_LINES = ["19", "20", "21"];
 const FREE_FORM_DEDUCTION_PAIRS = ["D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6"];
+const MEALS_FIELDS = ["D_MEALS_50", "D_MEALS_DOT", "D_ENTERTAINMENT", "D_MEALS_DED", "D_MEALS_NONDED"];
 /** Tax & Payments section shown at the bottom. */
 const TAX_SECTION_CODE = "page1_tax";
 
@@ -2047,9 +2065,10 @@ function IncomeDeductionsSection({
   const pyLines = priorYear?.line_values ?? {};
   const hasPY = priorYear !== null;
 
-  // Separate deduction fields into: named (label + amount), free-form pairs, summary
-  const { namedDeductions, freeFormPairs } = useMemo(() => {
+  // Separate deduction fields into: named (label + amount), meals group, free-form pairs, summary
+  const { namedDeductions, mealsGroup, freeFormPairs } = useMemo(() => {
     const named: FieldValue[] = [];
+    const meals: FieldValue[] = [];
     const freeDescs = new Map<string, FieldValue>();  // e.g. D_FREE1_DESC -> field
     const freeAmts = new Map<string, FieldValue>();   // e.g. D_FREE1 -> field
     for (const f of deductionFields) {
@@ -2058,16 +2077,20 @@ function IncomeDeductionsSection({
         freeDescs.set(f.line_number.replace("_DESC", ""), f);
       } else if (FREE_FORM_DEDUCTION_PAIRS.includes(f.line_number)) {
         freeAmts.set(f.line_number, f);
+      } else if (MEALS_FIELDS.includes(f.line_number)) {
+        meals.push(f);
       } else {
         named.push(f);
       }
     }
     named.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
+    // Sort meals in seed order: 50%, DOT 80%, Entertainment
+    meals.sort((a, b) => MEALS_FIELDS.indexOf(a.line_number) - MEALS_FIELDS.indexOf(b.line_number));
     const pairs = FREE_FORM_DEDUCTION_PAIRS.map((ln) => ({
       desc: freeDescs.get(ln),
       amt: freeAmts.get(ln),
     })).filter((p) => p.desc && p.amt) as { desc: FieldValue; amt: FieldValue }[];
-    return { namedDeductions: named, freeFormPairs: pairs };
+    return { namedDeductions: named, mealsGroup: meals, freeFormPairs: pairs };
   }, [deductionFields]);
 
   // Balance columns: left gets enough named to match right (remaining named + free-form)
@@ -2158,11 +2181,9 @@ function IncomeDeductionsSection({
             {freeFormPairs.map(({ desc, amt }) => (
               <div key={amt.id} className="flex items-center gap-2 px-3 py-1">
                 <div className="flex-1 min-w-0">
-                  <input
-                    type="text"
+                  <TextInput
                     value={desc.value || ""}
-                    onChange={(e) => onChange(desc.form_line, e.target.value)}
-                    className="w-full rounded-md border border-input-border bg-input px-2 py-0.5 text-xs text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus-ring"
+                    onChange={(v) => onChange(desc.form_line, v)}
                     placeholder="Description"
                   />
                 </div>
@@ -2176,6 +2197,27 @@ function IncomeDeductionsSection({
             ))}
           </div>
         </div>
+
+        {/* Meals & Entertainment grouped sub-section */}
+        {mealsGroup.length > 0 && (
+          <div className="border-t border-border">
+            <div className="px-4 py-1 text-xs font-bold uppercase tracking-wider text-tx-secondary bg-surface-alt/50">
+              Meals &amp; Entertainment
+            </div>
+            <div className="divide-y divide-border-subtle">
+              {mealsGroup.map((field) => (
+                <div key={field.id} className="flex items-center gap-2 px-3 py-1">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-tx truncate">{field.label}</span>
+                  </div>
+                  <div className="w-28 shrink-0">
+                    <FieldInput field={field} onChange={onChange} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Summary lines: Other Deductions, Total Deductions, Ordinary Business Income */}
         <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
@@ -4846,7 +4888,7 @@ function schedLGroup(lineNum: string): string {
   if (lineNum === "L13b" || lineNum === "L13e") return "L13_amort";
   // Total lines
   if (lineNum === "L15a" || lineNum === "L15d") return "L15";
-  if (lineNum === "L28a" || lineNum === "L28d") return "L28";
+  if (lineNum === "L27a" || lineNum === "L27d") return "L27";
   // Standard: strip trailing letter → e.g. "L16a" → "L16", "L16d" → "L16"
   return lineNum.replace(/[a-e]$/, "");
 }
@@ -4930,7 +4972,7 @@ function ScheduleLSection({
           const isTotalAssets = lineNum === "L15";
           const isFirstLiability = lineNum === "L16";
           const isFirstEquity = lineNum === "L22";
-          const isTotalLE = lineNum === "L28";
+          const isTotalLE = lineNum === "L27";
 
           return (
             <div key={i}>
@@ -5289,6 +5331,26 @@ function FieldRowWithSub({
   );
 }
 
+/**
+ * Arrow key navigation: move focus to next/previous input field.
+ * Prevents default on ArrowDown/ArrowUp so number inputs don't increment.
+ */
+function handleArrowNav(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const inputs = Array.from(
+    document.querySelectorAll<HTMLInputElement>(
+      'input[type="text"]:not([readonly]), select:not([disabled])',
+    ),
+  );
+  const idx = inputs.indexOf(e.currentTarget);
+  if (idx < 0) return;
+  const next = e.key === "ArrowDown" ? idx + 1 : idx - 1;
+  if (next >= 0 && next < inputs.length) {
+    inputs[next].focus();
+  }
+}
+
 function FieldInput({
   field,
   onChange,
@@ -5362,10 +5424,12 @@ function TextInput({
   value,
   readOnly,
   onChange,
+  placeholder,
 }: {
   value: string;
   readOnly?: boolean;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   const [local, setLocal] = useState(value);
   useEffect(() => {
@@ -5376,10 +5440,12 @@ function TextInput({
       type="text"
       value={local}
       readOnly={readOnly}
+      placeholder={placeholder}
       onChange={(e) => setLocal(e.target.value)}
       onBlur={() => {
         if (local !== value) onChange(local);
       }}
+      onKeyDown={handleArrowNav}
       className={`w-full rounded-md border border-input-border px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
         readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
       }`}
@@ -5410,6 +5476,7 @@ function IntegerInput({
       onBlur={() => {
         if (local !== value) onValueChange(local);
       }}
+      onKeyDown={handleArrowNav}
       className={`w-full rounded-md border border-input-border px-2 py-1 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
         readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
       }`}
@@ -5441,6 +5508,7 @@ function PercentageInput({
         onBlur={() => {
           if (local !== value) onValueChange(local);
         }}
+        onKeyDown={handleArrowNav}
         className={`w-full rounded-md border border-input-border px-2 py-1 pr-7 text-right text-sm text-tx tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring ${
           readOnly ? "bg-surface-alt text-tx-secondary cursor-default" : "bg-input"
         }`}
@@ -5863,7 +5931,7 @@ const PY_COMPARE_GROUPS: { title: string; lines: { ln: string; label: string }[]
       { ln: "L15d", label: "Accounts payable" },
       { ln: "L20d", label: "Loans from shareholders" },
       { ln: "L24d", label: "Retained earnings" },
-      { ln: "L28d", label: "Total liabilities and shareholders' equity" },
+      { ln: "L27d", label: "Total liabilities and shareholders' equity" },
     ],
   },
   {

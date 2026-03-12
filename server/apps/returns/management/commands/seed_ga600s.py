@@ -36,6 +36,7 @@ SECTIONS = [
         "Schedule 1 — Computation of GA Taxable Income and Tax",
         10,
         [
+            ("GA_PTET", "PTET Election (Pass-Through Entity Tax)", B, "", False, 5, DR),
             ("S1_1", "Georgia Net Income (from Schedule 5, Line 7)", C, "GA600S_S1_1", True, 10, CR),
             ("S1_2", "Additional Georgia Taxable Income", C, "GA600S_S1_2", False, 20, CR),
             ("S1_3", "Total Income (Add Lines 1 and 2)", C, "", True, 30, CR),

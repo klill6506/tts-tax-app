@@ -987,7 +987,9 @@ class TestComputeOverride:
         )
         # Create remaining computed lines with empty values so compute doesn't crash
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L15a", "L15d", "L28a", "L28d",
+                    "A6", "A8", "K1", "K16c", "K18", "L3a", "L3d", "L15a", "L15d",
+                    "L24a", "L24d", "L27a", "L27d",
+                    "D_MEALS_DED", "D_MEALS_NONDED",
                     "M1_3b", "M1_4", "M1_7", "M1_8",
                     "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
                     "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:
@@ -1022,7 +1024,9 @@ class TestComputeOverride:
         )
         # Create remaining computed lines
         for ln in ["2", "3", "6", "20", "21", "22c", "23d", "25", "26",
-                    "A6", "A8", "K1", "K18", "L3a", "L3d", "L15a", "L15d", "L28a", "L28d",
+                    "A6", "A8", "K1", "K16c", "K18", "L3a", "L3d", "L15a", "L15d",
+                    "L24a", "L24d", "L27a", "L27d",
+                    "D_MEALS_DED", "D_MEALS_NONDED",
                     "M1_3b", "M1_4", "M1_7", "M1_8",
                     "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
                     "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:

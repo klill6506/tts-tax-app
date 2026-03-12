@@ -109,7 +109,7 @@ def _populate_boy_from_prior_year(tax_return):
                 break
 
         if amount is not None and amount != 0:
-            fv.value = str(Decimal(str(amount)).quantize(Decimal("0.01")))
+            fv.value = str(Decimal(str(amount)).quantize(Decimal("1")))
             fv.save(update_fields=["value", "updated_at"])
             updated += 1
 
@@ -157,7 +157,7 @@ def _populate_m2_boy_from_prior_year(tax_return):
                 continue
             if m2_1_fv.is_overridden:
                 continue
-            m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
+            m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("1")))
             m2_1_fv.save(update_fields=["value", "updated_at"])
             count += 1
         if count:
@@ -181,7 +181,7 @@ def _populate_m2_boy_from_prior_year(tax_return):
         if m2_1_fv.is_overridden:
             return 0
 
-        m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("0.01")))
+        m2_1_fv.value = str(Decimal(str(ending_balance)).quantize(Decimal("1")))
         m2_1_fv.save(update_fields=["value", "updated_at"])
         compute_return(tax_return)
         return 1
@@ -435,7 +435,7 @@ def _prepopulate_standard_deductions(tax_return):
             OtherDeduction(
                 tax_return=tax_return,
                 description=cat,
-                amount=Decimal(str(py_amount)).quantize(Decimal("0.01")),
+                amount=Decimal(str(py_amount)).quantize(Decimal("1")),
                 category=cat,
                 sort_order=(idx + 1) * 10,
                 source="standard",
@@ -481,7 +481,7 @@ def _rollup_other_deductions(tax_return):
             tax_return=tax_return,
             form_line=fl,
         )
-        fv.value = str(other_total.quantize(Decimal("0.01")))
+        fv.value = str(other_total.quantize(Decimal("1")))
         fv.is_overridden = False
         fv.save(update_fields=["value", "is_overridden", "updated_at"])
     except FormLine.DoesNotExist:
@@ -520,7 +520,7 @@ def _write_schedule_k_line(tax_return, mapping_key, total):
             form_line=fl,
         )
         if not fv.is_overridden:
-            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.value = str(total.quantize(Decimal("1")))
             fv.save(update_fields=["value", "updated_at"])
     except FormLine.DoesNotExist:
         pass
@@ -586,7 +586,7 @@ def _write_line_value(tax_return, line_number, total):
             form_line=fl,
         )
         if not fv.is_overridden:
-            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.value = str(total.quantize(Decimal("1")))
             fv.save(update_fields=["value", "updated_at"])
     except FormLine.DoesNotExist:
         pass
@@ -1468,7 +1468,7 @@ class TaxReturnViewSet(
                 tax_return=tax_return,
                 form_line=fl,
             )
-            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.value = str(total.quantize(Decimal("1")))
             fv.is_overridden = False
             fv.save(update_fields=["value", "is_overridden", "updated_at"])
         except FormLine.DoesNotExist:
@@ -1503,7 +1503,7 @@ class TaxReturnViewSet(
                 tax_return=tax_return,
                 form_line=fl,
             )
-            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.value = str(total.quantize(Decimal("1")))
             fv.is_overridden = False
             fv.save(update_fields=["value", "is_overridden", "updated_at"])
         except FormLine.DoesNotExist:
@@ -1538,7 +1538,7 @@ class TaxReturnViewSet(
                 tax_return=tax_return,
                 form_line=fl,
             )
-            fv.value = str(total.quantize(Decimal("0.01")))
+            fv.value = str(total.quantize(Decimal("1")))
             fv.is_overridden = False
             fv.save(update_fields=["value", "is_overridden", "updated_at"])
         except FormLine.DoesNotExist:
@@ -1674,7 +1674,7 @@ class TaxReturnViewSet(
                     tax_return=tax_return,
                     form_line=fl,
                 )
-                fv.value = str(amount.quantize(Decimal("0.01")))
+                fv.value = str(amount.quantize(Decimal("1")))
                 fv.is_overridden = False
                 fv.updated_by = request.user
                 fv.save()
@@ -1708,13 +1708,13 @@ class TaxReturnViewSet(
             # Try to match to an existing standard deduction
             match = existing_standard.get(desc.lower().strip())
             if match:
-                match.amount = match.amount + amt.quantize(Decimal("0.01"))
+                match.amount = match.amount + amt.quantize(Decimal("1"))
                 match.save(update_fields=["amount", "updated_at"])
             else:
                 OtherDeduction.objects.create(
                     tax_return=tax_return,
                     description=desc,
-                    amount=amt.quantize(Decimal("0.01")),
+                    amount=amt.quantize(Decimal("1")),
                     source="tb_import",
                     sort_order=1000 + idx,
                 )

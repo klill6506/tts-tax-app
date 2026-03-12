@@ -1,9 +1,12 @@
 """
 Invoice PDF generator.
 
-Renders a professional invoice matching the Lacerte format:
-- Two copies on one page (firm copy + client copy) separated by a line
-- Firm header, client info, forms list, fee summary
+Renders a professional single-page invoice:
+- Firm header (name, address, phone)
+- Client code + date
+- Client/entity address block
+- Federal and state forms lists
+- Fee summary with amount due
 
 Usage:
     from apps.tts_forms.invoice import render_invoice
@@ -26,13 +29,13 @@ USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 # Fonts
 HEADER_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica"
-MONO_FONT = "Courier"
+FIRM_NAME_SIZE = 14
 HEADER_SIZE = 11
-SUBHEADER_SIZE = 9
-BODY_SIZE = 9
-SMALL_SIZE = 8
+BODY_SIZE = 10
+SMALL_SIZE = 9
+INDENT = 20  # indent for form list items
 
-LINE_HEIGHT = 12
+LINE_HEIGHT = 14
 
 
 def _get_firm_info(tax_return) -> dict[str, str]:
@@ -94,17 +97,17 @@ def _get_field_value(tax_return, line_number: str) -> str:
 
 
 def _format_currency(value: str) -> str:
-    """Format a value string as currency."""
+    """Format a value string as whole-dollar currency (no dollar sign, no decimals)."""
     if not value:
-        return "$0.00"
+        return "0"
     clean = value.replace(",", "").replace("$", "").strip()
     try:
         d = Decimal(clean)
         if d < 0:
-            return f"(${abs(d):,.2f})"
-        return f"${d:,.2f}"
+            return f"({abs(d):,.0f})"
+        return f"{d:,.0f}"
     except InvalidOperation:
-        return "$0.00"
+        return "0"
 
 
 def _to_decimal(value: str) -> Decimal:
@@ -184,146 +187,11 @@ def _get_forms_list(tax_return) -> tuple[list[str], list[str]]:
     return federal_forms, state_forms
 
 
-def _draw_invoice_copy(
-    c: canvas.Canvas,
-    y_top: float,
-    y_bottom: float,
-    firm_info: dict,
-    client_info: dict,
-    federal_forms: list[str],
-    state_forms: list[str],
-    fee_data: dict,
-    today_str: str,
-) -> None:
-    """Draw one invoice copy within a vertical band."""
-    y = y_top
-    right_x = PAGE_WIDTH - RIGHT_MARGIN
-
-    # --- Firm header ---
-    if firm_info["firm_name"]:
-        c.setFont(HEADER_FONT, HEADER_SIZE)
-        c.drawString(LEFT_MARGIN, y, firm_info["firm_name"])
-        y -= LINE_HEIGHT
-    if firm_info["firm_address"]:
-        c.setFont(BODY_FONT, BODY_SIZE)
-        c.drawString(LEFT_MARGIN, y, firm_info["firm_address"])
-        y -= LINE_HEIGHT
-    if firm_info["firm_city_state_zip"]:
-        c.drawString(LEFT_MARGIN, y, firm_info["firm_city_state_zip"])
-        y -= LINE_HEIGHT
-    if firm_info["firm_phone"]:
-        c.drawString(LEFT_MARGIN, y, firm_info["firm_phone"])
-        y -= LINE_HEIGHT
-
-    y -= LINE_HEIGHT * 0.5
-
-    # --- Client code + date (right side) ---
-    c.setFont(BODY_FONT, BODY_SIZE)
-    c.drawString(LEFT_MARGIN, y, f"Client: {client_info['client_code']}")
-    c.drawRightString(right_x, y, f"Date: {today_str}")
-    y -= LINE_HEIGHT * 1.5
-
-    # --- Client name and address ---
-    c.setFont(BODY_FONT, BODY_SIZE)
-    c.drawString(LEFT_MARGIN, y, client_info["entity_name"])
-    y -= LINE_HEIGHT
-    if client_info["address"]:
-        c.drawString(LEFT_MARGIN, y, client_info["address"])
-        y -= LINE_HEIGHT
-    if client_info["city_state_zip"]:
-        c.drawString(LEFT_MARGIN, y, client_info["city_state_zip"])
-        y -= LINE_HEIGHT
-
-    y -= LINE_HEIGHT * 0.5
-
-    # --- Separator ---
-    c.setLineWidth(0.5)
-    c.line(LEFT_MARGIN, y, right_x, y)
-    y -= LINE_HEIGHT
-
-    # --- Federal Forms ---
-    if federal_forms:
-        c.setFont(HEADER_FONT, SUBHEADER_SIZE)
-        c.drawString(LEFT_MARGIN, y, "Federal Forms Prepared")
-        y -= LINE_HEIGHT
-        c.setFont(BODY_FONT, SMALL_SIZE)
-        for form_name in federal_forms:
-            if y < y_bottom + LINE_HEIGHT * 4:
-                break
-            c.drawString(LEFT_MARGIN + 10, y, form_name)
-            y -= LINE_HEIGHT * 0.9
-
-    y -= LINE_HEIGHT * 0.3
-
-    # --- State Forms ---
-    if state_forms:
-        c.setFont(HEADER_FONT, SUBHEADER_SIZE)
-        c.drawString(LEFT_MARGIN, y, "Georgia Forms Prepared")
-        y -= LINE_HEIGHT
-        c.setFont(BODY_FONT, SMALL_SIZE)
-        for form_name in state_forms:
-            if y < y_bottom + LINE_HEIGHT * 4:
-                break
-            c.drawString(LEFT_MARGIN + 10, y, form_name)
-            y -= LINE_HEIGHT * 0.9
-
-    y -= LINE_HEIGHT * 0.3
-
-    # --- Separator ---
-    c.setLineWidth(0.5)
-    c.line(LEFT_MARGIN, y, right_x, y)
-    y -= LINE_HEIGHT
-
-    # --- Fee Summary ---
-    c.setFont(HEADER_FONT, SUBHEADER_SIZE)
-    c.drawString(LEFT_MARGIN, y, "Fee Summary")
-    y -= LINE_HEIGHT
-
-    c.setFont(BODY_FONT, BODY_SIZE)
-    fee_x = right_x - 80  # Amount column
-
-    # Preparation fee
-    c.drawString(LEFT_MARGIN + 10, y, "Preparation Fee")
-    c.drawRightString(right_x, y, _format_currency(fee_data.get("prep_fee", "")))
-    y -= LINE_HEIGHT
-
-    # Additional fee 2
-    if fee_data.get("fee_2") and _to_decimal(fee_data["fee_2"]) != 0:
-        desc = fee_data.get("fee_2_desc", "Additional Fee")
-        c.drawString(LEFT_MARGIN + 10, y, desc)
-        c.drawRightString(right_x, y, _format_currency(fee_data["fee_2"]))
-        y -= LINE_HEIGHT
-
-    # Additional fee 3
-    if fee_data.get("fee_3") and _to_decimal(fee_data["fee_3"]) != 0:
-        desc = fee_data.get("fee_3_desc", "Additional Fee")
-        c.drawString(LEFT_MARGIN + 10, y, desc)
-        c.drawRightString(right_x, y, _format_currency(fee_data["fee_3"]))
-        y -= LINE_HEIGHT
-
-    # Memo
-    if fee_data.get("memo"):
-        y -= LINE_HEIGHT * 0.3
-        c.setFont(BODY_FONT, SMALL_SIZE)
-        c.drawString(LEFT_MARGIN + 10, y, f"Memo: {fee_data['memo']}")
-        y -= LINE_HEIGHT
-
-    # Total line
-    y -= 2
-    c.setLineWidth(0.5)
-    c.line(right_x - 100, y, right_x, y)
-    y -= LINE_HEIGHT
-
-    c.setFont(HEADER_FONT, BODY_SIZE)
-    c.drawString(LEFT_MARGIN + 10, y, "Amount Due")
-    c.drawRightString(right_x, y, _format_currency(fee_data.get("total", "")))
-
-
 def render_invoice(tax_return) -> bytes:
     """
-    Render an invoice PDF for a tax return.
+    Render a single-page invoice PDF for a tax return.
 
-    Two copies on one page (firm copy + client copy) separated by a dashed line.
+    Layout: firm header, client info, forms lists, fee summary.
     """
     firm_info = _get_firm_info(tax_return)
     client_info = _get_client_info(tax_return)
@@ -350,49 +218,144 @@ def render_invoice(tax_return) -> bytes:
         fee_data["total"] = str(total)
 
     today_str = date.today().strftime("%m/%d/%Y")
+    right_x = PAGE_WIDTH - RIGHT_MARGIN
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
 
-    # Page midpoint
-    mid_y = PAGE_HEIGHT / 2
+    y = PAGE_HEIGHT - 0.75 * inch
 
-    # --- Top copy (Firm Copy) ---
-    _draw_invoice_copy(
-        c,
-        y_top=PAGE_HEIGHT - 0.5 * inch,
-        y_bottom=mid_y + 0.15 * inch,
-        firm_info=firm_info,
-        client_info=client_info,
-        federal_forms=federal_forms,
-        state_forms=state_forms,
-        fee_data=fee_data,
-        today_str=today_str,
-    )
+    # --- Firm name (bold, larger) ---
+    if firm_info["firm_name"]:
+        c.setFont(HEADER_FONT, FIRM_NAME_SIZE)
+        c.drawString(LEFT_MARGIN, y, firm_info["firm_name"])
+        y -= LINE_HEIGHT + 2
 
-    # --- Dashed separator line ---
-    c.setLineWidth(0.75)
-    c.setDash(6, 3)
-    c.line(LEFT_MARGIN, mid_y, PAGE_WIDTH - RIGHT_MARGIN, mid_y)
-    c.setDash()  # Reset
+    # --- Firm address ---
+    c.setFont(BODY_FONT, BODY_SIZE)
+    if firm_info["firm_address"]:
+        c.drawString(LEFT_MARGIN, y, firm_info["firm_address"])
+        y -= LINE_HEIGHT
 
-    # Label the copies
-    c.setFont(BODY_FONT, 7)
-    c.drawRightString(PAGE_WIDTH - RIGHT_MARGIN, mid_y + 4, "FIRM COPY")
-    c.drawRightString(PAGE_WIDTH - RIGHT_MARGIN, mid_y - 10, "CLIENT COPY")
+    # --- Firm city, state, zip ---
+    if firm_info["firm_city_state_zip"]:
+        c.drawString(LEFT_MARGIN, y, firm_info["firm_city_state_zip"])
+        y -= LINE_HEIGHT
 
-    # --- Bottom copy (Client Copy) ---
-    _draw_invoice_copy(
-        c,
-        y_top=mid_y - 0.3 * inch,
-        y_bottom=0.4 * inch,
-        firm_info=firm_info,
-        client_info=client_info,
-        federal_forms=federal_forms,
-        state_forms=state_forms,
-        fee_data=fee_data,
-        today_str=today_str,
-    )
+    # --- Firm phone ---
+    if firm_info["firm_phone"]:
+        c.drawString(LEFT_MARGIN, y, firm_info["firm_phone"])
+        y -= LINE_HEIGHT
+
+    # --- Blank space ---
+    y -= LINE_HEIGHT
+
+    # --- Client code (left-aligned) ---
+    c.setFont(BODY_FONT, BODY_SIZE)
+    c.drawString(LEFT_MARGIN, y, f"Client {client_info['client_code']}")
+    y -= LINE_HEIGHT
+
+    # --- Current date (left-aligned) ---
+    c.drawString(LEFT_MARGIN, y, today_str)
+    y -= LINE_HEIGHT
+
+    # --- Blank space ---
+    y -= LINE_HEIGHT
+
+    # --- Client/entity name (bold) ---
+    c.setFont(HEADER_FONT, BODY_SIZE)
+    c.drawString(LEFT_MARGIN, y, client_info["entity_name"])
+    y -= LINE_HEIGHT
+
+    # --- Client address ---
+    c.setFont(BODY_FONT, BODY_SIZE)
+    if client_info["address"]:
+        c.drawString(LEFT_MARGIN, y, client_info["address"])
+        y -= LINE_HEIGHT
+
+    # --- Client city, state, zip ---
+    if client_info["city_state_zip"]:
+        c.drawString(LEFT_MARGIN, y, client_info["city_state_zip"])
+        y -= LINE_HEIGHT
+
+    # --- Blank space ---
+    y -= LINE_HEIGHT
+
+    # --- FEDERAL FORMS header ---
+    if federal_forms:
+        c.setFont(HEADER_FONT, HEADER_SIZE)
+        c.drawString(LEFT_MARGIN, y, "FEDERAL FORMS")
+        y -= LINE_HEIGHT
+
+        # List of federal forms (indented)
+        c.setFont(BODY_FONT, SMALL_SIZE)
+        for form_name in federal_forms:
+            c.drawString(LEFT_MARGIN + INDENT, y, form_name)
+            y -= LINE_HEIGHT
+
+    # --- Blank space ---
+    y -= LINE_HEIGHT * 0.5
+
+    # --- GEORGIA FORMS header (only if state forms exist) ---
+    if state_forms:
+        c.setFont(HEADER_FONT, HEADER_SIZE)
+        c.drawString(LEFT_MARGIN, y, "GEORGIA FORMS")
+        y -= LINE_HEIGHT
+
+        # List of state forms (indented)
+        c.setFont(BODY_FONT, SMALL_SIZE)
+        for form_name in state_forms:
+            c.drawString(LEFT_MARGIN + INDENT, y, form_name)
+            y -= LINE_HEIGHT
+
+        # Blank space after state forms
+        y -= LINE_HEIGHT * 0.5
+
+    # --- Blank space ---
+    y -= LINE_HEIGHT * 0.5
+
+    # --- FEE SUMMARY header ---
+    c.setFont(HEADER_FONT, HEADER_SIZE)
+    c.drawString(LEFT_MARGIN, y, "FEE SUMMARY")
+    y -= LINE_HEIGHT + 2
+
+    # --- Preparation Fee ---
+    c.setFont(BODY_FONT, BODY_SIZE)
+    c.drawString(LEFT_MARGIN + INDENT, y, "Preparation Fee")
+    c.drawRightString(right_x, y, _format_currency(fee_data.get("prep_fee", "")))
+    y -= LINE_HEIGHT
+
+    # --- Optional Fee 2 ---
+    if fee_data.get("fee_2") and _to_decimal(fee_data["fee_2"]) != 0:
+        desc = fee_data.get("fee_2_desc", "Additional Fee")
+        c.drawString(LEFT_MARGIN + INDENT, y, desc)
+        c.drawRightString(right_x, y, _format_currency(fee_data["fee_2"]))
+        y -= LINE_HEIGHT
+
+    # --- Optional Fee 3 ---
+    if fee_data.get("fee_3") and _to_decimal(fee_data["fee_3"]) != 0:
+        desc = fee_data.get("fee_3_desc", "Additional Fee")
+        c.drawString(LEFT_MARGIN + INDENT, y, desc)
+        c.drawRightString(right_x, y, _format_currency(fee_data["fee_3"]))
+        y -= LINE_HEIGHT
+
+    # --- Memo (if present) ---
+    if fee_data.get("memo"):
+        y -= 2
+        c.setFont(BODY_FONT, SMALL_SIZE)
+        c.drawString(LEFT_MARGIN + INDENT, y, f"Memo: {fee_data['memo']}")
+        y -= LINE_HEIGHT
+
+    # --- Thin separator line ---
+    y -= 4
+    c.setLineWidth(0.5)
+    c.line(right_x - 120, y, right_x, y)
+    y -= LINE_HEIGHT
+
+    # --- Amount Due (bold) ---
+    c.setFont(HEADER_FONT, BODY_SIZE)
+    c.drawString(LEFT_MARGIN + INDENT, y, "Amount Due")
+    c.drawRightString(right_x, y, _format_currency(fee_data.get("total", "")))
 
     c.showPage()
     c.save()

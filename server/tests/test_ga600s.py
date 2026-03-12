@@ -117,7 +117,7 @@ class TestGA600SFormulas:
         """Run all GA 600S formulas on given initial values."""
         values = {k: v for k, v in initial_values.items()}
         for line_number, formula_fn in FORMULAS_GA600S:
-            values[line_number] = formula_fn(values).quantize(Decimal("0.01"))
+            values[line_number] = formula_fn(values).quantize(Decimal("1"))
         return values
 
     def test_basic_income_tax_flow(self):

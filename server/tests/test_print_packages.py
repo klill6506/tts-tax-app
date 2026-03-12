@@ -67,9 +67,9 @@ def seeded(db):
 
     cmd = SeedCommand()
     cmd.stdout = open("/dev/null", "w")
-    cmd.handle()
+    cmd.handle(year=2025)
     cmd.stdout.close()
-    return FormDefinition.objects.get(code="1120-S")
+    return FormDefinition.objects.get(code="1120-S", tax_year_applicable=2025)
 
 
 @pytest.fixture
@@ -132,7 +132,7 @@ class TestInvoice:
         assert isinstance(pdf_bytes, bytes)
         assert pdf_bytes[:5] == b"%PDF-"
         reader = PdfReader(io.BytesIO(pdf_bytes))
-        assert len(reader.pages) == 1  # Two copies on one page
+        assert len(reader.pages) == 1  # Single-page invoice
 
     def test_invoice_with_additional_fees(self, tax_return, preparer_info):
         from apps.tts_forms.invoice import render_invoice

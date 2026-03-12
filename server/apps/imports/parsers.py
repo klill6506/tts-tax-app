@@ -30,7 +30,7 @@ def _to_decimal(value) -> Decimal:
     if value is None or str(value).strip() == "":
         return Decimal("0.00")
     try:
-        return Decimal(str(value).replace(",", "").strip()).quantize(Decimal("0.01"))
+        return Decimal(str(value).replace(",", "").strip()).quantize(Decimal("1"))
     except (InvalidOperation, ValueError):
         return Decimal("0.00")
 
