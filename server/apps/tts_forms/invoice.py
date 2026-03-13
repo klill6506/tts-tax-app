@@ -60,6 +60,8 @@ BAND_COLOR = colors.Color(0.82, 0.82, 0.82)
 
 def _draw_frame(c: canvas.Canvas):
     """Draw the Lacerte-style decorative frame: bold outer border + gray band."""
+    c.saveState()
+
     # Gray filled rectangle
     c.setFillColor(BAND_COLOR)
     c.setStrokeColor(colors.black)
@@ -91,6 +93,8 @@ def _draw_frame(c: canvas.Canvas):
         PAGE_HEIGHT - 2 * OUTER_MARGIN,
         fill=0, stroke=1,
     )
+
+    c.restoreState()
 
 
 def _get_firm_info(tax_return) -> dict[str, str]:
@@ -284,8 +288,12 @@ def render_invoice(tax_return) -> bytes:
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
 
-    # Draw the decorative frame
+    # Draw the decorative frame FIRST (background layer)
     _draw_frame(c)
+
+    # Explicitly reset fill color to black for text drawing
+    # (_draw_frame's restoreState should handle this, but be defensive)
+    c.setFillColor(colors.black)
 
     y = PAGE_HEIGHT - OUTER_MARGIN - BAND_WIDTH - INNER_INSET
 

@@ -46,11 +46,23 @@ SECTIONS = [
             ("S1_7", "Income Tax (5.39% x Line 6)", C, "", True, 70, DR),
         ],
     ),
+    # ------ SCHEDULE 2: GA TAXABLE NET INCOME (PTET ONLY) ------
+    (
+        "sched_2",
+        "Schedule 2 — Computation of Georgia Taxable Net Income (PTET)",
+        20,
+        [
+            ("S2_1", "Georgia Net Income (from Schedule 5, Line 7)", C, "", True, 10, CR),
+            ("S2_2", "Georgia Net Operating Loss Deduction", C, "GA600S_S2_2", False, 20, DR),
+            ("S2_3", "Georgia Taxable Net Income (Line 1 less Line 2)", C, "", True, 30, CR),
+            ("S2_4", "Tax at entity level (5.39% x Line 3)", C, "", True, 40, DR),
+        ],
+    ),
     # ------ SCHEDULE 3: NET WORTH TAX (Page 2) ------
     (
         "sched_3",
         "Schedule 3 — Computation of Net Worth Tax",
-        20,
+        30,
         [
             ("S3_1", "Total Capital stock issued", C, "GA600S_S3_1", False, 10, CR),
             ("S3_2", "Paid in or Capital surplus", C, "GA600S_S3_2", False, 20, CR),
@@ -66,7 +78,7 @@ SECTIONS = [
     (
         "sched_4",
         "Schedule 4 — Computation of Tax Due or Overpayment",
-        30,
+        40,
         [
             ("S4_1a", "Total Tax — Income Tax", C, "", True, 10, DR),
             ("S4_1b", "Total Tax — Net Worth Tax", C, "", True, 11, DR),
@@ -107,7 +119,7 @@ SECTIONS = [
     (
         "sched_5",
         "Schedule 5 — Computation of Georgia Net Income",
-        40,
+        50,
         [
             ("S5_1", "Total Income for Georgia purposes (Schedule 6, Line 11)", C, "", True, 10, CR),
             ("S5_2", "Income allocated everywhere (Attach Schedule)", C, "GA600S_S5_2", False, 20, DR),
@@ -122,7 +134,7 @@ SECTIONS = [
     (
         "sched_6",
         "Schedule 6 — Computation of Total Income for GA Purposes",
-        50,
+        60,
         [
             ("S6_1", "Ordinary income (loss) per Federal return", C, "GA600S_S6_1", False, 10, CR),
             ("S6_2", "Net income (loss) from rental real estate activities", C, "GA600S_S6_2", False, 20, CR),
@@ -148,7 +160,7 @@ SECTIONS = [
     (
         "sched_7",
         "Schedule 7 — Additions to Federal Taxable Income",
-        60,
+        70,
         [
             ("S7_1", "State and municipal bond interest (other than Georgia)", C, "GA600S_S7_1", False, 10, DR),
             ("S7_2", "Net income or net profits taxes imposed by other jurisdictions", C, "GA600S_S7_2", False, 20, DR),
@@ -164,7 +176,7 @@ SECTIONS = [
     (
         "sched_8",
         "Schedule 8 — Subtractions from Federal Taxable Income",
-        70,
+        80,
         [
             ("S8_1", "Interest on obligations of United States", C, "GA600S_S8_1", False, 10, CR),
             ("S8_2", "Exception to intangible expenses (Attach IT-Addback)", C, "GA600S_S8_2", False, 20, CR),

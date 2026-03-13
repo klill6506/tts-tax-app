@@ -345,6 +345,11 @@ FORMULAS_GA600S: list[tuple[str, callable]] = [
     # Income tax only applies if PTET is elected; most S-Corps owe $0
     ("S1_7", lambda v: max(ZERO, _d(v, "S1_6")) * Decimal("0.0539") if _d(v, "GA_PTET") > 0 else ZERO),
 
+    # Schedule 2 — PTET Computation (only meaningful if PTET elected)
+    ("S2_1", lambda v: _d(v, "S5_7")),
+    ("S2_3", lambda v: _d(v, "S2_1") - _d(v, "S2_2")),
+    ("S2_4", lambda v: max(ZERO, _d(v, "S2_3")) * Decimal("0.0539") if _d(v, "GA_PTET") > 0 else ZERO),
+
     # Schedule 3 — Net Worth Tax
     ("S3_4", lambda v: _sum(v, "S3_1", "S3_2", "S3_3")),
     ("S3_6", lambda v: _d(v, "S3_4") * _d(v, "S3_5")),

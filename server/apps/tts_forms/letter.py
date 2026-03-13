@@ -103,6 +103,8 @@ def _wrap_text(text: str, c: canvas.Canvas, font: str, size: float, max_width: f
 
 def _draw_frame(c: canvas.Canvas):
     """Draw the Lacerte-style decorative frame: bold outer border + gray band."""
+    c.saveState()
+
     # Gray filled rectangle (outer border area)
     c.setFillColor(BAND_COLOR)
     c.setStrokeColor(colors.black)
@@ -135,6 +137,8 @@ def _draw_frame(c: canvas.Canvas):
         fill=0, stroke=1,
     )
 
+    c.restoreState()
+
 
 # ---------------------------------------------------------------------------
 # LetterWriter
@@ -149,9 +153,9 @@ class LetterWriter:
 
     def _check_page(self, needed: float = BODY_LEADING * 2):
         if self.y < BOTTOM_MARGIN + needed:
-            _draw_frame(self.c)
             self.c.showPage()
             _draw_frame(self.c)
+            self.c.setFillColor(colors.black)
             self.y = PAGE_HEIGHT - TOP_MARGIN
 
     def skip(self, lines: float = 1):
@@ -254,8 +258,11 @@ def render_letter(tax_return) -> bytes:
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=LETTER_SIZE)
 
-    # Draw the decorative frame first
+    # Draw the decorative frame first (background layer)
     _draw_frame(c)
+
+    # Explicitly reset fill color to black for text drawing
+    c.setFillColor(colors.black)
 
     w = LetterWriter(c)
 

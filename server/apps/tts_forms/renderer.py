@@ -50,14 +50,16 @@ from .coordinates.f8825 import (
     HEADER_FIELDS as F8825_HEADER_FIELDS,
     PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
 )
-from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
-from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
+# GA-600S now uses native rendering (ga600s_native.py) — coordinate overlay retired
+# from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
+# from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
 
 # AcroForm-based rendering (new, preferred)
 from .acroform_filler import fill_form as _acroform_fill
 from .field_maps import get_field_maps as _get_field_maps
 from .formatting import expand_yes_no, format_currency, format_value
 
+from .ga600s_native import render_ga600s_native
 from .invoice import render_invoice
 from .letter import render_letter
 from .statements import render_statement_pages
@@ -83,7 +85,6 @@ COORDINATE_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f8825": F8825_FIELD_MAP,
     "f7203": F7203_FIELD_MAP,
     "f7004": F7004_FIELD_MAP,
-    "fga600s": FGA600S_FIELD_MAP,
 }
 
 HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
@@ -96,7 +97,6 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
     "f8825": F8825_HEADER_FIELDS,
     "f7203": F7203_HEADER_FIELDS,
     "f7004": F7004_HEADER_FIELDS,
-    "fga600s": FGA600S_HEADER_FIELDS,
 }
 
 # AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
@@ -345,12 +345,15 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
 
     form_code = tax_return.form_definition.code
 
+    # GA-600S uses native rendering (not coordinate overlay)
+    if form_code == "GA-600S":
+        return render_ga600s_native(tax_return)
+
     # Map form_code to form_id
     form_code_to_id = {
         "1120-S": "f1120s",
         "1065": "f1065",
         "1120": "f1120",
-        "GA-600S": "fga600s",
         "4797": "f4797",
         "1120-S-SD": "f1120ssd",
         "8949": "f8949",
@@ -552,58 +555,7 @@ def _build_header_data(tax_return) -> dict[str, str]:
     elif tax_return.accounting_method == "accrual":
         header["chk_accounting_accrual"] = "X"
 
-    # -----------------------------------------------------------------------
-    # GA-600S-specific header fields
-    # -----------------------------------------------------------------------
-    form_code = tax_return.form_definition.code
-    if form_code == "GA-600S":
-        # Tax period dates — Georgia form ALWAYS needs dates
-        year = tax_year.year
-        header["income_tax_begin"] = f"01/01/{year}"
-        header["income_tax_end"] = f"12/31/{year}"
-        # Net worth tax period is ALWAYS one year ahead
-        header["nw_tax_begin"] = f"01/01/{year + 1}"
-        header["nw_tax_end"] = f"12/31/{year + 1}"
-
-        # Entity details
-        if entity.naics_code:
-            header["naics_code"] = entity.naics_code
-        if entity.business_activity:
-            header["type_of_business"] = entity.business_activity
-        if entity.phone:
-            header["phone"] = entity.phone
-
-        # Location of records for audit — default to entity address
-        header["records_city"] = entity.city or ""
-        header["records_state"] = entity.state or "GA"
-        header["records_country"] = "US"
-
-        # Repeated header on pages 1 and 2
-        header["p2_fein"] = entity.ein or ""
-        header["p2_name"] = entity_name
-        header["p3_fein"] = entity.ein or ""
-        header["p3_name"] = entity_name
-
-        # PTET election (from GA_PTET field)
-        from apps.returns.models import FormFieldValue as _FFV2
-        try:
-            ptet = _FFV2.objects.filter(
-                tax_return=tax_return, form_line__line_number="GA_PTET"
-            ).first()
-            if ptet and ptet.value and ptet.value.lower() in ("true", "1", "yes"):
-                header["ptet_election"] = "X"
-        except Exception:
-            pass
-
-        # Total shareholders count
-        from apps.returns.models import Shareholder
-        federal = tax_return.federal_return
-        if federal:
-            sh_count = Shareholder.objects.filter(
-                tax_return=federal, is_active=True
-            ).count()
-            if sh_count:
-                header["total_shareholders"] = str(sh_count)
+    # GA-600S now uses native rendering (ga600s_native.py) — no header needed here
 
     return header
 
@@ -1623,16 +1575,19 @@ def render_4797(tax_return) -> bytes:
     # -----------------------------------------------------------------------
     # Route each disposed asset to the correct Part(s) of Form 4797.
     #
-    # Routing rules (IRS Form 4797 instructions):
-    # - Held <= 1 year (short-term)  → Part II only
-    # - Held > 1 year (long-term)    → Part I always
-    #   - If depreciation recapture > 0 → also Part III (computes recapture)
-    # - NEVER all three parts for the same asset
+    # IRS routing rules:
+    # - Short-term (held <= 1 year)           → Part II only
+    # - Long-term loss                        → Part I only
+    # - Long-term gain, no depreciation       → Part I only
+    # - Long-term gain, gain <= recapture     → Part III only (all ordinary)
+    #   recapture flows to Part II Line 13
+    # - Long-term gain, gain > recapture      → Part III (recapture)
+    #   recapture flows to Part II Line 13
+    #   excess (capital_gain) → Part I
     # -----------------------------------------------------------------------
-    import datetime
-    part1_assets = []
-    part2_assets = []
-    part3_assets = []
+    part1_entries: list[tuple] = []   # (asset, amount_for_part1)
+    part2_assets = []                 # short-term assets (full gain/loss)
+    part3_assets = []                 # assets needing recapture computation
 
     for a in disposed:
         if a.date_acquired and a.date_sold:
@@ -1641,23 +1596,38 @@ def render_4797(tax_return) -> bytes:
             # If dates missing, assume long-term (most business assets)
             holding_days = 366
 
+        gain = a.gain_loss_on_sale or ZERO
+        recapture = a.depreciation_recapture or ZERO
+        cap_gain = a.capital_gain or ZERO
+        total_depr = (
+            a.prior_depreciation + a.current_depreciation
+            + a.bonus_amount + a.sec_179_elected
+        )
+        has_depreciation = total_depr > 0
+
         if holding_days <= 365:
             # Short-term → Part II only
             part2_assets.append(a)
+        elif gain <= 0:
+            # Long-term loss → Part I only
+            part1_entries.append((a, gain))
+        elif has_depreciation and recapture > 0:
+            # Long-term gain with depreciation recapture → Part III
+            part3_assets.append(a)
+            # If gain exceeds recapture, excess goes to Part I
+            if cap_gain > 0:
+                part1_entries.append((a, cap_gain))
         else:
-            # Long-term → Part I always
-            part1_assets.append(a)
-            # If depreciation recapture exists → also Part III
-            if a.depreciation_recapture and a.depreciation_recapture > 0:
-                part3_assets.append(a)
+            # Long-term gain, no depreciation to recapture → Part I
+            part1_entries.append((a, gain))
 
     # -----------------------------------------------------------------------
     # Part I: Section 1231 gains/losses (long-term, held > 1 year)
+    # For assets with recapture, only the excess (capital gain) goes here.
     # -----------------------------------------------------------------------
     total_part1 = ZERO
-    for i, a in enumerate(part1_assets[:4], start=1):
+    for i, (a, part1_amount) in enumerate(part1_entries[:4], start=1):
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
-        gain_loss = a.gain_loss_on_sale if a.gain_loss_on_sale else ZERO
         field_values[f"P1_2R{i}_desc"] = (a.description[:20] if a.description else "", "text")
         if a.date_acquired:
             field_values[f"P1_2R{i}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
@@ -1667,8 +1637,8 @@ def render_4797(tax_return) -> bytes:
             field_values[f"P1_2R{i}_gross"] = (str(a.sales_price), "currency")
         field_values[f"P1_2R{i}_depr"] = (str(total_depr), "currency")
         field_values[f"P1_2R{i}_cost"] = (str(a.cost_basis), "currency")
-        field_values[f"P1_2R{i}_gain"] = (str(gain_loss), "currency")
-        total_part1 += gain_loss
+        field_values[f"P1_2R{i}_gain"] = (str(part1_amount), "currency")
+        total_part1 += part1_amount
 
     if total_part1 != 0:
         field_values["P4797_7"] = (str(total_part1), "currency")
@@ -1691,10 +1661,6 @@ def render_4797(tax_return) -> bytes:
         field_values[f"P2_10R{i}_cost"] = (str(a.cost_basis), "currency")
         field_values[f"P2_10R{i}_gain"] = (str(gain_loss), "currency")
         total_ordinary += gain_loss
-
-    if total_ordinary != 0:
-        field_values["P4797_17"] = (str(total_ordinary), "currency")
-        field_values["P4797_18"] = (str(total_ordinary), "currency")
 
     # -----------------------------------------------------------------------
     # Part III: Recapture detail (Section 1245/1250)
@@ -1738,6 +1704,21 @@ def render_4797(tax_return) -> bytes:
         # Line 29a: Section 1231 gain (gain above recapture)
         if a.capital_gain and a.capital_gain > 0:
             field_values[f"P3_29a_{col}"] = (str(a.capital_gain), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part II summary: Line 13 = total recapture from Part III
+    # Recapture flows as ordinary income from Part III to Part II Line 13.
+    # -----------------------------------------------------------------------
+    total_recapture = sum(
+        (a.depreciation_recapture or ZERO) for a in part3_assets
+    )
+    if total_recapture:
+        field_values["P4797_13"] = (str(total_recapture), "currency")
+        total_ordinary += total_recapture
+
+    if total_ordinary != 0:
+        field_values["P4797_17"] = (str(total_ordinary), "currency")
+        field_values["P4797_18"] = (str(total_ordinary), "currency")
 
     return render(
         form_id="f4797",
@@ -2228,7 +2209,10 @@ def render_complete_return(
 
     if package == "state":
         for sr in tax_return.state_returns.all():
-            _append(render_tax_return(sr), sr.form_definition.code)
+            if sr.form_definition.code == "GA-600S":
+                _append(render_ga600s_native(sr), "GA Form 600S")
+            else:
+                _append(render_tax_return(sr), sr.form_definition.code)
         output = io.BytesIO()
         writer.write(output)
         return _result(output.getvalue())
@@ -2381,7 +2365,10 @@ def render_complete_return(
     # 8. State returns
     for sr in tax_return.state_returns.all():
         try:
-            _append(render_tax_return(sr), sr.form_definition.code)
+            if sr.form_definition.code == "GA-600S":
+                _append(render_ga600s_native(sr), "GA Form 600S")
+            else:
+                _append(render_tax_return(sr), sr.form_definition.code)
         except Exception as e:
             logger.warning("render_complete: state %s failed: %s", sr.form_definition.code, e)
 

@@ -5702,10 +5702,15 @@ function FormsTab({
 
   function goToPage(page: number) {
     setActivePage(page);
-    if (pdfUrlRef.current && iframeRef.current) {
-      // Navigate to page via URL fragment
-      iframeRef.current.src = `${pdfUrlRef.current}#page=${page}`;
-    }
+    const iframe = iframeRef.current;
+    if (!pdfUrlRef.current || !iframe) return;
+    // Navigate to about:blank first to force Chrome PDF viewer to re-navigate
+    iframe.src = "about:blank";
+    setTimeout(() => {
+      if (iframeRef.current && pdfUrlRef.current) {
+        iframeRef.current.src = `${pdfUrlRef.current}#page=${page}`;
+      }
+    }, 50);
   }
 
   return (

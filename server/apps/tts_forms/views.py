@@ -47,6 +47,7 @@ from .renderer import (
     render_k1,
     render_tax_return,
 )
+from .ga600s_native import render_ga600s_native
 from .invoice import render_invoice
 from .letter import render_letter
 
@@ -613,6 +614,46 @@ class PDFRenderMixin:
         )
         year = tax_return.tax_year.year
         filename = f"7004_{entity_name}_{year}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # ------------------------------------------------------------------
+    # GA-600S Native rendering (Georgia S Corporation)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["post"], url_path="render-ga600s")
+    def render_ga600s_pdf(self, request, pk=None):
+        """Generate Georgia Form 600S natively for this tax return."""
+        from apps.returns.compute import compute_return
+
+        tax_return = self.get_object()
+
+        # Find the GA-600S state return
+        state_return = tax_return.state_returns.filter(
+            form_definition__code="GA-600S"
+        ).first()
+        if not state_return:
+            return Response(
+                {"error": "No GA-600S state return found for this tax return."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        compute_return(state_return)
+
+        try:
+            pdf_bytes = render_ga600s_native(state_return)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        entity_name = (
+            tax_return.tax_year.entity.name
+            .replace(" ", "_")
+            .replace("/", "-")
+        )
+        year = tax_return.tax_year.year
+        filename = f"GA600S_{entity_name}_{year}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

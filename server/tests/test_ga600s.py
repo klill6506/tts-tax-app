@@ -44,12 +44,12 @@ class TestSeedGA600S:
 
     def test_seed_creates_sections(self, seeded):
         sections = FormSection.objects.filter(form=seeded)
-        assert sections.count() == 7
+        assert sections.count() == 8  # Schedules 1-8 (incl. Schedule 2 PTET)
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        # 85 lines across 7 sections (8+7+33+7+17+8+5)
-        assert lines.count() >= 85
+        # 89 lines across 8 sections (8+4+7+33+7+17+8+5)
+        assert lines.count() >= 89
 
     def test_seed_is_idempotent(self, seeded):
         cmd = SeedGA600SCommand()
