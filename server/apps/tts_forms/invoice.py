@@ -1,12 +1,11 @@
 """
 Invoice PDF generator.
 
-Renders a professional single-page invoice matching the Lacerte format:
-- Firm header (name, address, phone) — left-aligned
-- Client code + date
-- Client/entity address block with phone
-- Federal and state forms lists (columnar)
-- Fee summary with dollar amounts (dollars and cents for invoices)
+Renders a premium professional invoice matching the letter's visual style:
+- Bold outer border + gray shaded band frame (Lacerte-style)
+- Centered firm header (name, address, phone — all caps, bold)
+- Client info, forms lists, fee summary
+- Matching border treatment with the client letter
 
 Usage:
     from apps.tts_forms.invoice import render_invoice
@@ -17,35 +16,81 @@ import io
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792
-LEFT_MARGIN = 1.0 * inch
-RIGHT_MARGIN = 1.0 * inch
-RIGHT_X = PAGE_WIDTH - RIGHT_MARGIN
-USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
+
+# Frame dimensions — matches letter.py exactly
+OUTER_MARGIN = 0.5 * inch
+BAND_WIDTH = 18
+INNER_INSET = 0.2 * inch
+
+LEFT_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
+RIGHT_X = PAGE_WIDTH - OUTER_MARGIN - BAND_WIDTH - INNER_INSET
+USABLE_WIDTH = RIGHT_X - LEFT_MARGIN
 
 # Fonts
 FIRM_NAME_FONT = "Helvetica-Bold"
 HEADER_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica"
-FIRM_NAME_SIZE = 14
+FIRM_NAME_SIZE = 16
+FIRM_DETAIL_SIZE = 12
 BODY_SIZE = 10
 FORM_SIZE = 10
-SECTION_HEADER_SIZE = 10
+SECTION_HEADER_SIZE = 11
+AMOUNT_DUE_SIZE = 12
 
 LINE_HEIGHT = 14
-SECTION_GAP = LINE_HEIGHT * 1.2  # space between sections
+SECTION_GAP = LINE_HEIGHT * 1.2
 
 # Column positions for forms list
 FORM_NUM_X = LEFT_MARGIN
-FORM_DESC_X = LEFT_MARGIN + 100  # align descriptions
+FORM_DESC_X = LEFT_MARGIN + 100
 
 # Fee summary layout
 FEE_LABEL_X = LEFT_MARGIN
 FEE_AMOUNT_X = RIGHT_X
+
+# Gray band color — same as letter
+BAND_COLOR = colors.Color(0.82, 0.82, 0.82)
+
+
+def _draw_frame(c: canvas.Canvas):
+    """Draw the Lacerte-style decorative frame: bold outer border + gray band."""
+    # Gray filled rectangle
+    c.setFillColor(BAND_COLOR)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(2)
+    c.rect(
+        OUTER_MARGIN, OUTER_MARGIN,
+        PAGE_WIDTH - 2 * OUTER_MARGIN,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN,
+        fill=1, stroke=1,
+    )
+
+    # White inner rectangle
+    c.setFillColor(colors.white)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.5)
+    c.rect(
+        OUTER_MARGIN + BAND_WIDTH, OUTER_MARGIN + BAND_WIDTH,
+        PAGE_WIDTH - 2 * OUTER_MARGIN - 2 * BAND_WIDTH,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN - 2 * BAND_WIDTH,
+        fill=1, stroke=1,
+    )
+
+    # Bold outer border on top
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(2)
+    c.rect(
+        OUTER_MARGIN, OUTER_MARGIN,
+        PAGE_WIDTH - 2 * OUTER_MARGIN,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN,
+        fill=0, stroke=1,
+    )
 
 
 def _get_firm_info(tax_return) -> dict[str, str]:
@@ -59,10 +104,11 @@ def _get_firm_info(tax_return) -> dict[str, str]:
     }
     try:
         prep = tax_return.preparer_info
-        info["firm_name"] = prep.firm_name or ""
+        info["firm_name"] = (prep.firm_name or "").upper()
         if prep.firm_address:
-            info["firm_address"] = prep.firm_address
-        csz = ", ".join(p for p in [prep.firm_city, prep.firm_state] if p)
+            info["firm_address"] = prep.firm_address.upper()
+        csz_parts = [p.upper() for p in [prep.firm_city, prep.firm_state] if p]
+        csz = ", ".join(csz_parts)
         if prep.firm_zip:
             csz += f" {prep.firm_zip}"
         info["firm_city_state_zip"] = csz
@@ -193,7 +239,7 @@ def _get_forms_list(tax_return) -> tuple[list[tuple[str, str]], list[tuple[str, 
 
     # 8879
     if form_code == "1120-S":
-        federal.append(("Form 8879-CORP", "E-file Authorization for Corporations"))
+        federal.append(("Form 8879-S", "E-file Authorization for S Corporations"))
     else:
         federal.append(("Form 8879-CORP", "E-file Authorization for Corporations"))
 
@@ -233,43 +279,53 @@ def render_invoice(tax_return) -> bytes:
         )
         fee_data["total"] = str(total)
 
-    today_str = date.today().strftime("%B %d, %Y")  # "March 11, 2026"
+    today_str = date.today().strftime("%B %d, %Y")
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
 
-    y = PAGE_HEIGHT - 1.0 * inch
+    # Draw the decorative frame
+    _draw_frame(c)
 
-    # --- Firm name (bold, larger) ---
+    y = PAGE_HEIGHT - OUTER_MARGIN - BAND_WIDTH - INNER_INSET
+
+    # --- Centered Firm Header (ALL CAPS, BOLD — matching letter) ---
     if firm["firm_name"]:
         c.setFont(FIRM_NAME_FONT, FIRM_NAME_SIZE)
-        c.drawString(LEFT_MARGIN, y, firm["firm_name"])
+        c.drawCentredString(PAGE_WIDTH / 2, y, firm["firm_name"])
+        y -= LINE_HEIGHT + 4
+    if firm["firm_address"]:
+        c.setFont(HEADER_FONT, FIRM_DETAIL_SIZE)
+        c.drawCentredString(PAGE_WIDTH / 2, y, firm["firm_address"])
+        y -= LINE_HEIGHT + 2
+    if firm["firm_city_state_zip"]:
+        c.setFont(HEADER_FONT, FIRM_DETAIL_SIZE)
+        c.drawCentredString(PAGE_WIDTH / 2, y, firm["firm_city_state_zip"])
+        y -= LINE_HEIGHT + 2
+    if firm["firm_phone"]:
+        c.setFont(HEADER_FONT, FIRM_DETAIL_SIZE)
+        c.drawCentredString(PAGE_WIDTH / 2, y, firm["firm_phone"])
         y -= LINE_HEIGHT + 2
 
-    # Firm address lines
-    c.setFont(BODY_FONT, BODY_SIZE)
-    if firm["firm_address"]:
-        c.drawString(LEFT_MARGIN, y, firm["firm_address"])
-        y -= LINE_HEIGHT
-    if firm["firm_city_state_zip"]:
-        c.drawString(LEFT_MARGIN, y, firm["firm_city_state_zip"])
-        y -= LINE_HEIGHT
-    if firm["firm_phone"]:
-        c.drawString(LEFT_MARGIN, y, firm["firm_phone"])
-        y -= LINE_HEIGHT
-
-    # Blank line
     y -= SECTION_GAP
+
+    # --- INVOICE title ---
+    c.setFont(HEADER_FONT, 14)
+    c.drawCentredString(PAGE_WIDTH / 2, y, "INVOICE")
+    y -= LINE_HEIGHT + 4
+
+    # Thin separator line
+    c.setLineWidth(0.5)
+    c.line(LEFT_MARGIN, y, RIGHT_X, y)
+    y -= LINE_HEIGHT
 
     # --- Client code + date ---
     c.setFont(BODY_FONT, BODY_SIZE)
-    c.drawString(LEFT_MARGIN, y, f"Client {client['client_code']}")
-    y -= LINE_HEIGHT
-    c.drawString(LEFT_MARGIN, y, today_str)
+    c.drawString(LEFT_MARGIN, y, f"Client: {client['client_code']}")
+    c.drawRightString(RIGHT_X, y, today_str)
     y -= LINE_HEIGHT
 
-    # Blank line
-    y -= SECTION_GAP
+    y -= SECTION_GAP * 0.5
 
     # --- Client/entity address block ---
     c.setFont(BODY_FONT, BODY_SIZE)
@@ -285,7 +341,6 @@ def render_invoice(tax_return) -> bytes:
         c.drawString(LEFT_MARGIN, y, client["phone"])
         y -= LINE_HEIGHT
 
-    # Blank line
     y -= SECTION_GAP
 
     # --- FEDERAL FORMS ---
@@ -294,13 +349,16 @@ def render_invoice(tax_return) -> bytes:
         c.drawString(LEFT_MARGIN, y, "FEDERAL FORMS")
         y -= LINE_HEIGHT + 2
 
+        # Underline
+        c.setLineWidth(0.25)
+        c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
+
         c.setFont(BODY_FONT, FORM_SIZE)
         for form_num, form_desc in federal_forms:
             c.drawString(FORM_NUM_X, y, form_num)
             c.drawString(FORM_DESC_X, y, form_desc)
             y -= LINE_HEIGHT
 
-    # Blank line
     y -= SECTION_GAP * 0.5
 
     # --- GEORGIA FORMS ---
@@ -308,6 +366,10 @@ def render_invoice(tax_return) -> bytes:
         c.setFont(HEADER_FONT, SECTION_HEADER_SIZE)
         c.drawString(LEFT_MARGIN, y, "GEORGIA FORMS")
         y -= LINE_HEIGHT + 2
+
+        # Underline
+        c.setLineWidth(0.25)
+        c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
 
         c.setFont(BODY_FONT, FORM_SIZE)
         for form_num, form_desc in state_forms:
@@ -317,13 +379,16 @@ def render_invoice(tax_return) -> bytes:
 
         y -= SECTION_GAP * 0.5
 
-    # Blank line
     y -= SECTION_GAP * 0.5
 
     # --- FEE SUMMARY ---
     c.setFont(HEADER_FONT, SECTION_HEADER_SIZE)
     c.drawString(LEFT_MARGIN, y, "FEE SUMMARY")
-    y -= LINE_HEIGHT + 4
+    y -= LINE_HEIGHT + 2
+
+    # Underline
+    c.setLineWidth(0.25)
+    c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
 
     # Preparation Fee
     c.setFont(BODY_FONT, BODY_SIZE)
@@ -345,14 +410,14 @@ def render_invoice(tax_return) -> bytes:
         c.drawRightString(FEE_AMOUNT_X, y, _format_fee(fee_data["fee_3"]))
         y -= LINE_HEIGHT
 
-    # Thin separator line
-    y -= 6
-    c.setLineWidth(0.5)
-    c.line(FEE_AMOUNT_X - 120, y + 4, FEE_AMOUNT_X, y + 4)
+    # Separator line above Amount Due
+    y -= 8
+    c.setLineWidth(0.75)
+    c.line(FEE_AMOUNT_X - 140, y + 5, FEE_AMOUNT_X, y + 5)
     y -= LINE_HEIGHT * 0.5
 
-    # Amount Due (bold)
-    c.setFont(HEADER_FONT, BODY_SIZE)
+    # Amount Due (bold, larger)
+    c.setFont(HEADER_FONT, AMOUNT_DUE_SIZE)
     c.drawString(FEE_LABEL_X, y, "Amount Due")
     c.drawRightString(FEE_AMOUNT_X, y, _format_fee(fee_data["total"]))
 

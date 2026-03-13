@@ -499,6 +499,42 @@ class PDFRenderMixin:
         return response
 
     # ------------------------------------------------------------------
+    # Page map (form names per page for sidebar navigation)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get"], url_path="page-map")
+    def page_map(self, request, pk=None):
+        """Return a page-to-form-name mapping for the complete return PDF.
+
+        Accepts optional `package` query param (same as render-complete).
+        Returns JSON: [{"form": "Form 1120-S (p.1)", "page": 1}, ...]
+        """
+        from apps.returns.compute import compute_return
+
+        tax_return = self.get_object()
+        package = request.query_params.get("package")
+
+        compute_return(tax_return)
+
+        if package and package not in PRINT_PACKAGES:
+            return Response(
+                {"error": f"Invalid package: {package!r}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            _, page_map_data = render_complete_return(
+                tax_return, package=package, return_page_map=True,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(page_map_data)
+
+    # ------------------------------------------------------------------
     # Invoice rendering
     # ------------------------------------------------------------------
 

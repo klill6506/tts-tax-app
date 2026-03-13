@@ -1,9 +1,9 @@
 """
 Client Letter PDF generator.
 
-Renders a professional client transmittal letter with:
-- Thin page border (0.5" from edges)
-- Centered letterhead (firm name, address, phone)
+Renders a premium professional client transmittal letter with:
+- Bold outer border + gray shaded band frame (Lacerte-style)
+- Centered letterhead (firm name, address, phone — all caps, bold)
 - Left-aligned body (date, client address, paragraphs, closing)
 
 Usage:
@@ -15,22 +15,23 @@ import io
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter as LETTER_SIZE
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
 PAGE_WIDTH, PAGE_HEIGHT = LETTER_SIZE
 
-# Border: 0.5" from page edges
-BORDER_MARGIN = 0.5 * inch
-BORDER_LINE_WIDTH = 0.5  # points
+# Frame dimensions — bold outer border + gray band + white inner
+OUTER_MARGIN = 0.5 * inch       # distance from page edge to outer black border
+BAND_WIDTH = 18                  # ~0.25 inch gray band width (points)
+INNER_INSET = 0.2 * inch        # padding from inner border to content
 
-# Content margins inside the border
-CONTENT_INSET = 0.3 * inch
-LEFT_MARGIN = BORDER_MARGIN + CONTENT_INSET
-RIGHT_MARGIN = BORDER_MARGIN + CONTENT_INSET
-TOP_MARGIN = BORDER_MARGIN + CONTENT_INSET
-BOTTOM_MARGIN = BORDER_MARGIN + CONTENT_INSET
+# Content area (inside the gray band + padding)
+LEFT_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
+RIGHT_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
+TOP_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
+BOTTOM_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
 USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 
 # Fonts
@@ -38,11 +39,14 @@ HEADER_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica"
 
 # Sizes
-FIRM_NAME_SIZE = 14
-FIRM_DETAIL_SIZE = 10
+FIRM_NAME_SIZE = 16
+FIRM_DETAIL_SIZE = 12
 BODY_SIZE = 11
 SMALL_SIZE = 9
 BODY_LEADING = 15  # line height for body text
+
+# Gray band color
+BAND_COLOR = colors.Color(0.82, 0.82, 0.82)
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +101,41 @@ def _wrap_text(text: str, c: canvas.Canvas, font: str, size: float, max_width: f
     return lines or [""]
 
 
+def _draw_frame(c: canvas.Canvas):
+    """Draw the Lacerte-style decorative frame: bold outer border + gray band."""
+    # Gray filled rectangle (outer border area)
+    c.setFillColor(BAND_COLOR)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(2)
+    c.rect(
+        OUTER_MARGIN, OUTER_MARGIN,
+        PAGE_WIDTH - 2 * OUTER_MARGIN,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN,
+        fill=1, stroke=1,
+    )
+
+    # White inner rectangle (content area)
+    c.setFillColor(colors.white)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.5)
+    c.rect(
+        OUTER_MARGIN + BAND_WIDTH, OUTER_MARGIN + BAND_WIDTH,
+        PAGE_WIDTH - 2 * OUTER_MARGIN - 2 * BAND_WIDTH,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN - 2 * BAND_WIDTH,
+        fill=1, stroke=1,
+    )
+
+    # Bold outer border on top (drawn last so it's crisp)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(2)
+    c.rect(
+        OUTER_MARGIN, OUTER_MARGIN,
+        PAGE_WIDTH - 2 * OUTER_MARGIN,
+        PAGE_HEIGHT - 2 * OUTER_MARGIN,
+        fill=0, stroke=1,
+    )
+
+
 # ---------------------------------------------------------------------------
 # LetterWriter
 # ---------------------------------------------------------------------------
@@ -110,8 +149,9 @@ class LetterWriter:
 
     def _check_page(self, needed: float = BODY_LEADING * 2):
         if self.y < BOTTOM_MARGIN + needed:
-            self._draw_border()
+            _draw_frame(self.c)
             self.c.showPage()
+            _draw_frame(self.c)
             self.y = PAGE_HEIGHT - TOP_MARGIN
 
     def skip(self, lines: float = 1):
@@ -130,6 +170,12 @@ class LetterWriter:
         self.c.drawCentredString(PAGE_WIDTH / 2, self.y, text)
         self.y -= BODY_LEADING
 
+    def write_right(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE):
+        self._check_page()
+        self.c.setFont(font, size)
+        self.c.drawRightString(PAGE_WIDTH - RIGHT_MARGIN, self.y, text)
+        self.y -= BODY_LEADING
+
     def write_wrapped(self, text: str, font: str = BODY_FONT, size: float = BODY_SIZE, indent: float = 0):
         max_w = USABLE_WIDTH - indent
         lines = _wrap_text(text, self.c, font, size, max_w)
@@ -138,15 +184,6 @@ class LetterWriter:
             self.c.setFont(font, size)
             self.c.drawString(LEFT_MARGIN + indent, self.y, line)
             self.y -= BODY_LEADING
-
-    def _draw_border(self):
-        self.c.setLineWidth(BORDER_LINE_WIDTH)
-        self.c.rect(
-            BORDER_MARGIN,
-            BORDER_MARGIN,
-            PAGE_WIDTH - 2 * BORDER_MARGIN,
-            PAGE_HEIGHT - 2 * BORDER_MARGIN,
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +205,10 @@ def render_letter(tax_return) -> bytes:
     preparer_name = ""
     try:
         prep = tax_return.preparer_info
-        firm_name = prep.firm_name or ""
-        firm_address = prep.firm_address or ""
-        csz = ", ".join(p for p in [prep.firm_city, prep.firm_state] if p)
+        firm_name = (prep.firm_name or "").upper()
+        firm_address = (prep.firm_address or "").upper()
+        csz_parts = [p.upper() for p in [prep.firm_city, prep.firm_state] if p]
+        csz = ", ".join(csz_parts)
         if prep.firm_zip:
             csz += f" {prep.firm_zip}"
         firm_csz = csz
@@ -215,26 +253,30 @@ def render_letter(tax_return) -> bytes:
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=LETTER_SIZE)
+
+    # Draw the decorative frame first
+    _draw_frame(c)
+
     w = LetterWriter(c)
 
     # -----------------------------------------------------------------------
-    # Centered Letterhead
+    # Centered Letterhead — ALL CAPS, BOLD
     # -----------------------------------------------------------------------
     if firm_name:
         w.write_centered(firm_name, HEADER_FONT, FIRM_NAME_SIZE)
     if firm_address:
-        w.write_centered(firm_address, BODY_FONT, FIRM_DETAIL_SIZE)
+        w.write_centered(firm_address, HEADER_FONT, FIRM_DETAIL_SIZE)
     if firm_csz:
-        w.write_centered(firm_csz, BODY_FONT, FIRM_DETAIL_SIZE)
+        w.write_centered(firm_csz, HEADER_FONT, FIRM_DETAIL_SIZE)
     if firm_phone:
-        w.write_centered(firm_phone, BODY_FONT, FIRM_DETAIL_SIZE)
+        w.write_centered(firm_phone, HEADER_FONT, FIRM_DETAIL_SIZE)
 
-    w.skip(1.5)
+    w.skip(2)
 
     # -----------------------------------------------------------------------
-    # Date (left-aligned)
+    # Date (right-aligned)
     # -----------------------------------------------------------------------
-    w.write(today_str)
+    w.write_right(today_str)
     w.skip(1)
 
     # -----------------------------------------------------------------------
@@ -405,8 +447,6 @@ def render_letter(tax_return) -> bytes:
     if preparer_name:
         w.write(preparer_name)
 
-    # Draw border on the final page
-    w._draw_border()
     c.showPage()
     c.save()
     buf.seek(0)

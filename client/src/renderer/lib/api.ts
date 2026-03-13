@@ -210,6 +210,15 @@ export async function renderLetter(taxReturnId: string): Promise<PdfResponse> {
   return fetchPdf(`/tax-returns/${taxReturnId}/render-letter/`);
 }
 
+/** Fetch page-to-form mapping for the complete return PDF. */
+export async function getPageMap(
+  taxReturnId: string,
+  packageName?: string
+): Promise<{ ok: boolean; data?: { form: string; page: number }[]; error?: string }> {
+  const qs = packageName ? `?package=${packageName}` : "";
+  return get(`/tax-returns/${taxReturnId}/page-map/${qs}`);
+}
+
 // ---------------------------------------------------------------------------
 // Session management
 // ---------------------------------------------------------------------------

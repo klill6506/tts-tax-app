@@ -5,6 +5,7 @@ import {
   renderPdf, renderK1s, renderK1, render7206,
   render1125a, render8825, render7203, render7203s, render7004,
   renderComplete,
+  getPageMap,
 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
@@ -5618,7 +5619,10 @@ function FormsTab({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
   const pdfUrlRef = useRef<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [packages, setPackages] = useState(DEFAULT_PRINT_PACKAGES);
+  const [pageMap, setPageMap] = useState<{ form: string; page: number }[]>([]);
+  const [activePage, setActivePage] = useState(1);
 
   const formCode = returnData.form_code;
   const entityName = returnData.entity_name;
@@ -5647,11 +5651,15 @@ function FormsTab({
     setLoading(true);
     setError(null);
 
-    const res = await renderComplete(taxReturnId, pkgName || undefined);
+    // Fetch PDF and page map in parallel
+    const [pdfRes, mapRes] = await Promise.all([
+      renderComplete(taxReturnId, pkgName || undefined),
+      getPageMap(taxReturnId, pkgName || undefined),
+    ]);
     setLoading(false);
 
-    if (res.ok && res.pdfBase64) {
-      const binary = atob(res.pdfBase64);
+    if (pdfRes.ok && pdfRes.pdfBase64) {
+      const binary = atob(pdfRes.pdfBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: "application/pdf" });
@@ -5659,8 +5667,13 @@ function FormsTab({
       pdfUrlRef.current = url;
       setPdfUrl(url);
     } else {
-      setError(res.error || "Failed to generate PDF.");
+      setError(pdfRes.error || "Failed to generate PDF.");
     }
+
+    if (mapRes.ok && Array.isArray(mapRes.data)) {
+      setPageMap(mapRes.data as { form: string; page: number }[]);
+    }
+    setActivePage(1);
   }
 
   useEffect(() => {
@@ -5685,6 +5698,14 @@ function FormsTab({
     a.href = pdfUrl;
     a.download = `${formCode}_${label}_${safeName}_${year}.pdf`;
     a.click();
+  }
+
+  function goToPage(page: number) {
+    setActivePage(page);
+    if (pdfUrlRef.current && iframeRef.current) {
+      // Navigate to page via URL fragment
+      iframeRef.current.src = `${pdfUrlRef.current}#page=${page}`;
+    }
   }
 
   return (
@@ -5724,27 +5745,56 @@ function FormsTab({
         </div>
       </div>
 
-      {/* Full-width PDF viewer */}
-      {loading && (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary-subtle border-t-primary" />
-            <p className="text-sm text-tx-secondary">Generating complete return...</p>
+      {/* Main content: sidebar + PDF viewer */}
+      <div className="flex flex-1 min-h-0">
+        {/* Form name sidebar */}
+        {pageMap.length > 0 && !loading && (
+          <div className="w-52 shrink-0 overflow-y-auto border-r border-border bg-surface-alt">
+            <div className="px-2 py-2 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
+              Forms
+            </div>
+            {pageMap.map((entry) => (
+              <button
+                key={entry.page}
+                onClick={() => goToPage(entry.page)}
+                className={`block w-full text-left px-3 py-1.5 text-xs truncate transition-colors ${
+                  activePage === entry.page
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-tx hover:bg-surface-alt-hover"
+                }`}
+                title={entry.form}
+              >
+                {entry.form}
+              </button>
+            ))}
           </div>
+        )}
+
+        {/* PDF viewer area */}
+        <div className="flex flex-1 flex-col min-w-0">
+          {loading && (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary-subtle border-t-primary" />
+                <p className="text-sm text-tx-secondary">Generating complete return...</p>
+              </div>
+            </div>
+          )}
+          {error && !loading && (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-sm text-danger">{error}</p>
+            </div>
+          )}
+          {pdfUrl && !loading && (
+            <iframe
+              ref={iframeRef}
+              src={`${pdfUrl}#zoom=page-width`}
+              className="flex-1 border-0"
+              title="Complete Return PDF"
+            />
+          )}
         </div>
-      )}
-      {error && !loading && (
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-danger">{error}</p>
-        </div>
-      )}
-      {pdfUrl && !loading && (
-        <iframe
-          src={`${pdfUrl}#zoom=page-width`}
-          className="flex-1 border-0"
-          title="Complete Return PDF"
-        />
-      )}
+      </div>
     </div>
   );
 }

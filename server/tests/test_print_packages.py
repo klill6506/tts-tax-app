@@ -168,7 +168,7 @@ class TestInvoice:
 
         federal, state = _get_forms_list(tax_return)
         # Should at least have the main form
-        assert any("1120S" in f for f in federal)
+        assert any("1120S" in f[0] for f in federal)
 
     def test_invoice_forms_list_with_shareholders(self, tax_return, preparer_info):
         from apps.tts_forms.invoice import _get_forms_list
@@ -181,8 +181,8 @@ class TestInvoice:
             ending_shares=100,
         )
         federal, state = _get_forms_list(tax_return)
-        assert any("K-1" in f for f in federal)
-        assert any("7203" in f for f in federal)
+        assert any("K-1" in f[0] for f in federal)
+        assert any("7203" in f[0] for f in federal)
 
 
 # ---------------------------------------------------------------------------

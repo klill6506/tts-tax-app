@@ -552,6 +552,59 @@ def _build_header_data(tax_return) -> dict[str, str]:
     elif tax_return.accounting_method == "accrual":
         header["chk_accounting_accrual"] = "X"
 
+    # -----------------------------------------------------------------------
+    # GA-600S-specific header fields
+    # -----------------------------------------------------------------------
+    form_code = tax_return.form_definition.code
+    if form_code == "GA-600S":
+        # Tax period dates — Georgia form ALWAYS needs dates
+        year = tax_year.year
+        header["income_tax_begin"] = f"01/01/{year}"
+        header["income_tax_end"] = f"12/31/{year}"
+        # Net worth tax period is ALWAYS one year ahead
+        header["nw_tax_begin"] = f"01/01/{year + 1}"
+        header["nw_tax_end"] = f"12/31/{year + 1}"
+
+        # Entity details
+        if entity.naics_code:
+            header["naics_code"] = entity.naics_code
+        if entity.business_activity:
+            header["type_of_business"] = entity.business_activity
+        if entity.phone:
+            header["phone"] = entity.phone
+
+        # Location of records for audit — default to entity address
+        header["records_city"] = entity.city or ""
+        header["records_state"] = entity.state or "GA"
+        header["records_country"] = "US"
+
+        # Repeated header on pages 1 and 2
+        header["p2_fein"] = entity.ein or ""
+        header["p2_name"] = entity_name
+        header["p3_fein"] = entity.ein or ""
+        header["p3_name"] = entity_name
+
+        # PTET election (from GA_PTET field)
+        from apps.returns.models import FormFieldValue as _FFV2
+        try:
+            ptet = _FFV2.objects.filter(
+                tax_return=tax_return, form_line__line_number="GA_PTET"
+            ).first()
+            if ptet and ptet.value and ptet.value.lower() in ("true", "1", "yes"):
+                header["ptet_election"] = "X"
+        except Exception:
+            pass
+
+        # Total shareholders count
+        from apps.returns.models import Shareholder
+        federal = tax_return.federal_return
+        if federal:
+            sh_count = Shareholder.objects.filter(
+                tax_return=federal, is_active=True
+            ).count()
+            if sh_count:
+                header["total_shareholders"] = str(sh_count)
+
     return header
 
 
@@ -1568,17 +1621,43 @@ def render_4797(tax_return) -> bytes:
     field_values: dict[str, tuple[str, str]] = {}
 
     # -----------------------------------------------------------------------
-    # Part I: Section 1231 gains/losses (long-term, held > 1 year)
-    # Assets with capital_gain (portion above depreciation recapture)
+    # Route each disposed asset to the correct Part(s) of Form 4797.
+    #
+    # Routing rules (IRS Form 4797 instructions):
+    # - Held <= 1 year (short-term)  → Part II only
+    # - Held > 1 year (long-term)    → Part I always
+    #   - If depreciation recapture > 0 → also Part III (computes recapture)
+    # - NEVER all three parts for the same asset
     # -----------------------------------------------------------------------
-    part1_assets = [
-        a for a in disposed
-        if a.capital_gain and a.capital_gain != 0
-    ]
+    import datetime
+    part1_assets = []
+    part2_assets = []
+    part3_assets = []
 
+    for a in disposed:
+        if a.date_acquired and a.date_sold:
+            holding_days = (a.date_sold - a.date_acquired).days
+        else:
+            # If dates missing, assume long-term (most business assets)
+            holding_days = 366
+
+        if holding_days <= 365:
+            # Short-term → Part II only
+            part2_assets.append(a)
+        else:
+            # Long-term → Part I always
+            part1_assets.append(a)
+            # If depreciation recapture exists → also Part III
+            if a.depreciation_recapture and a.depreciation_recapture > 0:
+                part3_assets.append(a)
+
+    # -----------------------------------------------------------------------
+    # Part I: Section 1231 gains/losses (long-term, held > 1 year)
+    # -----------------------------------------------------------------------
     total_part1 = ZERO
     for i, a in enumerate(part1_assets[:4], start=1):
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+        gain_loss = a.gain_loss_on_sale if a.gain_loss_on_sale else ZERO
         field_values[f"P1_2R{i}_desc"] = (a.description[:20] if a.description else "", "text")
         if a.date_acquired:
             field_values[f"P1_2R{i}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
@@ -1588,23 +1667,19 @@ def render_4797(tax_return) -> bytes:
             field_values[f"P1_2R{i}_gross"] = (str(a.sales_price), "currency")
         field_values[f"P1_2R{i}_depr"] = (str(total_depr), "currency")
         field_values[f"P1_2R{i}_cost"] = (str(a.cost_basis), "currency")
-        field_values[f"P1_2R{i}_gain"] = (str(a.capital_gain), "currency")
-        total_part1 += a.capital_gain
+        field_values[f"P1_2R{i}_gain"] = (str(gain_loss), "currency")
+        total_part1 += gain_loss
 
     if total_part1 != 0:
         field_values["P4797_7"] = (str(total_part1), "currency")
 
     # -----------------------------------------------------------------------
-    # Part II: Ordinary Gains and Losses (depreciation recapture)
+    # Part II: Ordinary Gains and Losses (short-term dispositions)
     # -----------------------------------------------------------------------
-    part2_assets = [
-        a for a in disposed
-        if a.depreciation_recapture and a.depreciation_recapture != 0
-    ]
-
     total_ordinary = ZERO
     for i, a in enumerate(part2_assets[:4], start=1):
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+        gain_loss = a.gain_loss_on_sale if a.gain_loss_on_sale else ZERO
         field_values[f"P2_10R{i}_desc"] = (a.description[:20] if a.description else "", "text")
         if a.date_acquired:
             field_values[f"P2_10R{i}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
@@ -1614,8 +1689,8 @@ def render_4797(tax_return) -> bytes:
             field_values[f"P2_10R{i}_gross"] = (str(a.sales_price), "currency")
         field_values[f"P2_10R{i}_depr"] = (str(total_depr), "currency")
         field_values[f"P2_10R{i}_cost"] = (str(a.cost_basis), "currency")
-        field_values[f"P2_10R{i}_gain"] = (str(a.depreciation_recapture), "currency")
-        total_ordinary += a.depreciation_recapture
+        field_values[f"P2_10R{i}_gain"] = (str(gain_loss), "currency")
+        total_ordinary += gain_loss
 
     if total_ordinary != 0:
         field_values["P4797_17"] = (str(total_ordinary), "currency")
@@ -1623,16 +1698,15 @@ def render_4797(tax_return) -> bytes:
 
     # -----------------------------------------------------------------------
     # Part III: Recapture detail (Section 1245/1250)
-    # First 4 disposed assets get individual recapture analysis
+    # Only for long-term assets WITH depreciation recapture > 0
     # -----------------------------------------------------------------------
-    recapture_assets = list(disposed[:4])
     cols = ["a", "b", "c", "d"]
 
-    for i, a in enumerate(recapture_assets):
+    for i, a in enumerate(part3_assets[:4]):
         col = cols[i]
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
 
-        # Line 19: Description + dates (Part III Table 1)
+        # Line 19: Description + dates
         field_values[f"P3_19R{i+1}_desc"] = (a.description[:30] if a.description else "", "text")
         if a.date_acquired:
             field_values[f"P3_19R{i+1}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
@@ -1658,14 +1732,11 @@ def render_4797(tax_return) -> bytes:
         total_gain = (a.sales_price or ZERO) - adjusted_basis
         field_values[f"P3_24_{col}"] = (str(total_gain), "currency")
 
-        # Line 25a: Section 1245 recapture (lesser of L22 or L24)
-        if a.depreciation_recapture and a.depreciation_recapture > 0:
-            field_values[f"P3_25a_{col}"] = (str(a.depreciation_recapture), "currency")
+        # Line 25a: Section 1245 recapture (lesser of depreciation or gain)
+        field_values[f"P3_25a_{col}"] = (str(a.depreciation_recapture), "currency")
 
-        # Line 25b: Section 1250 recapture (for real property — usually 0 for personal property)
-
-        # Line 26: Section 1231 gain (total gain - recapture)
-        if a.capital_gain and a.capital_gain != 0:
+        # Line 29a: Section 1231 gain (gain above recapture)
+        if a.capital_gain and a.capital_gain > 0:
             field_values[f"P3_29a_{col}"] = (str(a.capital_gain), "currency")
 
     return render(
@@ -1964,54 +2035,211 @@ PRINT_PACKAGES = {
 }
 
 
-def render_complete_return(tax_return, package: str | None = None) -> bytes:
+def _render_me_statement(
+    year: int,
+    meals_50_fv,
+    meals_dot_fv,
+    entertainment_fv,
+) -> bytes | None:
+    """Render a custom Meals & Entertainment statement page.
+
+    Uses direct ReportLab drawing (not the generic statement renderer)
+    to avoid the auto-total summing bug.
+    """
+    from decimal import Decimal as D
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=letter)
+    PAGE_W, PAGE_H = letter
+    LM = 1.0 * 72  # 1 inch
+    RM = PAGE_W - 1.0 * 72
+    y = PAGE_H - 1.0 * 72
+    LH = 14  # line height
+
+    def _fmt(val: Decimal) -> str:
+        if val < 0:
+            return f"({abs(val):,.0f})"
+        return f"{val:,.0f}"
+
+    # Title
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(LM, y, f"Form 1120-S ({year}) — Meals and Entertainment Statement")
+    y -= LH * 1.5
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(LM, y, "IRC Sec. 274 Limitation")
+    y -= LH * 1.5
+    c.setLineWidth(0.5)
+    c.line(LM, y, RM, y)
+    y -= LH * 1.2
+
+    total_ded = D("0")
+    total_nonded = D("0")
+
+    # --- Meals (50% deductible) ---
+    if meals_50_fv:
+        amt = D(meals_50_fv.value.replace(",", ""))
+        ded = (amt * D("0.50")).quantize(D("1"))
+        nonded = amt - ded
+        total_ded += ded
+        total_nonded += nonded
+
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(LM, y, "Meals (50% deductible):")
+        y -= LH
+        c.setFont("Courier", 10)
+        c.drawString(LM + 18, y, "Total meals expense:")
+        c.drawRightString(RM, y, _fmt(amt))
+        y -= LH
+        c.drawString(LM + 18, y, "Allowable deduction (50%):")
+        c.drawRightString(RM, y, _fmt(ded))
+        y -= LH
+        c.drawString(LM + 18, y, "Non-deductible portion:")
+        c.drawRightString(RM, y, _fmt(nonded))
+        y -= LH * 1.5
+
+    # --- DOT Meals (80% deductible) ---
+    if meals_dot_fv:
+        amt = D(meals_dot_fv.value.replace(",", ""))
+        ded = (amt * D("0.80")).quantize(D("1"))
+        nonded = amt - ded
+        total_ded += ded
+        total_nonded += nonded
+
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(LM, y, "DOT Meals (80% deductible):")
+        y -= LH
+        c.setFont("Courier", 10)
+        c.drawString(LM + 18, y, "Total DOT meals expense:")
+        c.drawRightString(RM, y, _fmt(amt))
+        y -= LH
+        c.drawString(LM + 18, y, "Allowable deduction (80%):")
+        c.drawRightString(RM, y, _fmt(ded))
+        y -= LH
+        c.drawString(LM + 18, y, "Non-deductible portion:")
+        c.drawRightString(RM, y, _fmt(nonded))
+        y -= LH * 1.5
+
+    # --- Entertainment (0% deductible) ---
+    if entertainment_fv:
+        amt = D(entertainment_fv.value.replace(",", ""))
+        total_nonded += amt
+
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(LM, y, "Entertainment (0% deductible):")
+        y -= LH
+        c.setFont("Courier", 10)
+        c.drawString(LM + 18, y, "Total entertainment expense:")
+        c.drawRightString(RM, y, _fmt(amt))
+        y -= LH
+        c.drawString(LM + 18, y, "Non-deductible portion:")
+        c.drawRightString(RM, y, _fmt(amt))
+        y -= LH * 1.5
+
+    # --- SUMMARY ---
+    c.setLineWidth(0.5)
+    c.line(LM, y, RM, y)
+    y -= LH * 1.2
+
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(LM, y, "SUMMARY")
+    y -= LH * 1.2
+
+    c.setFont("Courier", 10)
+    c.drawString(LM + 18, y, "Total deductible meals:")
+    c.drawRightString(RM, y, _fmt(total_ded))
+    y -= LH
+    c.drawString(LM + 18, y, "Total non-deductible expenses:")
+    c.drawRightString(RM, y, _fmt(total_nonded))
+    y -= LH * 1.2
+
+    c.setFont("Courier", 9)
+    c.drawString(LM + 36, y, "Reported on Schedule K, Line 16c")
+    y -= LH
+    c.drawString(LM + 36, y, "Reported on Schedule M-1, Line 3")
+    y -= LH
+    c.drawString(LM + 36, y, "Reported on Schedule M-2, Line 5")
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def render_complete_return(
+    tax_return,
+    package: str | None = None,
+    return_page_map: bool = False,
+) -> bytes | tuple[bytes, list[dict]]:
     """
     Render forms for a return as one continuous PDF.
 
     Args:
         tax_return: A TaxReturn model instance.
-        package: Optional package name to select which forms to include:
-            - None: all forms (default)
-            - "client": Letter + Invoice + all return forms + state
-            - "filing": all return forms + state (no letter/invoice)
-            - "extension": Form 7004 only
-            - "state": GA-600S only
-            - "k1s": All K-1s only
-            - "invoice": Invoice only
-            - "letter": Letter only
+        package: Optional package name to select which forms to include.
+        return_page_map: If True, return (pdf_bytes, page_map) tuple
+            where page_map is a list of {"form": str, "page": int} dicts.
 
     Returns:
-        PDF file content as bytes.
+        PDF bytes, or (pdf_bytes, page_map) if return_page_map=True.
     """
     import logging
     from apps.returns.models import FormFieldValue, RentalProperty, Shareholder
 
     logger = logging.getLogger(__name__)
     writer = PdfWriter()
+    page_map: list[dict] = []  # tracks form name for each page
 
-    def _append(pdf_bytes: bytes) -> None:
-        for page in PdfReader(io.BytesIO(pdf_bytes)).pages:
+    def _append(pdf_bytes: bytes, form_name: str = "Unknown") -> None:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        num_pages = len(reader.pages)
+        for p, page in enumerate(reader.pages):
             writer.add_page(page)
+            if num_pages > 1:
+                page_map.append({"form": f"{form_name} (p.{p + 1})", "page": len(page_map) + 1})
+            else:
+                page_map.append({"form": form_name, "page": len(page_map) + 1})
+
+    def _result(pdf_bytes: bytes):
+        if return_page_map:
+            return pdf_bytes, page_map
+        return pdf_bytes
+
+    # --- Form display names ---
+    form_code = tax_return.form_definition.code
+    _FORM_NAMES = {
+        "1120-S": "Form 1120-S",
+        "1065": "Form 1065",
+        "1120": "Form 1120",
+    }
+    main_form_name = _FORM_NAMES.get(form_code, f"Form {form_code}")
 
     # --- Single-form packages ---
     if package == "invoice":
-        return render_invoice(tax_return)
+        result = render_invoice(tax_return)
+        return _result(result) if not return_page_map else (result, [{"form": "Invoice", "page": 1}])
 
     if package == "letter":
-        return render_letter(tax_return)
+        result = render_letter(tax_return)
+        return _result(result) if not return_page_map else (result, [{"form": "Letter", "page": 1}])
 
     if package == "extension":
-        return render_7004(tax_return)
+        result = render_7004(tax_return)
+        return _result(result) if not return_page_map else (result, [{"form": "Form 7004", "page": 1}])
 
     if package == "state":
         for sr in tax_return.state_returns.all():
-            _append(render_tax_return(sr))
+            _append(render_tax_return(sr), sr.form_definition.code)
         output = io.BytesIO()
         writer.write(output)
-        return output.getvalue()
+        return _result(output.getvalue())
 
     if package == "k1s":
-        return render_all_k1s(tax_return)
+        result = render_all_k1s(tax_return)
+        if return_page_map:
+            reader = PdfReader(io.BytesIO(result))
+            pm = [{"form": "Schedule K-1", "page": i + 1} for i in range(len(reader.pages))]
+            return result, pm
+        return result
 
     # --- Multi-form packages: "client", "filing", or None (all) ---
     include_letter = package in ("client", None)
@@ -2020,27 +2248,27 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
     # 0a. Letter (client copy and all-forms only)
     if include_letter:
         try:
-            _append(render_letter(tax_return))
+            _append(render_letter(tax_return), "Letter")
         except Exception as e:
             logger.warning("render_complete: letter failed: %s", e)
 
     # 0b. Invoice (client copy and all-forms only)
     if include_invoice:
         try:
-            _append(render_invoice(tax_return))
+            _append(render_invoice(tax_return), "Invoice")
         except Exception as e:
             logger.warning("render_complete: invoice failed: %s", e)
 
     # 1. Main return (e.g. 1120-S pages 1-5)
     try:
-        _append(render_tax_return(tax_return))
+        _append(render_tax_return(tax_return), main_form_name)
     except Exception as e:
         logger.warning("render_complete: main form failed: %s", e)
 
     # 1b. Form 8879-S (e-file signature auth — Client Copy and Filing Copy)
     if package in ("client", "filing", None):
         try:
-            _append(render_8879s(tax_return))
+            _append(render_8879s(tax_return), "Form 8879-S")
         except Exception as e:
             logger.warning("render_complete: 8879-S failed: %s", e)
 
@@ -2051,7 +2279,7 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             form_line__section__code="sched_a",
         ).exclude(value__in=["", "0", "0.00"]).exists()
         if has_cogs:
-            _append(render_1125a(tax_return))
+            _append(render_1125a(tax_return), "Form 1125-A")
     except Exception as e:
         logger.warning("render_complete: 1125-A failed: %s", e)
 
@@ -2059,14 +2287,14 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
     try:
         from apps.returns.models import Officer
         if Officer.objects.filter(tax_return=tax_return).exists():
-            _append(render_1125e(tax_return))
+            _append(render_1125e(tax_return), "Form 1125-E")
     except Exception as e:
         logger.warning("render_complete: 1125-E failed: %s", e)
 
     # 3. Form 8825 (Rental Real Estate) — only if rental properties exist
     try:
         if RentalProperty.objects.filter(tax_return=tax_return).exists():
-            _append(render_8825(tax_return))
+            _append(render_8825(tax_return), "Form 8825")
     except Exception as e:
         logger.warning("render_complete: 8825 failed: %s", e)
 
@@ -2074,7 +2302,7 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
     try:
         from apps.returns.models import DepreciationAsset
         if DepreciationAsset.objects.filter(tax_return=tax_return).exists():
-            _append(render_4562(tax_return))
+            _append(render_4562(tax_return), "Form 4562")
     except Exception as e:
         logger.warning("render_complete: 4562 failed: %s", e)
 
@@ -2083,14 +2311,14 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
         if DepreciationAsset.objects.filter(
             tax_return=tax_return, date_sold__isnull=False,
         ).exists():
-            _append(render_4797(tax_return))
+            _append(render_4797(tax_return), "Form 4797")
     except Exception as e:
         logger.warning("render_complete: 4797 failed: %s", e)
 
     # 3e. Depreciation Schedule (if depreciation assets exist)
     try:
         if DepreciationAsset.objects.filter(tax_return=tax_return).exists():
-            _append(render_depreciation_schedule(tax_return))
+            _append(render_depreciation_schedule(tax_return), "Depreciation Schedule")
     except Exception as e:
         logger.warning("render_complete: depreciation schedule failed: %s", e)
 
@@ -2107,44 +2335,16 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
         ).exclude(value__in=["", "0"]).first()
         if meals_50 or meals_dot or entertainment:
             from decimal import Decimal as D
-            items = []
-            total_nonded = D("0")
-            if meals_50:
-                amt = D(meals_50.value.replace(",", ""))
-                ded = (amt * D("0.50")).quantize(D("1"))
-                nonded = amt - ded
-                items.append({"description": "Meals (50% deductible)", "amount": str(amt)})
-                items.append({"description": "  Deductible portion (50%)", "amount": str(ded)})
-                items.append({"description": "  Nondeductible portion (50%)", "amount": str(nonded)})
-                total_nonded += nonded
-            if meals_dot:
-                amt = D(meals_dot.value.replace(",", ""))
-                ded = (amt * D("0.80")).quantize(D("1"))
-                nonded = amt - ded
-                items.append({"description": "DOT Meals (80% deductible)", "amount": str(amt)})
-                items.append({"description": "  Deductible portion (80%)", "amount": str(ded)})
-                items.append({"description": "  Nondeductible portion (20%)", "amount": str(nonded)})
-                total_nonded += nonded
-            if entertainment:
-                amt = D(entertainment.value.replace(",", ""))
-                items.append({"description": "Entertainment (0% deductible)", "amount": str(amt)})
-                total_nonded += amt
-            items.append({"description": "", "amount": ""})
-            items.append({"description": "Total nondeductible → K-16c, M-1 line 3b", "amount": str(total_nonded)})
             year = tax_return.tax_year.year
-            stmt_bytes = render_statement_pages([{
-                "title": f"Form 1120-S ({year}) — Meals and Entertainment Statement",
-                "subtitle": "IRC Sec. 274 Limitation",
-                "form_code": "1120-S",
-                "items": items,
-            }])
+            stmt_bytes = _render_me_statement(
+                year, meals_50, meals_dot, entertainment,
+            )
             if stmt_bytes:
-                _append(stmt_bytes)
+                _append(stmt_bytes, "M&E Statement")
     except Exception as e:
         logger.warning("render_complete: meals statement failed: %s", e)
 
     # 4-6: Shareholder-level forms (1120-S only)
-    form_code = tax_return.form_definition.code
     if form_code == "1120-S":
         shareholders = Shareholder.objects.filter(
             tax_return=tax_return, is_active=True,
@@ -2153,13 +2353,13 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
         if shareholders.exists():
             # 4. All K-1s
             try:
-                _append(render_all_k1s(tax_return))
+                _append(render_all_k1s(tax_return), "Schedule K-1")
             except Exception as e:
                 logger.warning("render_complete: K-1s failed: %s", e)
 
             # 5. All 7203s
             try:
-                _append(render_all_7203s(tax_return))
+                _append(render_all_7203s(tax_return), "Form 7203")
             except Exception as e:
                 logger.warning("render_complete: 7203s failed: %s", e)
 
@@ -2167,23 +2367,24 @@ def render_complete_return(tax_return, package: str | None = None) -> bytes:
             for sh in shareholders:
                 if sh.health_insurance_premium and sh.health_insurance_premium > 0:
                     try:
-                        _append(render_7206(tax_return, sh))
+                        _append(render_7206(tax_return, sh), f"Form 7206 ({sh.name})")
                     except Exception as e:
                         logger.warning("render_complete: 7206 for %s failed: %s", sh.name, e)
 
-    # 7. Form 7004 (Extension)
-    try:
-        _append(render_7004(tax_return))
-    except Exception as e:
-        logger.warning("render_complete: 7004 failed: %s", e)
+    # 7. Form 7004 (Extension) — only if extension was filed
+    if tax_return.extension_filed:
+        try:
+            _append(render_7004(tax_return), "Form 7004")
+        except Exception as e:
+            logger.warning("render_complete: 7004 failed: %s", e)
 
     # 8. State returns
     for sr in tax_return.state_returns.all():
         try:
-            _append(render_tax_return(sr))
+            _append(render_tax_return(sr), sr.form_definition.code)
         except Exception as e:
             logger.warning("render_complete: state %s failed: %s", sr.form_definition.code, e)
 
     output = io.BytesIO()
     writer.write(output)
-    return output.getvalue()
+    return _result(output.getvalue())
