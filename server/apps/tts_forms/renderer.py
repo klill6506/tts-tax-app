@@ -1576,29 +1576,26 @@ def render_4797(tax_return) -> bytes:
     # Route each disposed asset to the correct Part(s) of Form 4797.
     #
     # IRS routing rules:
-    # - Short-term (held <= 1 year)           → Part II only
-    # - Long-term loss                        → Part I only
-    # - Long-term gain, no depreciation       → Part I only
-    # - Long-term gain, gain <= recapture     → Part III only (all ordinary)
-    #   recapture flows to Part II Line 13
-    # - Long-term gain, gain > recapture      → Part III (recapture)
-    #   recapture flows to Part II Line 13
-    #   excess (capital_gain) → Part I
+    # - Short-term (held <= 1 year)           → Part II only (Line 10 rows)
+    # - Long-term loss                        → Part I Line 2 rows only
+    # - Long-term gain, no depreciation       → Part I Line 2 rows only
+    # - Long-term gain WITH depreciation      → Part III per-property columns
+    #   Part III summary: L30=total gain, L31=recapture, L32=1231 gain
+    #   L31 → Part II Line 13
+    #   L32 → Part I Line 6
+    #   Asset details do NOT go in Part I Line 2 — only the summary flows.
     # -----------------------------------------------------------------------
-    part1_entries: list[tuple] = []   # (asset, amount_for_part1)
-    part2_assets = []                 # short-term assets (full gain/loss)
-    part3_assets = []                 # assets needing recapture computation
+    part1_line2_entries = []   # (asset, amount) — losses or non-depreciable gains only
+    part2_assets = []          # short-term assets
+    part3_assets = []          # long-term gains with depreciation → Part III
 
     for a in disposed:
         if a.date_acquired and a.date_sold:
             holding_days = (a.date_sold - a.date_acquired).days
         else:
-            # If dates missing, assume long-term (most business assets)
-            holding_days = 366
+            holding_days = 366  # assume long-term if dates missing
 
         gain = a.gain_loss_on_sale or ZERO
-        recapture = a.depreciation_recapture or ZERO
-        cap_gain = a.capital_gain or ZERO
         total_depr = (
             a.prior_depreciation + a.current_depreciation
             + a.bonus_amount + a.sec_179_elected
@@ -1609,24 +1606,80 @@ def render_4797(tax_return) -> bytes:
             # Short-term → Part II only
             part2_assets.append(a)
         elif gain <= 0:
-            # Long-term loss → Part I only
-            part1_entries.append((a, gain))
-        elif has_depreciation and recapture > 0:
-            # Long-term gain with depreciation recapture → Part III
+            # Long-term loss → Part I Line 2 rows
+            part1_line2_entries.append((a, gain))
+        elif has_depreciation and total_depr > 0:
+            # Long-term gain with depreciation → Part III (all of it)
             part3_assets.append(a)
-            # If gain exceeds recapture, excess goes to Part I
-            if cap_gain > 0:
-                part1_entries.append((a, cap_gain))
         else:
-            # Long-term gain, no depreciation to recapture → Part I
-            part1_entries.append((a, gain))
+            # Long-term gain, no depreciation (e.g., land) → Part I Line 2
+            part1_line2_entries.append((a, gain))
 
     # -----------------------------------------------------------------------
-    # Part I: Section 1231 gains/losses (long-term, held > 1 year)
-    # For assets with recapture, only the excess (capital gain) goes here.
+    # Part III: Recapture detail (Section 1245/1250)
+    # Per-property columns a-d. Summary lines 30, 31, 32.
     # -----------------------------------------------------------------------
-    total_part1 = ZERO
-    for i, (a, part1_amount) in enumerate(part1_entries[:4], start=1):
+    cols = ["a", "b", "c", "d"]
+    p3_total_gain = ZERO   # Line 30
+    p3_total_recapture = ZERO  # Line 31
+
+    for i, a in enumerate(part3_assets[:4]):
+        col = cols[i]
+        total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
+
+        # Line 19: Description + dates
+        field_values[f"P3_19R{i+1}_desc"] = (a.description[:30] if a.description else "", "text")
+        if a.date_acquired:
+            field_values[f"P3_19R{i+1}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
+        if a.date_sold:
+            field_values[f"P3_19R{i+1}_sold"] = (a.date_sold.strftime("%m/%d/%y"), "text")
+
+        # Line 20: Gross sales price
+        sales = a.sales_price or ZERO
+        field_values[f"P3_20_{col}"] = (str(sales), "currency")
+
+        # Line 21: Cost or other basis plus expense of sale
+        cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
+        field_values[f"P3_21_{col}"] = (str(cost_plus), "currency")
+
+        # Line 22: Depreciation allowed or allowable
+        field_values[f"P3_22_{col}"] = (str(total_depr), "currency")
+
+        # Line 23: Adjusted basis (L21 - L22)
+        adjusted_basis = cost_plus - total_depr
+        field_values[f"P3_23_{col}"] = (str(adjusted_basis), "currency")
+
+        # Line 24: Total gain (L20 - L23)
+        total_gain = sales - adjusted_basis
+        field_values[f"P3_24_{col}"] = (str(total_gain), "currency")
+        p3_total_gain += total_gain
+
+        # Line 25a: Depreciation (same as L22)
+        field_values[f"P3_25a_{col}"] = (str(total_depr), "currency")
+
+        # Line 25b: Lesser of L24 or L25a (ordinary income / recapture)
+        recapture = min(total_gain, total_depr)
+        field_values[f"P3_25b_{col}"] = (str(recapture), "currency")
+        p3_total_recapture += recapture
+
+    # Part III summary lines
+    p3_section_1231 = p3_total_gain - p3_total_recapture  # Line 32
+
+    if p3_total_gain:
+        field_values["P3_30"] = (str(p3_total_gain), "currency")
+    if p3_total_recapture:
+        field_values["P3_31"] = (str(p3_total_recapture), "currency")
+    if p3_section_1231:
+        field_values["P3_32"] = (str(p3_section_1231), "currency")
+
+    # -----------------------------------------------------------------------
+    # Part I: Section 1231 gains/losses
+    # Line 2 rows: ONLY for losses or non-depreciable property.
+    # Line 6: Amount from Part III Line 32 (Section 1231 gain from recapture).
+    # Line 7: Total of Lines 2 through 6.
+    # -----------------------------------------------------------------------
+    total_part1_line2 = ZERO
+    for i, (a, amount) in enumerate(part1_line2_entries[:4], start=1):
         total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
         field_values[f"P1_2R{i}_desc"] = (a.description[:20] if a.description else "", "text")
         if a.date_acquired:
@@ -1637,14 +1690,23 @@ def render_4797(tax_return) -> bytes:
             field_values[f"P1_2R{i}_gross"] = (str(a.sales_price), "currency")
         field_values[f"P1_2R{i}_depr"] = (str(total_depr), "currency")
         field_values[f"P1_2R{i}_cost"] = (str(a.cost_basis), "currency")
-        field_values[f"P1_2R{i}_gain"] = (str(part1_amount), "currency")
-        total_part1 += part1_amount
+        field_values[f"P1_2R{i}_gain"] = (str(amount), "currency")
+        total_part1_line2 += amount
 
+    # Line 6 = Part III Line 32 (Section 1231 gain from recapture computation)
+    if p3_section_1231:
+        field_values["P4797_6"] = (str(p3_section_1231), "currency")
+
+    # Line 7 = sum of Lines 2-6
+    total_part1 = total_part1_line2 + p3_section_1231
     if total_part1 != 0:
         field_values["P4797_7"] = (str(total_part1), "currency")
 
     # -----------------------------------------------------------------------
-    # Part II: Ordinary Gains and Losses (short-term dispositions)
+    # Part II: Ordinary Gains and Losses
+    # Line 10 rows: short-term dispositions only.
+    # Line 13: Total recapture from Part III Line 31.
+    # Lines 17/18: Total ordinary gain.
     # -----------------------------------------------------------------------
     total_ordinary = ZERO
     for i, a in enumerate(part2_assets[:4], start=1):
@@ -1662,59 +1724,10 @@ def render_4797(tax_return) -> bytes:
         field_values[f"P2_10R{i}_gain"] = (str(gain_loss), "currency")
         total_ordinary += gain_loss
 
-    # -----------------------------------------------------------------------
-    # Part III: Recapture detail (Section 1245/1250)
-    # Only for long-term assets WITH depreciation recapture > 0
-    # -----------------------------------------------------------------------
-    cols = ["a", "b", "c", "d"]
-
-    for i, a in enumerate(part3_assets[:4]):
-        col = cols[i]
-        total_depr = a.prior_depreciation + a.current_depreciation + a.bonus_amount + a.sec_179_elected
-
-        # Line 19: Description + dates
-        field_values[f"P3_19R{i+1}_desc"] = (a.description[:30] if a.description else "", "text")
-        if a.date_acquired:
-            field_values[f"P3_19R{i+1}_acquired"] = (a.date_acquired.strftime("%m/%d/%y"), "text")
-        if a.date_sold:
-            field_values[f"P3_19R{i+1}_sold"] = (a.date_sold.strftime("%m/%d/%y"), "text")
-
-        # Line 20: Gross sales price
-        if a.sales_price:
-            field_values[f"P3_20_{col}"] = (str(a.sales_price), "currency")
-
-        # Line 21: Cost or other basis plus improvements and expense of sale
-        cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
-        field_values[f"P3_21_{col}"] = (str(cost_plus), "currency")
-
-        # Line 22: Depreciation allowed or allowable
-        field_values[f"P3_22_{col}"] = (str(total_depr), "currency")
-
-        # Line 23: Adjusted basis (L21 - L22)
-        adjusted_basis = cost_plus - total_depr
-        field_values[f"P3_23_{col}"] = (str(adjusted_basis), "currency")
-
-        # Line 24: Total gain (L20 - L23)
-        total_gain = (a.sales_price or ZERO) - adjusted_basis
-        field_values[f"P3_24_{col}"] = (str(total_gain), "currency")
-
-        # Line 25a: Section 1245 recapture (lesser of depreciation or gain)
-        field_values[f"P3_25a_{col}"] = (str(a.depreciation_recapture), "currency")
-
-        # Line 29a: Section 1231 gain (gain above recapture)
-        if a.capital_gain and a.capital_gain > 0:
-            field_values[f"P3_29a_{col}"] = (str(a.capital_gain), "currency")
-
-    # -----------------------------------------------------------------------
-    # Part II summary: Line 13 = total recapture from Part III
-    # Recapture flows as ordinary income from Part III to Part II Line 13.
-    # -----------------------------------------------------------------------
-    total_recapture = sum(
-        (a.depreciation_recapture or ZERO) for a in part3_assets
-    )
-    if total_recapture:
-        field_values["P4797_13"] = (str(total_recapture), "currency")
-        total_ordinary += total_recapture
+    # Line 13 = Part III Line 31 (total recapture → ordinary income)
+    if p3_total_recapture:
+        field_values["P4797_13"] = (str(p3_total_recapture), "currency")
+        total_ordinary += p3_total_recapture
 
     if total_ordinary != 0:
         field_values["P4797_17"] = (str(total_ordinary), "currency")

@@ -25,7 +25,7 @@ PAGE_WIDTH, PAGE_HEIGHT = LETTER_SIZE
 # Frame dimensions — bold outer border + gray band + white inner
 OUTER_MARGIN = 0.5 * inch       # distance from page edge to outer black border
 BAND_WIDTH = 18                  # ~0.25 inch gray band width (points)
-INNER_INSET = 0.2 * inch        # padding from inner border to content
+INNER_INSET = 0.5 * inch        # padding from inner border to content
 
 # Content area (inside the gray band + padding)
 LEFT_MARGIN = OUTER_MARGIN + BAND_WIDTH + INNER_INSET
