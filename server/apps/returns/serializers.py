@@ -10,6 +10,8 @@ from .models import (
     LineItemDetail,
     Officer,
     OtherDeduction,
+    Partner,
+    PartnerAllocation,
     PreparerInfo,
     PriorYearReturn,
     RentalProperty,
@@ -381,6 +383,85 @@ class ShareholderSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Partners (partnership returns)
+# ---------------------------------------------------------------------------
+
+
+class PartnerAllocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerAllocation
+        fields = (
+            "id",
+            "category",
+            "percentage",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class PartnerSerializer(serializers.ModelSerializer):
+    linked_client_name = serializers.CharField(
+        source="linked_client.name", read_only=True, default=None
+    )
+    allocations = PartnerAllocationSerializer(many=True, read_only=True)
+    gp_total = serializers.DecimalField(
+        max_digits=15, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = Partner
+        fields = (
+            "id",
+            "name",
+            "ssn",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "zip_code",
+            # Partner type
+            "partner_type",
+            "is_domestic",
+            "is_individual",
+            # Ownership percentages (end of year)
+            "profit_pct",
+            "loss_pct",
+            "capital_pct",
+            # Ownership percentages (beginning of year)
+            "profit_pct_boy",
+            "loss_pct_boy",
+            "capital_pct_boy",
+            # Guaranteed payments
+            "gp_services",
+            "gp_capital",
+            "gp_total",
+            # Financial
+            "distributions",
+            # Liability share (K-1 Item K)
+            "liability_recourse",
+            "liability_qnr",
+            "liability_nonrecourse",
+            # Capital account (K-1 Item L)
+            "capital_account_boy",
+            "capital_contributed",
+            "current_year_increase",
+            "withdrawals",
+            "capital_account_eoy",
+            # Allocations
+            "allocations",
+            # Links & metadata
+            "linked_client",
+            "linked_client_name",
+            "is_active",
+            "sort_order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+# ---------------------------------------------------------------------------
 # Tax Return
 # ---------------------------------------------------------------------------
 
@@ -422,6 +503,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     other_deductions = OtherDeductionSerializer(many=True, read_only=True)
     officers = OfficerSerializer(many=True, read_only=True)
     shareholders = ShareholderSerializer(many=True, read_only=True)
+    partners = PartnerSerializer(many=True, read_only=True)
     rental_properties = RentalPropertySerializer(many=True, read_only=True)
     dispositions = DispositionSerializer(many=True, read_only=True)
     depreciation_assets = DepreciationAssetSerializer(many=True, read_only=True)
@@ -503,6 +585,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "other_deductions",
             "officers",
             "shareholders",
+            "partners",
             "rental_properties",
             "dispositions",
             "depreciation_assets",

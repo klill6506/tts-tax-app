@@ -206,23 +206,104 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
 # ---------------------------------------------------------------------------
 
 FORMULAS_1065: list[tuple[str, callable]] = [
-    # Page 1 Income
+    # Admin — Invoice
+    ("INV_TOTAL", lambda v: _sum(v, "INV_PREP_FEE", "INV_FEE_2", "INV_FEE_3")),
+
+    # Schedule A — Cost of Goods Sold (Form 1125-A)
+    ("A6", lambda v: _sum(v, "A1", "A2", "A3", "A4", "A5")),
+    ("A8", lambda v: _d(v, "A6") - _d(v, "A7")),
+
+    # Page 1 — Income (Line 2 = Schedule A line 8)
+    ("2", lambda v: _d(v, "A8")),
     ("1c", lambda v: _d(v, "1a") - _d(v, "1b")),
     ("3", lambda v: _d(v, "1c") - _d(v, "2")),
     ("8", lambda v: _sum(v, "3", "4", "5", "6", "7")),
-    # Page 1 Deductions
-    ("21", lambda v: _sum(v, "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")),
+
+    # Meals — deductible portions (same as 1120-S)
+    ("D_MEALS_DED", lambda v: (
+        (_d(v, "D_MEALS_50") * Decimal("0.50"))
+        + (_d(v, "D_MEALS_DOT") * Decimal("0.80"))
+    )),
+    ("D_MEALS_NONDED", lambda v: (
+        (_d(v, "D_MEALS_50") * Decimal("0.50"))
+        + (_d(v, "D_MEALS_DOT") * Decimal("0.20"))
+        + _d(v, "D_ENTERTAINMENT")
+    )),
+
+    # Page 1 — Deductions
+    # Line 20 = sum of named "other deductions" (D_*) + free-form rows
+    ("20", lambda v: _sum(
+        v,
+        "D_ACCT", "D_ANSW", "D_AUTO", "D_BANK", "D_COMM", "D_DELI",
+        "D_DUES", "D_GIFT", "D_INSU", "D_JANI", "D_LAUN", "D_LICE", "D_LEGA",
+        "D_MEALS_DED", "D_MISC", "D_OFFI", "D_ORGN", "D_OUTS", "D_PARK",
+        "D_POST", "D_PRNT", "D_SECU", "D_SUPP", "D_TELE", "D_TOOL",
+        "D_TRAV", "D_UNIF", "D_UTIL", "D_WAST",
+        "D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6",
+    )),
+    # Line 21 = sum of lines 9-20
+    ("21", lambda v: _sum(
+        v, "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+    )),
     ("22", lambda v: _d(v, "8") - _d(v, "21")),
-    # Schedule L
-    ("L14a", lambda v: _sum(v, "L1a", "L2a", "L3a", "L6a", "L7a") + _d(v, "L9a") - _d(v, "L9b") + _d(v, "L11a") + _d(v, "L13a")),
-    ("L14d", lambda v: _sum(v, "L1d", "L2d", "L3d", "L6d", "L7d") + _d(v, "L9d") - _d(v, "L9e") + _d(v, "L11d") + _d(v, "L13d")),
-    ("L23a", lambda v: _sum(v, "L15a", "L16a", "L17a", "L19a", "L21a", "L22a")),
-    ("L23d", lambda v: _sum(v, "L15d", "L16d", "L17d", "L19d", "L21d", "L22d")),
-    # M-1
-    ("M1_5", lambda v: _sum(v, "M1_1", "M1_2", "M1_3", "M1_4")),
-    ("M1_8", lambda v: _d(v, "M1_6") + _d(v, "M1_7")),
+
+    # Schedule F — Farm Income
+    ("F1c", lambda v: _d(v, "F1a") - _d(v, "F1b")),
+    ("F9", lambda v: _sum(v, "F1c", "F2", "F3", "F4", "F5", "F6", "F7", "F8")),
+    ("F33", lambda v: _sum(
+        v, "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18",
+        "F19", "F20", "F21a", "F21b", "F22", "F23", "F24a", "F24b", "F25",
+        "F26", "F27", "F28", "F29", "F30", "F31", "F32",
+    )),
+    ("F34", lambda v: _d(v, "F9") - _d(v, "F33")),
+
+    # Schedule K — Partners' Distributive Share Items
+    # K1 = ordinary business income from line 22
+    ("K1", lambda v: _d(v, "22")),
+    # K3c = other net rental income
+    ("K3c", lambda v: _d(v, "K3a") - _d(v, "K3b")),
+    # K4a, K4b, K4c = guaranteed payments (rolled up from Partner model via views)
+    # K11 = other income (includes net farm profit/loss from Schedule F)
+    ("K11", lambda v: _d(v, "F34")),
+    # K14a = net SE earnings (K1 + K4c for general partners; full entity-level)
+    ("K14a", lambda v: _d(v, "K1") + _d(v, "K4c")),
+    # K14b = gross farming income
+    ("K14b", lambda v: _d(v, "F9")),
+    # K14c = gross nonfarm income (line 1a gross receipts)
+    ("K14c", lambda v: _d(v, "1a")),
+    # K18c = nondeductible expenses (meals nondeductible portion)
+    ("K18c", lambda v: _d(v, "D_MEALS_NONDED")),
+
+    # Schedule L — Balance Sheet
+    # Total assets = sum of lines 1-14 (assets with contra accounts netted)
+    ("L15a", lambda v: (
+        _sum(v, "L1a", "L3a", "L4a", "L5a", "L6a", "L7a", "L8a", "L9a", "L12a", "L14a")
+        + _d(v, "L2a") - _d(v, "L2b")
+        + _d(v, "L10a") - _d(v, "L10b")
+        + _d(v, "L11a") - _d(v, "L11b")
+        + _d(v, "L13a") - _d(v, "L13b")
+    )),
+    ("L15d", lambda v: (
+        _sum(v, "L1d", "L3d", "L4d", "L5d", "L6d", "L7d", "L8d", "L9d", "L12d", "L14d")
+        + _d(v, "L2d") - _d(v, "L2e")
+        + _d(v, "L10d") - _d(v, "L10e")
+        + _d(v, "L11d") - _d(v, "L11e")
+        + _d(v, "L13d") - _d(v, "L13e")
+    )),
+    # Total liabilities and capital = sum of lines 16-23
+    ("L24a", lambda v: _sum(v, "L16a", "L17a", "L18a", "L19a", "L20a", "L21a", "L22a", "L23a")),
+    ("L24d", lambda v: _sum(v, "L16d", "L17d", "L18d", "L19d", "L20d", "L21d", "L22d", "L23d")),
+
+    # M-1 — Reconciliation
+    # M1_3 = guaranteed payments (auto from K4c)
+    ("M1_3", lambda v: _d(v, "K4c")),
+    # M1_4b = meals/entertainment nondeductible
+    ("M1_4b", lambda v: _d(v, "D_MEALS_NONDED")),
+    ("M1_5", lambda v: _sum(v, "M1_1", "M1_2", "M1_3", "M1_4a", "M1_4b", "M1_4c")),
+    ("M1_8", lambda v: _sum(v, "M1_6", "M1_7a", "M1_7b")),
     ("M1_9", lambda v: _d(v, "M1_5") - _d(v, "M1_8")),
-    # M-2
+
+    # M-2 — Partners' Capital Accounts
     ("M2_5", lambda v: _d(v, "M2_1") + _d(v, "M2_2a") + _d(v, "M2_2b") + _d(v, "M2_3") + _d(v, "M2_4")),
     ("M2_8", lambda v: _d(v, "M2_6a") + _d(v, "M2_6b") + _d(v, "M2_7")),
     ("M2_9", lambda v: _d(v, "M2_5") - _d(v, "M2_8")),
@@ -463,12 +544,14 @@ def aggregate_depreciation(tax_return) -> None:
         amt_adjustment_total += amt_adj
         state_bonus_disallowed_total += result["state_bonus_disallowed"]
 
-    # Write page 1 depreciation (Line 14)
-    _set_field_value(tax_return, "14", str(page1_total.quantize(Decimal("1"))))
+    # Write page 1 depreciation — Line 14 for 1120-S/1120, Line 16 for 1065
+    form_code = tax_return.form_definition.code
+    depr_line = "16" if form_code == "1065" else "14"
+    _set_field_value(tax_return, depr_line, str(page1_total.quantize(Decimal("1"))))
 
-    # Write Schedule F depreciation
+    # Write Schedule F depreciation (F14 = "Depreciation and section 179 expense")
     if sched_f_total:
-        _set_field_value(tax_return, "F16", str(sched_f_total.quantize(Decimal("1"))))
+        _set_field_value(tax_return, "F14", str(sched_f_total.quantize(Decimal("1"))))
 
     # Write to rental properties (Form 8825)
     if rental_totals:
@@ -478,9 +561,10 @@ def aggregate_depreciation(tax_return) -> None:
                 depreciation=amount.quantize(Decimal("1"))
             )
 
-    # Write Section 179 to K11
+    # Write Section 179 — K11 for 1120-S, K12 for 1065
     if sec_179_total:
-        _set_field_value(tax_return, "K11", str(sec_179_total.quantize(Decimal("1"))))
+        sec179_line = "K12" if form_code == "1065" else "K11"
+        _set_field_value(tax_return, sec179_line, str(sec_179_total.quantize(Decimal("1"))))
 
     logger.debug(
         "Depreciation aggregated for return %s: page1=%s, 8825=%s props, "
@@ -507,7 +591,7 @@ def _set_field_value(tax_return, line_number: str, value: str) -> None:
 
 def aggregate_dispositions(tax_return) -> None:
     """
-    Compute Form 4797 disposition totals and flow to 1120-S lines.
+    Compute Form 4797 disposition totals and flow to return lines.
 
     Uses the same IRS routing logic as render_4797():
     - Short-term (≤365 days) → Part II (ordinary)
@@ -515,9 +599,9 @@ def aggregate_dispositions(tax_return) -> None:
     - Long-term gain, no depreciation → Part I Line 2
     - Long-term gain WITH depreciation → Part III (recapture)
 
-    Flow OUT (1120-S rules):
-    - Part I Line 7 → Schedule K Line 9 (net Section 1231 gain/loss)
-    - Part II total  → Page 1 Line 4 (ordinary gains from 4797)
+    Flow OUT:
+    - 1120-S: K9 = Section 1231, Line 4 = ordinary 4797 gains
+    - 1065:   K10 = Section 1231, Line 6 = ordinary 4797 gains
     """
     disposed = DepreciationAsset.objects.filter(
         tax_return=tax_return,
@@ -572,14 +656,22 @@ def aggregate_dispositions(tax_return) -> None:
     # Part II total ordinary = short-term + Part III Line 31 (recapture)
     total_ordinary = part2_ordinary + p3_total_recapture
 
-    # Flow OUT to 1120-S:
-    # K9 = net Section 1231 gain/loss (Part I Line 7)
-    if part1_line7 != 0:
-        _set_field_value(tax_return, "K9", str(part1_line7.quantize(Decimal("1"))))
+    # Flow OUT — form-specific line numbers
+    form_code = tax_return.form_definition.code
+    if form_code == "1065":
+        k_1231_line = "K10"       # 1065 Schedule K Line 10
+        ordinary_line = "6"       # 1065 Page 1 Line 6
+    else:
+        k_1231_line = "K9"        # 1120-S Schedule K Line 9
+        ordinary_line = "4"       # 1120-S Page 1 Line 4
 
-    # Page 1 Line 4 = ordinary gains from 4797 (Part II total)
+    # Section 1231 gain/loss (Part I Line 7)
+    if part1_line7 != 0:
+        _set_field_value(tax_return, k_1231_line, str(part1_line7.quantize(Decimal("1"))))
+
+    # Ordinary gains from 4797 (Part II total)
     if total_ordinary != 0:
-        _set_field_value(tax_return, "4", str(total_ordinary.quantize(Decimal("1"))))
+        _set_field_value(tax_return, ordinary_line, str(total_ordinary.quantize(Decimal("1"))))
 
 
 def compute_return(tax_return) -> int:

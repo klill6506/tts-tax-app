@@ -630,6 +630,229 @@ class ShareholderLoan(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Partner (per return — drives K-1 generation for partnerships)
+# ---------------------------------------------------------------------------
+
+
+class PartnerType(models.TextChoices):
+    GENERAL = "general", "General Partner"
+    LIMITED = "limited", "Limited Partner"
+    LLC_MEMBER = "llc_member", "LLC Member-Manager"
+
+
+class Partner(models.Model):
+    """A partner listed on a partnership tax return, used for K-1 generation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="partners",
+    )
+
+    # Identity
+    name = models.CharField(max_length=255)
+    ssn = models.CharField(
+        max_length=11, blank=True, default="",
+        help_text="SSN or TIN (formatted XXX-XX-XXXX)",
+    )
+
+    # Address (for K-1 delivery)
+    address_line1 = models.CharField(max_length=255, blank=True, default="")
+    address_line2 = models.CharField(max_length=255, blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    state = models.CharField(max_length=2, blank=True, default="")
+    zip_code = models.CharField(max_length=10, blank=True, default="")
+
+    # Partner type
+    partner_type = models.CharField(
+        max_length=20,
+        choices=PartnerType.choices,
+        default=PartnerType.GENERAL,
+        help_text="General, Limited, or LLC Member-Manager.",
+    )
+    is_domestic = models.BooleanField(
+        default=True,
+        help_text="True if the partner is a domestic (U.S.) partner.",
+    )
+    is_individual = models.BooleanField(
+        default=True,
+        help_text="True if the partner is an individual (not entity).",
+    )
+
+    # Three ownership percentages (can differ for partnerships)
+    profit_pct = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Partner's percentage share of profit.",
+    )
+    loss_pct = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Partner's percentage share of loss.",
+    )
+    capital_pct = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Partner's percentage share of capital.",
+    )
+
+    # Beginning of year percentages (for K-1 Item J)
+    profit_pct_boy = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Profit % at beginning of year.",
+    )
+    loss_pct_boy = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Loss % at beginning of year.",
+    )
+    capital_pct_boy = models.DecimalField(
+        max_digits=7, decimal_places=4, default=0,
+        help_text="Capital % at beginning of year.",
+    )
+
+    # Guaranteed payments (per partner)
+    gp_services = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Guaranteed payments for services (K-1 Box 4a).",
+    )
+    gp_capital = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Guaranteed payments for use of capital (K-1 Box 4b).",
+    )
+
+    # Financial data
+    distributions = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Cash and property distributions to this partner (K-1 Box 19).",
+    )
+
+    # Liability share (K-1 Item K — 3 categories)
+    liability_recourse = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Partner's share of recourse liabilities.",
+    )
+    liability_qnr = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Partner's share of qualified nonrecourse financing.",
+    )
+    liability_nonrecourse = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Partner's share of nonrecourse liabilities.",
+    )
+
+    # Capital account (K-1 Item L — tax basis method, mandatory since 2020)
+    capital_account_boy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Capital account at beginning of year.",
+    )
+    capital_contributed = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Capital contributed during the year.",
+    )
+    current_year_increase = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Current year increase (net income).",
+    )
+    withdrawals = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Withdrawals & distributions.",
+    )
+    capital_account_eoy = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Capital account at end of year.",
+    )
+
+    # Client linking (shared entity support)
+    linked_client = models.ForeignKey(
+        "clients.Client",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="partner_links",
+        help_text="Link to a client record if this partner is also a client.",
+    )
+
+    # Flags
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the partner was active during the tax year.",
+    )
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    @property
+    def gp_total(self):
+        """Total guaranteed payments (Box 4c)."""
+        return self.gp_services + self.gp_capital
+
+    def __str__(self):
+        return f"{self.name} ({self.partner_type} — {self.profit_pct}%)"
+
+
+# ---------------------------------------------------------------------------
+# Partner Allocation — Special allocations by category (Lacerte-style)
+# ---------------------------------------------------------------------------
+
+
+class AllocationCategory(models.TextChoices):
+    ORDINARY = "ordinary", "Ordinary income/loss"
+    RENTAL_RE = "rental_re", "Net rental real estate income/loss"
+    OTHER_RENTAL = "other_rental", "Other rental income/loss"
+    INTEREST = "interest", "Interest income"
+    DIVIDENDS = "dividends", "Dividends"
+    ROYALTIES = "royalties", "Royalties"
+    ST_CAPITAL = "st_capital", "Short-term capital gain/loss"
+    LT_CAPITAL = "lt_capital", "Long-term capital gain/loss"
+    SEC_1231 = "sec_1231", "Section 1231 gain/loss"
+    SEC_179 = "sec_179", "Section 179 deduction"
+    CHARITABLE = "charitable", "Charitable contributions"
+    DISTRIBUTIONS = "distributions", "Distributions"
+    CAPITAL = "capital", "Capital (for capital account tracking)"
+
+
+class PartnerAllocation(models.Model):
+    """
+    Special allocation override for a specific category and partner.
+
+    If no record exists for a category, the partner's default profit_pct
+    (for income items) or loss_pct (for loss items) is used.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="partner_allocations",
+    )
+    partner = models.ForeignKey(
+        Partner,
+        on_delete=models.CASCADE,
+        related_name="allocations",
+    )
+    category = models.CharField(
+        max_length=30,
+        choices=AllocationCategory.choices,
+    )
+    percentage = models.DecimalField(
+        max_digits=7, decimal_places=4,
+        help_text="Allocation percentage for this category (0-100).",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "partner__sort_order"]
+        unique_together = [("tax_return", "partner", "category")]
+
+    def __str__(self):
+        return f"{self.partner.name} — {self.get_category_display()}: {self.percentage}%"
+
+
+# ---------------------------------------------------------------------------
 # Rental Property — Form 8825 (per return)
 # ---------------------------------------------------------------------------
 

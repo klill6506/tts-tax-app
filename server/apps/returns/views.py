@@ -24,6 +24,8 @@ from .models import (
     LineItemDetail,
     Officer,
     OtherDeduction,
+    Partner,
+    PartnerAllocation,
     PreparerInfo,
     PriorYearReturn,
     RentalProperty,
@@ -40,6 +42,8 @@ from .serializers import (
     LineItemDetailSerializer,
     OfficerSerializer,
     OtherDeductionSerializer,
+    PartnerAllocationSerializer,
+    PartnerSerializer,
     PreparerInfoSerializer,
     PriorYearReturnSerializer,
     RentalPropertySerializer,
@@ -1398,6 +1402,148 @@ class TaxReturnViewSet(
         return Response(ser.data)
 
     # ------------------------------------------------------------------
+    # Partners CRUD (Form 1065)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="partners")
+    def partners(self, request, pk=None):
+        """List or create Partner rows."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = Partner.objects.filter(
+                tax_return=tax_return
+            ).select_related("linked_client").prefetch_related("allocations")
+            return Response(PartnerSerializer(qs, many=True).data)
+
+        # POST
+        ser = PartnerSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        self._rollup_partner_distributions(tax_return)
+        self._rollup_guaranteed_payments(tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="partners/(?P<partner_id>[^/.]+)",
+    )
+    def partner_detail(self, request, pk=None, partner_id=None):
+        """Update or delete a single Partner row."""
+        tax_return = self.get_object()
+        try:
+            partner = Partner.objects.select_related("linked_client").get(
+                id=partner_id, tax_return=tax_return
+            )
+        except Partner.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            partner.delete()
+            self._rollup_partner_distributions(tax_return)
+            self._rollup_guaranteed_payments(tax_return)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PATCH
+        ser = PartnerSerializer(partner, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        self._rollup_partner_distributions(tax_return)
+        self._rollup_guaranteed_payments(tax_return)
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Partner Allocations CRUD
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="partners/(?P<partner_id>[^/.]+)/allocations",
+    )
+    def partner_allocations(self, request, pk=None, partner_id=None):
+        """List or create allocation overrides for a partner."""
+        tax_return = self.get_object()
+        try:
+            partner = Partner.objects.get(id=partner_id, tax_return=tax_return)
+        except Partner.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "GET":
+            qs = PartnerAllocation.objects.filter(partner=partner)
+            return Response(PartnerAllocationSerializer(qs, many=True).data)
+
+        ser = PartnerAllocationSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return, partner=partner)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="partners/(?P<partner_id>[^/.]+)/allocations/(?P<alloc_id>[^/.]+)",
+    )
+    def partner_allocation_detail(self, request, pk=None, partner_id=None, alloc_id=None):
+        """Update or delete a partner allocation override."""
+        tax_return = self.get_object()
+        try:
+            partner = Partner.objects.get(id=partner_id, tax_return=tax_return)
+        except Partner.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            alloc = PartnerAllocation.objects.get(id=alloc_id, partner=partner)
+        except PartnerAllocation.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            alloc.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = PartnerAllocationSerializer(alloc, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # K-1 Allocation Preview (Form 1065)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get"], url_path="k1-allocations")
+    def k1_allocations(self, request, pk=None):
+        """
+        Preview K-1 allocations for all partners on a 1065 return.
+
+        Returns a list of {partner_id, partner_name, k1_data} dicts.
+        Calls compute_return first to ensure values are current.
+        """
+        tax_return = self.get_object()
+        if tax_return.form_definition.code != "1065":
+            return Response(
+                {"error": "K-1 allocations only available for 1065 returns."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        compute_return(tax_return)
+
+        from .k1_allocator import allocate_all_k1s
+        results = allocate_all_k1s(tax_return)
+
+        data = []
+        for item in results:
+            partner = item["partner"]
+            k1 = item["k1_data"]
+            data.append({
+                "partner_id": str(partner.id),
+                "partner_name": partner.name,
+                "partner_type": partner.partner_type,
+                "k1_data": {box: str(amount) for box, amount in k1.items()},
+            })
+
+        return Response(data)
+
+    # ------------------------------------------------------------------
     # Rental Properties CRUD (Form 8825)
     # ------------------------------------------------------------------
 
@@ -1539,6 +1685,87 @@ class TaxReturnViewSet(
                 form_line=fl,
             )
             fv.value = str(total.quantize(Decimal("1")))
+            fv.is_overridden = False
+            fv.save(update_fields=["value", "is_overridden", "updated_at"])
+        except FormLine.DoesNotExist:
+            pass
+
+        compute_return(tax_return)
+
+    def _rollup_partner_distributions(self, tax_return):
+        """Sum all partner distributions into Schedule K line 19a."""
+        from decimal import Decimal
+        from django.db.models import Sum
+
+        if tax_return.form_definition.code != "1065":
+            return
+
+        total = (
+            Partner.objects.filter(tax_return=tax_return)
+            .aggregate(total=Sum("distributions"))["total"]
+        ) or Decimal("0")
+
+        try:
+            fl = FormLine.objects.get(
+                section__form=tax_return.form_definition,
+                line_number="K19a",
+            )
+            fv, _ = FormFieldValue.objects.get_or_create(
+                tax_return=tax_return,
+                form_line=fl,
+            )
+            fv.value = str(total.quantize(Decimal("1")))
+            fv.is_overridden = False
+            fv.save(update_fields=["value", "is_overridden", "updated_at"])
+        except FormLine.DoesNotExist:
+            pass
+
+        compute_return(tax_return)
+
+    def _rollup_guaranteed_payments(self, tax_return):
+        """Sum all partner GP into Schedule K lines 4a/4b/4c and Page 1 Line 10."""
+        from decimal import Decimal
+        from django.db.models import Sum
+
+        if tax_return.form_definition.code != "1065":
+            return
+
+        agg = Partner.objects.filter(tax_return=tax_return).aggregate(
+            gp_svc=Sum("gp_services"),
+            gp_cap=Sum("gp_capital"),
+        )
+        gp_svc = (agg["gp_svc"] or Decimal("0")).quantize(Decimal("1"))
+        gp_cap = (agg["gp_cap"] or Decimal("0")).quantize(Decimal("1"))
+        gp_total = gp_svc + gp_cap
+
+        # Write K4a, K4b, K4c
+        for line_num, val in [("K4a", gp_svc), ("K4b", gp_cap), ("K4c", gp_total)]:
+            try:
+                fl = FormLine.objects.get(
+                    section__form=tax_return.form_definition,
+                    line_number=line_num,
+                )
+                fv, _ = FormFieldValue.objects.get_or_create(
+                    tax_return=tax_return,
+                    form_line=fl,
+                )
+                fv.value = str(val)
+                fv.is_overridden = False
+                fv.save(update_fields=["value", "is_overridden", "updated_at"])
+            except FormLine.DoesNotExist:
+                pass
+
+        # Write Page 1 Line 10 (guaranteed payments deduction)
+        try:
+            fl = FormLine.objects.get(
+                section__form=tax_return.form_definition,
+                line_number="10",
+            )
+            fv, _ = FormFieldValue.objects.get_or_create(
+                tax_return=tax_return,
+                form_line=fl,
+            )
+            fv.value = str(gp_total)
             fv.is_overridden = False
             fv.save(update_fields=["value", "is_overridden", "updated_at"])
         except FormLine.DoesNotExist:
