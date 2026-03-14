@@ -1666,11 +1666,11 @@ def render_4797(tax_return) -> bytes:
     p3_section_1231 = p3_total_gain - p3_total_recapture  # Line 32
 
     if p3_total_gain:
-        field_values["P3_30"] = (str(p3_total_gain), "currency")
+        field_values["P4797_30"] = (str(p3_total_gain), "currency")
     if p3_total_recapture:
-        field_values["P3_31"] = (str(p3_total_recapture), "currency")
+        field_values["P4797_31"] = (str(p3_total_recapture), "currency")
     if p3_section_1231:
-        field_values["P3_32"] = (str(p3_section_1231), "currency")
+        field_values["P4797_32"] = (str(p3_section_1231), "currency")
 
     # -----------------------------------------------------------------------
     # Part I: Section 1231 gains/losses

@@ -1,8 +1,8 @@
 """
 Georgia Form 600S — Native PDF Generator.
 
-Generates a complete GA-600S from scratch using ReportLab Tables and
-drawing primitives. BLACK AND WHITE only — no color on printed forms.
+Generates a complete GA-600S from scratch using ReportLab and reusable
+form drawing primitives.  BLACK AND WHITE only — no color on printed forms.
 
 Professional tax software (Lacerte, Drake) generates its own renditions
 of state forms. This follows that same approach.
@@ -19,19 +19,21 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Table, TableStyle
+
+from .form_primitives import (
+    draw_checkbox,
+    draw_entity_info_grid,
+    draw_page_header,
+    draw_section_header,
+)
 
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792
 
-# Margins — 0.75 inch on left/right, 0.5 inch top/bottom
-MARGIN_L = 0.75 * inch
-MARGIN_R = 0.75 * inch
-MARGIN_T = 0.5 * inch
-MARGIN_B = 0.5 * inch
-
-CL = MARGIN_L                    # content left
-CR = PAGE_WIDTH - MARGIN_R       # content right
-CW = CR - CL                     # content width
+# Margins — 0.75 inch on all sides
+MARGIN = 0.75 * inch
+CL = MARGIN                     # content left
+CR = PAGE_WIDTH - MARGIN         # content right
+CW = CR - CL                    # content width
 
 # Fonts
 F_BOLD = "Helvetica-Bold"
@@ -39,13 +41,12 @@ F_REG = "Helvetica"
 
 # Row heights
 ROW_H = 14       # standard schedule row
-HDR_ROW_H = 18   # entity info rows (taller for label+value)
 
 ZERO = Decimal("0")
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Value helpers
 # ---------------------------------------------------------------------------
 
 def _d(val: str) -> Decimal:
@@ -77,6 +78,10 @@ def _fp(val: str) -> str:
         return "1.000000"
     return str(d)
 
+
+# ---------------------------------------------------------------------------
+# Data extraction
+# ---------------------------------------------------------------------------
 
 def _get_field_values(tax_return) -> dict[str, str]:
     from apps.returns.models import FormFieldValue
@@ -120,57 +125,8 @@ def _get_entity_data(tax_return) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Drawing helpers
+# Drawing helpers — schedule rows (built on primitives pattern)
 # ---------------------------------------------------------------------------
-
-def _draw_title_bar(c: canvas.Canvas, y: float, year: int, page: int) -> float:
-    """Draw the black title bar at top. Returns new y."""
-    bar_h = 44
-    top = y
-    c.setFillColor(colors.black)
-    c.rect(CL, top - bar_h, CW, bar_h, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont(F_BOLD, 14)
-    c.drawString(CL + 8, top - 16, "Georgia Form 600S")
-    c.setFont(F_REG, 9)
-    c.drawString(CL + 8, top - 28,
-                 "S Corporation Tax Return — Georgia Department of Revenue")
-    c.setFont(F_REG, 8)
-    c.drawString(CL + 8, top - 40, f"Tax Year {year}")
-    c.setFont(F_REG, 7)
-    c.drawRightString(CR - 8, top - 14, "(Rev. 08/13/24)")
-    c.setFont(F_BOLD, 8)
-    c.drawRightString(CR - 8, top - 28, f"Page {page}")
-    c.setFillColor(colors.black)
-    return top - bar_h - 4
-
-
-def _draw_continuation_header(c: canvas.Canvas, y: float, name: str, ein: str, page: int) -> float:
-    """Draw page header on continuation pages."""
-    c.setFont(F_REG, 8)
-    c.drawString(CL, y, f"Georgia Form 600S — Page {page}")
-    c.drawRightString(CR, y, f"FEIN: {ein}")
-    y -= 12
-    c.setFont(F_BOLD, 9)
-    c.drawString(CL, y, name)
-    y -= 3
-    c.setStrokeColor(colors.black)
-    c.setLineWidth(0.75)
-    c.line(CL, y, CR, y)
-    return y - 8
-
-
-def _draw_section_header(c: canvas.Canvas, y: float, title: str) -> float:
-    """Draw a black bar with white text section header. Returns new y."""
-    h = 15
-    c.setFillColor(colors.black)
-    c.rect(CL, y - h, CW, h, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont(F_BOLD, 9)
-    c.drawString(CL + 4, y - 11, title)
-    c.setFillColor(colors.black)
-    return y - h
-
 
 def _draw_schedule_rows(c: canvas.Canvas, y: float, rows, fv: dict,
                         amt_col_w: float = 100) -> float:
@@ -293,108 +249,6 @@ def _draw_3col_section(c: canvas.Canvas, y: float, rows, fv: dict) -> float:
     return y
 
 
-def _draw_entity_table(c: canvas.Canvas, y: float, data: dict) -> float:
-    """Draw entity info as a bordered grid table. Returns new y."""
-    # Build the table data — each row is (label, value, label, value, ...)
-    # We'll draw it manually as a grid for precise control.
-
-    row_h = 22  # each entity row height (label + value)
-    label_offset = 8   # y offset for label within row
-    value_offset = 17  # y offset for value within row
-
-    rows_data = [
-        # Row 1: 2 columns
-        [("A. Federal EIN", data["ein"], 0.30),
-         ("B. Corporation Name", data["entity_name"], 1.0)],
-        # Row 2: 2 columns
-        [("C. GA Withholding Acct #", "", 0.30),
-         ("D. Business Street Address", data["address"], 1.0)],
-        # Row 3: 4 columns
-        [("E. GA Sales Tax Reg #", "", 0.30),
-         ("F. City", data["city"], 0.55),
-         ("G. State", data["state"], 0.70),
-         ("H. ZIP", data["zip"], 1.0)],
-        # Row 4: 5 columns
-        [("J. NAICS Code", data["naics"], 0.16),
-         ("K. Date Incorp.", data["inc_date"], 0.32),
-         ("L. State Incorp.", data["inc_state"], 0.46),
-         ("M. Date Admitted GA", "", 0.64),
-         ("N. Type of Business", data["business_type"], 1.0)],
-        # Row 5: 3 columns
-        [("O. Records Location", f"{data['city']}, {data['state']}", 0.40),
-         ("P. Telephone", data["phone"], 0.65),
-         ("Q. Total Shareholders", data["total_shareholders"], 1.0)],
-    ]
-
-    num_rows = len(rows_data)
-    table_h = num_rows * row_h
-    table_top = y
-    table_bot = y - table_h
-
-    # Draw outer border
-    c.setStrokeColor(colors.black)
-    c.setLineWidth(0.75)
-    c.rect(CL, table_bot, CW, table_h, fill=0, stroke=1)
-
-    # Draw each row
-    for ri, cols in enumerate(rows_data):
-        row_top = table_top - ri * row_h
-        row_bot = row_top - row_h
-
-        # Horizontal line between rows (not on first row — outer border handles it)
-        if ri > 0:
-            c.setLineWidth(0.25)
-            c.line(CL, row_top, CR, row_top)
-
-        prev_end = 0.0
-        for ci, (label, value, end_frac) in enumerate(cols):
-            x_start = CL + CW * prev_end
-            x_end = CL + CW * end_frac
-
-            # Vertical separator (not on first column)
-            if ci > 0:
-                c.setLineWidth(0.25)
-                c.line(x_start, row_top, x_start, row_bot)
-
-            # Label (small, regular)
-            c.setFont(F_REG, 7)
-            c.setFillColor(colors.Color(0.3, 0.3, 0.3))
-            c.drawString(x_start + 3, row_top - label_offset, label)
-
-            # Value (larger, bold, black)
-            c.setFillColor(colors.black)
-            if value:
-                c.setFont(F_BOLD, 10)
-                # Clip value to cell width
-                max_w = (x_end - x_start) - 6
-                v = value
-                while c.stringWidth(v, F_BOLD, 10) > max_w and len(v) > 1:
-                    v = v[:-1]
-                c.drawString(x_start + 3, row_top - value_offset, v)
-
-            prev_end = end_frac
-
-    return table_bot - 6
-
-
-def _draw_checkbox_row(c: canvas.Canvas, y: float, fv: dict) -> float:
-    """Draw return type checkboxes. Returns new y."""
-    c.setFont(F_REG, 8)
-    items = [("Original Return", True), ("Amended", False), ("Final", False)]
-    x = CL + 4
-    for label, checked in items:
-        box = "[X]" if checked else "[  ]"
-        c.drawString(x, y, f"{box}  {label}")
-        x += 110
-
-    y -= 13
-    ptet = fv.get("GA_PTET", "")
-    ptet_on = ptet.lower() in ("true", "1", "yes") if ptet else False
-    box = "[X]" if ptet_on else "[  ]"
-    c.drawString(CL + 4, y, f"{box}  S Corporation elects to pay tax at entity level (PTET)")
-    return y - 16
-
-
 def _draw_date_boxes(c: canvas.Canvas, y: float, year: int) -> float:
     """Draw the income tax / net worth tax period boxes."""
     box_h = 32
@@ -402,7 +256,6 @@ def _draw_date_boxes(c: canvas.Canvas, y: float, year: int) -> float:
 
     c.setStrokeColor(colors.black)
     c.setLineWidth(0.5)
-    # Two boxes side by side
     c.rect(CL, y - box_h, CW / 2, box_h, fill=0, stroke=1)
     c.rect(mid, y - box_h, CW / 2, box_h, fill=0, stroke=1)
 
@@ -424,7 +277,23 @@ def _draw_date_boxes(c: canvas.Canvas, y: float, year: int) -> float:
 def _draw_page_number(c: canvas.Canvas, page: int):
     """Draw page number at bottom center."""
     c.setFont(F_REG, 7)
-    c.drawCentredString(PAGE_WIDTH / 2, MARGIN_B - 8, f"Page {page}")
+    c.drawCentredString(PAGE_WIDTH / 2, MARGIN - 16, f"Page {page}")
+
+
+def _draw_continuation_header(c: canvas.Canvas, y: float, name: str,
+                               ein: str, page: int) -> float:
+    """Draw page header on continuation pages with name + FEIN."""
+    c.setFont(F_REG, 8)
+    c.drawString(CL, y, f"Georgia Form 600S — Page {page}")
+    c.drawRightString(CR, y, f"FEIN: {ein}")
+    y -= 12
+    c.setFont(F_BOLD, 9)
+    c.drawString(CL, y, name)
+    y -= 3
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.75)
+    c.line(CL, y, CR, y)
+    return y - 8
 
 
 # ---------------------------------------------------------------------------
@@ -453,14 +322,62 @@ def render_ga600s_native(tax_return) -> bytes:
 
     # ===== PAGE 1 =====
     page = 1
-    y = PAGE_HEIGHT - MARGIN_T
-    y = _draw_title_bar(c, y, year, page)
+    y = PAGE_HEIGHT - MARGIN
+
+    # Title bar (using primitive)
+    y = draw_page_header(
+        c, CL, y, CW,
+        "Georgia Form 600S", "Rev. 08/13/24", page,
+        "S Corporation Tax Return — Georgia Department of Revenue",
+        f"Tax Year {year}",
+    )
+    y -= 6
+
+    # Date boxes
     y = _draw_date_boxes(c, y, year)
-    y = _draw_checkbox_row(c, y, fv)
-    y = _draw_entity_table(c, y, data)
+
+    # Checkboxes
+    draw_checkbox(c, CL + 4, y, "Original Return", checked=True)
+    draw_checkbox(c, CL + 140, y, "Amended", checked=False)
+    draw_checkbox(c, CL + 240, y, "Final", checked=False)
+    y -= 14
+
+    ptet = fv.get("GA_PTET", "")
+    ptet_on = ptet.lower() in ("true", "1", "yes") if ptet else False
+    draw_checkbox(
+        c, CL + 4, y,
+        "S Corporation elects to pay tax at entity level (PTET)",
+        checked=ptet_on,
+    )
+    y -= 18
+
+    # Entity info grid (using primitive)
+    w35 = CW * 0.35
+    w65 = CW * 0.65
+    entity_fields = [
+        [("A. Federal EIN", ein, w35),
+         ("B. Corporation Name", name, w65)],
+        [("C. GA Withholding Acct #", "", w35),
+         ("D. Business Street Address", data["address"], w65)],
+        [("E. GA Sales Tax Reg #", "", w35),
+         ("F. City", data["city"], CW * 0.25),
+         ("G. State", data["state"], CW * 0.15),
+         ("H. ZIP", data["zip"], CW * 0.25)],
+        [("J. NAICS Code", data["naics"], CW * 0.16),
+         ("K. Date Incorp.", data["inc_date"], CW * 0.16),
+         ("L. State Incorp.", data["inc_state"], CW * 0.14),
+         ("M. Date Admitted GA", "", CW * 0.18),
+         ("N. Type of Business", data["business_type"], CW * 0.36)],
+        [("O. Records Location", f"{data['city']}, {data['state']}", CW * 0.40),
+         ("P. Telephone", data["phone"], CW * 0.25),
+         ("Q. Total Shareholders", data["total_shareholders"], CW * 0.35)],
+    ]
+    y = draw_entity_info_grid(c, CL, y, CW, entity_fields)
+    y -= 10
 
     # Schedule 1
-    y = _draw_section_header(c, y, "Schedule 1 — Computation of GA Taxable Income and Tax")
+    draw_section_header(c, CL, y, CW, "Schedule 1 — Computation of GA Taxable Income and Tax")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "Georgia Net Income (from Schedule 5, Line 7)", "S1_1", False),
         ("2", "Additional Georgia Taxable Income", "S1_2", False),
@@ -474,12 +391,11 @@ def render_ga600s_native(tax_return) -> bytes:
     y -= 6
 
     # Schedule 2
-    y = _draw_section_header(c, y, "Schedule 2 — Computation of Georgia Taxable Net Income (PTET)")
-    ptet = fv.get("GA_PTET", "")
-    ptet_on = ptet.lower() in ("true", "1", "yes") if ptet else False
+    draw_section_header(c, CL, y, CW, "Schedule 2 — Computation of Georgia Taxable Net Income (PTET)")
+    y -= 18
     if not ptet_on:
         c.setFont(F_REG, 8)
-        c.drawString(CL + 28, y - 11,
+        c.drawString(CL + 28, y - 4,
                      "N/A — PTET not elected. Most S Corporations do not owe Georgia income tax.")
         y -= ROW_H + 2
     else:
@@ -496,11 +412,12 @@ def render_ga600s_native(tax_return) -> bytes:
     c.showPage()
     c.setFillColor(colors.black)
     page = 2
-    y = PAGE_HEIGHT - MARGIN_T
+    y = PAGE_HEIGHT - MARGIN
     y = _draw_continuation_header(c, y, name, ein, page)
 
     # Schedule 3
-    y = _draw_section_header(c, y, "Schedule 3 — Computation of Net Worth Tax")
+    draw_section_header(c, CL, y, CW, "Schedule 3 — Computation of Net Worth Tax")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "Total Capital Stock Issued", "S3_1", False),
         ("2", "Paid-in or Capital Surplus", "S3_2", False),
@@ -514,7 +431,8 @@ def render_ga600s_native(tax_return) -> bytes:
     y -= 6
 
     # Schedule 4
-    y = _draw_section_header(c, y, "Schedule 4 — Computation of Tax Due or Overpayment")
+    draw_section_header(c, CL, y, CW, "Schedule 4 — Computation of Tax Due or Overpayment")
+    y -= 18
     y = _draw_3col_section(c, y, [
         ("1", "Total Tax", "S4_1"),
         ("2", "Estimated tax payments", "S4_2"),
@@ -532,7 +450,8 @@ def render_ga600s_native(tax_return) -> bytes:
     y -= 6
 
     # Schedule 5
-    y = _draw_section_header(c, y, "Schedule 5 — Computation of Georgia Net Income")
+    draw_section_header(c, CL, y, CW, "Schedule 5 — Computation of Georgia Net Income")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "Total Income for GA purposes (Schedule 6, Line 11)", "S5_1", False),
         ("2", "Income allocated everywhere (Attach Schedule)", "S5_2", False),
@@ -549,11 +468,12 @@ def render_ga600s_native(tax_return) -> bytes:
     c.showPage()
     c.setFillColor(colors.black)
     page = 3
-    y = PAGE_HEIGHT - MARGIN_T
+    y = PAGE_HEIGHT - MARGIN
     y = _draw_continuation_header(c, y, name, ein, page)
 
     # Schedule 6
-    y = _draw_section_header(c, y, "Schedule 6 — Computation of Total Income for GA Purposes")
+    draw_section_header(c, CL, y, CW, "Schedule 6 — Computation of Total Income for GA Purposes")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "Ordinary income (loss) per Federal return", "S6_1", False),
         ("2", "Net income (loss) from rental real estate activities", "S6_2", False),
@@ -578,7 +498,8 @@ def render_ga600s_native(tax_return) -> bytes:
     y -= 6
 
     # Schedule 7
-    y = _draw_section_header(c, y, "Schedule 7 — Additions to Federal Taxable Income")
+    draw_section_header(c, CL, y, CW, "Schedule 7 — Additions to Federal Taxable Income")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "State and municipal bond interest (other than Georgia)", "S7_1", False),
         ("2", "Net income or net profits taxes imposed by other jurisdictions", "S7_2", False),
@@ -593,7 +514,8 @@ def render_ga600s_native(tax_return) -> bytes:
     y -= 6
 
     # Schedule 8
-    y = _draw_section_header(c, y, "Schedule 8 — Subtractions from Federal Taxable Income")
+    draw_section_header(c, CL, y, CW, "Schedule 8 — Subtractions from Federal Taxable Income")
+    y -= 18
     y = _draw_schedule_rows(c, y, [
         ("1", "Interest on obligations of United States", "S8_1", False),
         ("2", "Exception to intangible expenses (Attach IT-Addback)", "S8_2", False),
@@ -633,9 +555,9 @@ def render_ga600s_native(tax_return) -> bytes:
         y -= 14
 
     # Signature lines
-    for fields, frac_list in [
-        ([("Signature of Officer", 0.55), ("Date", 0.25), ("Title", 0.20)], None),
-        ([("Preparer's Signature", 0.40), ("Date", 0.15), ("PTIN", 0.20), ("Firm's EIN", 0.25)], None),
+    for fields in [
+        [("Signature of Officer", 0.55), ("Date", 0.25), ("Title", 0.20)],
+        [("Preparer's Signature", 0.40), ("Date", 0.15), ("PTIN", 0.20), ("Firm's EIN", 0.25)],
     ]:
         x = CL
         for label, frac in fields:

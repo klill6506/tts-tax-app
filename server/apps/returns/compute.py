@@ -505,6 +505,83 @@ def _set_field_value(tax_return, line_number: str, value: str) -> None:
         pass  # Line doesn't exist in this form — skip silently
 
 
+def aggregate_dispositions(tax_return) -> None:
+    """
+    Compute Form 4797 disposition totals and flow to 1120-S lines.
+
+    Uses the same IRS routing logic as render_4797():
+    - Short-term (≤365 days) → Part II (ordinary)
+    - Long-term loss → Part I Line 2
+    - Long-term gain, no depreciation → Part I Line 2
+    - Long-term gain WITH depreciation → Part III (recapture)
+
+    Flow OUT (1120-S rules):
+    - Part I Line 7 → Schedule K Line 9 (net Section 1231 gain/loss)
+    - Part II total  → Page 1 Line 4 (ordinary gains from 4797)
+    """
+    disposed = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+        date_sold__isnull=False,
+    )
+
+    if not disposed.exists():
+        return
+
+    # Route assets — mirrors render_4797 logic exactly
+    part1_line2_total = ZERO
+    part2_ordinary = ZERO
+    p3_total_gain = ZERO
+    p3_total_recapture = ZERO
+
+    for a in disposed:
+        if a.date_acquired and a.date_sold:
+            holding_days = (a.date_sold - a.date_acquired).days
+        else:
+            holding_days = 366  # assume long-term if dates missing
+
+        gain = a.gain_loss_on_sale or ZERO
+        total_depr = (
+            a.prior_depreciation + a.current_depreciation
+            + a.bonus_amount + a.sec_179_elected
+        )
+
+        if holding_days <= 365:
+            # Short-term → Part II ordinary
+            part2_ordinary += gain
+        elif gain <= 0:
+            # Long-term loss → Part I Line 2
+            part1_line2_total += gain
+        elif total_depr > 0:
+            # Long-term gain with depreciation → Part III
+            cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
+            adjusted_basis = cost_plus - total_depr
+            total_gain = (a.sales_price or ZERO) - adjusted_basis
+            recapture = min(total_gain, total_depr)
+            p3_total_gain += total_gain
+            p3_total_recapture += recapture
+        else:
+            # Long-term gain, no depreciation → Part I Line 2
+            part1_line2_total += gain
+
+    # Part III summary
+    p3_section_1231 = p3_total_gain - p3_total_recapture  # Line 32
+
+    # Part I Line 7 = Line 2 totals + Line 6 (Part III Line 32)
+    part1_line7 = part1_line2_total + p3_section_1231
+
+    # Part II total ordinary = short-term + Part III Line 31 (recapture)
+    total_ordinary = part2_ordinary + p3_total_recapture
+
+    # Flow OUT to 1120-S:
+    # K9 = net Section 1231 gain/loss (Part I Line 7)
+    if part1_line7 != 0:
+        _set_field_value(tax_return, "K9", str(part1_line7.quantize(Decimal("1"))))
+
+    # Page 1 Line 4 = ordinary gains from 4797 (Part II total)
+    if total_ordinary != 0:
+        _set_field_value(tax_return, "4", str(total_ordinary.quantize(Decimal("1"))))
+
+
 def compute_return(tax_return) -> int:
     """
     Evaluate all computed fields on a tax return and save them.
@@ -513,6 +590,9 @@ def compute_return(tax_return) -> int:
     """
     # Aggregate depreciation first so totals are available to formulas
     aggregate_depreciation(tax_return)
+
+    # Compute 4797 disposition flows (K9, Page 1 Line 4)
+    aggregate_dispositions(tax_return)
 
     form_code = tax_return.form_definition.code
     formulas = FORMULA_REGISTRY.get(form_code)

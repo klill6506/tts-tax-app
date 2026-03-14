@@ -36,8 +36,8 @@ USABLE_WIDTH = RIGHT_X - LEFT_MARGIN
 FIRM_NAME_FONT = "Helvetica-Bold"
 HEADER_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica"
-FIRM_NAME_SIZE = 20
-FIRM_DETAIL_SIZE = 12
+FIRM_NAME_SIZE = 14
+FIRM_DETAIL_SIZE = 10
 BODY_SIZE = 10
 FORM_SIZE = 10
 SECTION_HEADER_SIZE = 11
@@ -355,11 +355,12 @@ def render_invoice(tax_return) -> bytes:
     if federal_forms:
         c.setFont(HEADER_FONT, SECTION_HEADER_SIZE)
         c.drawString(LEFT_MARGIN, y, "FEDERAL FORMS")
-        y -= LINE_HEIGHT + 2
+        y -= 4
 
-        # Underline
+        # Underline (below header, above content)
         c.setLineWidth(0.25)
-        c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
+        c.line(LEFT_MARGIN, y, RIGHT_X, y)
+        y -= LINE_HEIGHT
 
         c.setFont(BODY_FONT, FORM_SIZE)
         for form_num, form_desc in federal_forms:
@@ -373,11 +374,12 @@ def render_invoice(tax_return) -> bytes:
     if state_forms:
         c.setFont(HEADER_FONT, SECTION_HEADER_SIZE)
         c.drawString(LEFT_MARGIN, y, "GEORGIA FORMS")
-        y -= LINE_HEIGHT + 2
+        y -= 4
 
-        # Underline
+        # Underline (below header, above content)
         c.setLineWidth(0.25)
-        c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
+        c.line(LEFT_MARGIN, y, RIGHT_X, y)
+        y -= LINE_HEIGHT
 
         c.setFont(BODY_FONT, FORM_SIZE)
         for form_num, form_desc in state_forms:
@@ -392,11 +394,12 @@ def render_invoice(tax_return) -> bytes:
     # --- FEE SUMMARY ---
     c.setFont(HEADER_FONT, SECTION_HEADER_SIZE)
     c.drawString(LEFT_MARGIN, y, "FEE SUMMARY")
-    y -= LINE_HEIGHT + 2
+    y -= 4
 
-    # Underline
+    # Underline (below header, above content)
     c.setLineWidth(0.25)
-    c.line(LEFT_MARGIN, y + 4, RIGHT_X, y + 4)
+    c.line(LEFT_MARGIN, y, RIGHT_X, y)
+    y -= LINE_HEIGHT
 
     # Preparation Fee
     c.setFont(BODY_FONT, BODY_SIZE)
@@ -419,10 +422,10 @@ def render_invoice(tax_return) -> bytes:
         y -= LINE_HEIGHT
 
     # Separator line above Amount Due
-    y -= 8
+    y -= 4
     c.setLineWidth(0.75)
-    c.line(FEE_AMOUNT_X - 140, y + 5, FEE_AMOUNT_X, y + 5)
-    y -= LINE_HEIGHT * 0.5
+    c.line(FEE_AMOUNT_X - 140, y, FEE_AMOUNT_X, y)
+    y -= LINE_HEIGHT
 
     # Amount Due (bold, larger)
     c.setFont(HEADER_FONT, AMOUNT_DUE_SIZE)
