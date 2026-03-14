@@ -96,9 +96,9 @@ FIELD_MAP: FieldMap = {}
 
 # Part I header lines
 FIELD_MAP.update({
-    "P4797_1": AcroField(f"{_P1}.f1_3[0]", format="currency"),  # Line 1: Gain from Form 6252
-    "P4797_4": AcroField(f"{_P1}.f1_4[0]", format="currency"),  # Line 4: Section 1231 gain from installment
-    "P4797_5": AcroField(f"{_P1}.f1_5[0]", format="currency"),  # Line 5: Like-kind exchange gain
+    "P4797_1a": AcroField(f"{_P1}.f1_3[0]", format="currency"),  # Line 1a: Gross proceeds from 1099-B/S
+    "P4797_1b": AcroField(f"{_P1}.f1_4[0]", format="currency"),  # Line 1b: Gain from partial dispositions
+    "P4797_1c": AcroField(f"{_P1}.f1_5[0]", format="currency"),  # Line 1c: Loss from partial dispositions
 })
 
 # Part I Line 2 detail table (4 rows)
@@ -107,17 +107,17 @@ for _row in range(1, 5):
 
 # Part I summary lines
 FIELD_MAP.update({
-    "P4797_3":  AcroField(f"{_P1}.f1_34[0]", format="currency"),  # Line 3: Gain if any from line 2
-    "P4797_6":  AcroField(f"{_P1}.f1_35[0]", format="currency"),  # Line 6: Gain
-    "P4797_6b": AcroField(f"{_P1}.f1_36[0]", format="currency"),  # Line 6b
-    "P4797_6c": AcroField(f"{_P1}.f1_37[0]", format="currency"),  # Line 6c
+    "P4797_3":  AcroField(f"{_P1}.f1_34[0]", format="currency"),  # Line 3: Gain from Form 4684
+    "P4797_4":  AcroField(f"{_P1}.f1_35[0]", format="currency"),  # Line 4: Section 1231 gain from installment
+    "P4797_5":  AcroField(f"{_P1}.f1_36[0]", format="currency"),  # Line 5: Like-kind exchange gain/loss
+    "P4797_6":  AcroField(f"{_P1}.f1_37[0]", format="currency"),  # Line 6: Gain from Part III Line 32
     "P4797_7":  AcroField(f"{_P1}.f1_38[0]", format="currency"),  # Line 7: Net section 1231 gain (loss)
 })
 
 # Part II header lines
 FIELD_MAP.update({
-    "P4797_9":  AcroField(f"{_P1}.f1_39[0]", format="currency"),  # Line 9: Losses from casualties
-    "P4797_11": AcroField(f"{_P1}.f1_40[0]", format="currency"),  # Line 11: Loss from Form 4797
+    "P4797_8":  AcroField(f"{_P1}.f1_39[0]", format="currency"),  # Line 8: Nonrecaptured section 1231 losses
+    "P4797_9":  AcroField(f"{_P1}.f1_40[0]", format="currency"),  # Line 9: Line 7 minus line 8
 })
 
 # Part II Line 10 detail table (4 rows)
@@ -126,15 +126,15 @@ for _row in range(1, 5):
 
 # Part II summary lines
 FIELD_MAP.update({
-    "P4797_12": AcroField(f"{_P1}.f1_69[0]", format="currency"),  # Line 12: skip line
-    "P4797_13": AcroField(f"{_P1}.f1_70[0]", format="currency"),  # Line 13: Gain from Form 4684
-    "P4797_14": AcroField(f"{_P1}.f1_71[0]", format="currency"),  # Line 14: Net gain
-    "P4797_15": AcroField(f"{_P1}.f1_72[0]", format="currency"),  # Line 15: Add lines 12-14
-    "P4797_16a": AcroField(f"{_P1}.f1_73[0]", format="currency"), # Line 16a
-    "P4797_16b": AcroField(f"{_P1}.f1_74[0]", format="currency"), # Line 16b
-    "P4797_16c": AcroField(f"{_P1}.f1_75[0]", format="currency"), # Line 16c
-    "P4797_17": AcroField(f"{_P1}.f1_76[0]", format="currency"),  # Line 17: Ordinary gains
-    "P4797_18": AcroField(f"{_P1}.f1_77[0]", format="currency"),  # Line 18: combined
+    "P4797_11": AcroField(f"{_P1}.f1_69[0]", format="currency"),  # Line 11: Loss from line 7
+    "P4797_12": AcroField(f"{_P1}.f1_70[0]", format="currency"),  # Line 12: Gain from line 7
+    "P4797_13": AcroField(f"{_P1}.f1_71[0]", format="currency"),  # Line 13: Gain from Part III Line 31
+    "P4797_14": AcroField(f"{_P1}.f1_72[0]", format="currency"),  # Line 14: Net gain from Form 4684
+    "P4797_15": AcroField(f"{_P1}.f1_73[0]", format="currency"),  # Line 15: Ordinary gain from installment
+    "P4797_16": AcroField(f"{_P1}.f1_74[0]", format="currency"),  # Line 16: Like-kind exchange gain
+    "P4797_17": AcroField(f"{_P1}.f1_75[0]", format="currency"),  # Line 17: Combine lines 10-16
+    "P4797_18a": AcroField(f"{_P1}.f1_76[0]", format="currency"), # Line 18a: Loss from Form 4684
+    "P4797_18b": AcroField(f"{_P1}.f1_77[0]", format="currency"), # Line 18b: Gain excluding 18a loss
 })
 
 # Part III: Section 1245/1250 Recapture

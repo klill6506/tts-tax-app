@@ -1,10 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, useMatch } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 import { get } from "../lib/api";
 import AiHelpPanel from "./AiHelpPanel";
 import pkg from "../../../package.json";
+
+export type AppShellContext = {
+  setEditorBreadcrumb: (node: ReactNode) => void;
+};
 
 const CLIENT_VERSION = pkg.version;
 
@@ -321,6 +325,8 @@ export default function AppShell() {
   const paletteRef = useRef<HTMLDivElement>(null);
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
+  const [editorBreadcrumb, setEditorBreadcrumb] = useState<ReactNode>(null);
+  const isInEditor = !!matchEditor;
 
   // Fetch server version when About dialog opens
   useEffect(() => {
@@ -399,59 +405,31 @@ export default function AppShell() {
 
   return (
     <div className="flex h-screen flex-col bg-surface">
-      {/* ── Menu Bar ── */}
-      <div className="flex h-8 shrink-0 items-center border-b border-nav-border bg-nav px-2 gap-0.5">
-        {MENUS.map((group) => (
-          <DropdownMenu
-            key={group.label}
-            group={group}
-            isOpen={openMenu === group.label}
-            onToggle={() => handleToggle(group.label)}
-            onClose={handleClose}
-            onHover={() => handleHover(group.label)}
-            onAction={handleMenuAction}
-          />
-        ))}
-      </div>
+      {/* ── Menu Bar (hidden when inside a return editor) ── */}
+      {!isInEditor && (
+        <div className="flex h-8 shrink-0 items-center border-b border-nav-border bg-nav px-2 gap-0.5">
+          {MENUS.map((group) => (
+            <DropdownMenu
+              key={group.label}
+              group={group}
+              isOpen={openMenu === group.label}
+              onToggle={() => handleToggle(group.label)}
+              onClose={handleClose}
+              onHover={() => handleHover(group.label)}
+              onAction={handleMenuAction}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── Primary Toolbar ── */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-nav-border bg-nav px-4">
-        {/* Left: Brand + Nav + Back */}
+        {/* Left: Brand + Nav + Back (or breadcrumb when in editor) */}
         <div className="flex items-center gap-4">
-          <span className="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
-            TTS Tax Prep
-          </span>
-
-          <div className="h-5 w-px bg-nav-border" />
-
-          <nav className="flex gap-0.5">
-            {NAV_TABS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-                    isActive
-                      ? "bg-nav-active text-white"
-                      : "text-blue-200 hover:bg-nav-active hover:text-white"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* Back button — navigates up the hierarchy */}
-          {canGoBack && (
+          {isInEditor ? (
             <>
-              <div className="h-5 w-px bg-nav-border" />
               <button
-                onClick={() => {
-                  if (parentRoute) navigate(parentRoute);
-                  else navigate(-1);
-                }}
+                onClick={() => navigate("/")}
                 className="flex items-center gap-1.5 rounded-md border border-nav-border bg-nav-active px-3 py-1 text-xs font-medium text-tx-on-dark transition hover:bg-nav hover:text-white"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -459,6 +437,58 @@ export default function AppShell() {
                 </svg>
                 Back
               </button>
+              {editorBreadcrumb && (
+                <>
+                  <div className="h-5 w-px bg-nav-border" />
+                  {editorBreadcrumb}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                TTS Tax Prep
+              </span>
+
+              <div className="h-5 w-px bg-nav-border" />
+
+              <nav className="flex gap-0.5">
+                {NAV_TABS.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                        isActive
+                          ? "bg-nav-active text-white"
+                          : "text-blue-200 hover:bg-nav-active hover:text-white"
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
+
+              {/* Back button — navigates up the hierarchy */}
+              {canGoBack && (
+                <>
+                  <div className="h-5 w-px bg-nav-border" />
+                  <button
+                    onClick={() => {
+                      if (parentRoute) navigate(parentRoute);
+                      else navigate(-1);
+                    }}
+                    className="flex items-center gap-1.5 rounded-md border border-nav-border bg-nav-active px-3 py-1 text-xs font-medium text-tx-on-dark transition hover:bg-nav hover:text-white"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                    Back
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -580,7 +610,7 @@ export default function AppShell() {
         {/* Content */}
         <main className="flex-1 overflow-auto bg-surface p-6">
           <div className="mx-auto max-w-7xl">
-            <Outlet />
+            <Outlet context={{ setEditorBreadcrumb } satisfies AppShellContext} />
           </div>
         </main>
 

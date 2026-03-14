@@ -1731,7 +1731,6 @@ def render_4797(tax_return) -> bytes:
 
     if total_ordinary != 0:
         field_values["P4797_17"] = (str(total_ordinary), "currency")
-        field_values["P4797_18"] = (str(total_ordinary), "currency")
 
     return render(
         form_id="f4797",

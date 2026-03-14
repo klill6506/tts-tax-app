@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useOutletContext } from "react-router-dom";
+import type { AppShellContext } from "../components/AppShell";
 import {
   get, patch, post, del,
   renderPdf, renderK1s, renderK1, render7206,
@@ -507,12 +508,48 @@ const GA_SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
 export default function FormEditor() {
   const { taxReturnId } = useParams<{ taxReturnId: string }>();
   const navigate = useNavigate();
+  const { setEditorBreadcrumb } = useOutletContext<AppShellContext>();
 
   const [returnData, setReturnData] = useState<TaxReturnData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("info");
   const [primaryTab, setPrimaryTab] = useState<"input" | "forms" | "diagnostics">("input");
+
+  // Push breadcrumb into the AppShell toolbar
+  useEffect(() => {
+    if (!returnData) {
+      setEditorBreadcrumb(null);
+      return;
+    }
+    setEditorBreadcrumb(
+      <div className="flex items-center text-sm">
+        <Link to="/" className="text-blue-200 hover:text-white hover:underline">
+          Return Manager
+        </Link>
+        <span className="mx-1.5 text-blue-300/60">/</span>
+        <span className="text-blue-100">{returnData.client_name}</span>
+        <span className="mx-1.5 text-blue-300/60">/</span>
+        <span className="text-blue-100">{returnData.entity_name}</span>
+        <span className="mx-1.5 text-blue-300/60">/</span>
+        {returnData.federal_return_id ? (
+          <>
+            <Link
+              to={`/tax-returns/${returnData.federal_return_id}/editor`}
+              className="text-blue-200 hover:text-white hover:underline"
+            >
+              Federal Return
+            </Link>
+            <span className="mx-1.5 text-blue-300/60">/</span>
+          </>
+        ) : null}
+        <span className="font-semibold text-white">
+          {returnData.form_code} &mdash; {returnData.year}
+        </span>
+      </div>,
+    );
+    return () => setEditorBreadcrumb(null);
+  }, [returnData, setEditorBreadcrumb]);
 
   // Prior year data
   const [priorYear, setPriorYear] = useState<PriorYearData | null>(null);
@@ -733,33 +770,6 @@ export default function FormEditor() {
 
   return (
     <div>
-      {/* Breadcrumb */}
-      <div className="mb-4 text-sm text-tx-secondary">
-        <Link to="/" className="text-primary-text hover:underline">
-          Return Manager
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-tx">{returnData.client_name}</span>
-        <span className="mx-2">/</span>
-        <span className="text-tx">{returnData.entity_name}</span>
-        <span className="mx-2">/</span>
-        {returnData.federal_return_id ? (
-          <>
-            <Link to={`/tax-returns/${returnData.federal_return_id}/editor`} className="text-primary hover:underline">
-              Federal Return
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="font-medium text-tx">
-              {returnData.form_code} &mdash; {returnData.year}
-            </span>
-          </>
-        ) : (
-          <span className="font-medium text-tx">
-            {returnData.form_code} &mdash; {returnData.year}
-          </span>
-        )}
-      </div>
-
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>

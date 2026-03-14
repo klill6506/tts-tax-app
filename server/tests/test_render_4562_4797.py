@@ -272,7 +272,6 @@ class TestF4797AcroFormFiller:
     def test_fill_4797_with_ordinary_gain(self):
         field_values = {
             "P4797_17": ("50000.00", "currency"),
-            "P4797_18": ("50000.00", "currency"),
         }
         result = fill_form(
             template_path=_F4797_PATH,
