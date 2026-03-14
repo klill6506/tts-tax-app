@@ -326,7 +326,6 @@ export default function AppShell() {
 
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
   const [editorBreadcrumb, setEditorBreadcrumb] = useState<ReactNode>(null);
-  const isInEditor = !!matchEditor;
 
   // Fetch server version when About dialog opens
   useEffect(() => {
@@ -366,6 +365,7 @@ export default function AppShell() {
   const matchEntity = useMatch("/clients/:clientId/entities/:entityId");
   const matchTB = useMatch("/tax-years/:taxYearId/trial-balance");
   const matchEditor = useMatch("/tax-returns/:taxReturnId/editor");
+  const isInEditor = !!matchEditor;
 
   let parentRoute: string | null = null;
   if (matchEntity) {
@@ -610,7 +610,7 @@ export default function AppShell() {
         {/* Content */}
         <main className="flex-1 overflow-auto bg-surface p-6">
           <div className="mx-auto max-w-7xl">
-            <Outlet context={{ setEditorBreadcrumb } satisfies AppShellContext} />
+            <Outlet context={{ setEditorBreadcrumb } as AppShellContext} />
           </div>
         </main>
 
