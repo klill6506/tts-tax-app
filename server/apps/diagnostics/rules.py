@@ -544,6 +544,145 @@ def shareholder_ssn_check(tax_year: TaxYear) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Form 4797 — Disposition Diagnostics (D001-D005 from Rule Studio spec)
+# ---------------------------------------------------------------------------
+
+def _get_disposed_assets(tax_year: TaxYear):
+    """Get disposed DepreciationAssets for the first federal return."""
+    from apps.returns.models import DepreciationAsset, TaxReturn
+
+    tax_return = (
+        TaxReturn.objects.filter(tax_year=tax_year, federal_return__isnull=True)
+        .first()
+    )
+    if not tax_return:
+        return []
+
+    return list(
+        DepreciationAsset.objects.filter(
+            tax_return=tax_return,
+            date_sold__isnull=False,
+        )
+    )
+
+
+def f4797_missing_holding_period(tax_year: TaxYear) -> list[dict]:
+    """D001: Missing holding period — dates required for Part routing."""
+    assets = _get_disposed_assets(tax_year)
+    findings = []
+    for a in assets:
+        if not a.date_acquired or not a.date_sold:
+            findings.append({
+                "severity": "error",
+                "message": (
+                    f"Disposed asset '{a.description}' is missing "
+                    f"{'date acquired' if not a.date_acquired else 'date sold'}. "
+                    "Holding period is required to determine correct Part routing."
+                ),
+                "details": {"asset_id": str(a.id), "description": a.description},
+            })
+    return findings
+
+
+def f4797_zero_depreciation(tax_year: TaxYear) -> list[dict]:
+    """D002: Depreciation not entered for depreciable property."""
+    assets = _get_disposed_assets(tax_year)
+    findings = []
+    _depreciable_groups = {
+        "Machinery and Equipment", "Furniture and Fixtures",
+        "Vehicles", "Buildings", "Improvements",
+        "Intangibles/Amortization",
+    }
+    for a in assets:
+        if a.group_label not in _depreciable_groups:
+            continue
+        total_depr = (
+            a.prior_depreciation + a.current_depreciation
+            + a.bonus_amount + a.sec_179_elected
+        )
+        if total_depr == 0:
+            findings.append({
+                "severity": "warning",
+                "message": (
+                    f"Disposed asset '{a.description}' ({a.group_label}) has zero depreciation. "
+                    "Verify this is correct — if depreciation was allowed, it must be reported "
+                    "even if not claimed (depreciation 'allowable')."
+                ),
+                "details": {"asset_id": str(a.id), "group_label": a.group_label},
+            })
+    return findings
+
+
+def f4797_gain_no_recapture(tax_year: TaxYear) -> list[dict]:
+    """D003: Gain on §1245 property with no depreciation to recapture."""
+    assets = _get_disposed_assets(tax_year)
+    findings = []
+    # §1245 groups = personal property (not buildings/improvements/land)
+    _1245_groups = {
+        "Machinery and Equipment", "Furniture and Fixtures",
+        "Vehicles", "Intangibles/Amortization",
+    }
+    for a in assets:
+        if a.group_label not in _1245_groups:
+            continue
+        total_depr = (
+            a.prior_depreciation + a.current_depreciation
+            + a.bonus_amount + a.sec_179_elected
+        )
+        gain = a.gain_loss_on_sale or Decimal("0")
+        if gain > 0 and total_depr == 0:
+            findings.append({
+                "severity": "warning",
+                "message": (
+                    f"Disposed asset '{a.description}' has gain but no depreciation to recapture. "
+                    "Verify basis and depreciation."
+                ),
+                "details": {"asset_id": str(a.id), "gain": str(gain)},
+            })
+    return findings
+
+
+def f4797_zero_sale_price(tax_year: TaxYear) -> list[dict]:
+    """D004: Sale price is zero — may be abandonment or casualty."""
+    assets = _get_disposed_assets(tax_year)
+    findings = []
+    for a in assets:
+        if not a.sales_price or a.sales_price == 0:
+            findings.append({
+                "severity": "warning",
+                "message": (
+                    f"Disposed asset '{a.description}' has a zero sale price. "
+                    "If this was an abandonment or casualty, verify the correct reporting method."
+                ),
+                "details": {"asset_id": str(a.id)},
+            })
+    return findings
+
+
+def f4797_1231_loss_lookback(tax_year: TaxYear) -> list[dict]:
+    """D005: Long-term §1231 loss — check 5-year lookback rule."""
+    assets = _get_disposed_assets(tax_year)
+    findings = []
+    for a in assets:
+        if not a.date_acquired or not a.date_sold:
+            continue
+        months = (a.date_sold.year - a.date_acquired.year) * 12 + (a.date_sold.month - a.date_acquired.month)
+        gain = a.gain_loss_on_sale or Decimal("0")
+        if months > 12 and gain < 0:
+            findings.append({
+                "severity": "info",
+                "message": (
+                    f"Disposed asset '{a.description}' has a long-term §1231 loss. "
+                    "Note: if there were net §1231 gains in the prior 5 years treated as "
+                    "capital gains, the lookback rule under §1231(c) may require "
+                    "recharacterization. Review IRC §1231(c)."
+                ),
+                "details": {"asset_id": str(a.id), "loss": str(gain)},
+            })
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -662,5 +801,41 @@ BUILTIN_RULES = [
         "description": "Checks that all shareholders/partners have SSN/EIN for K-1.",
         "severity": "error",
         "rule_function": "apps.diagnostics.rules.shareholder_ssn_check",
+    },
+    # Form 4797 — Disposition Diagnostics
+    {
+        "code": "F4797_MISSING_DATES",
+        "name": "4797: Missing Holding Period",
+        "description": "Checks that disposed assets have both date acquired and date sold.",
+        "severity": "error",
+        "rule_function": "apps.diagnostics.rules.f4797_missing_holding_period",
+    },
+    {
+        "code": "F4797_ZERO_DEPR",
+        "name": "4797: Zero Depreciation on Depreciable Property",
+        "description": "Flags depreciable disposed assets with no depreciation entered.",
+        "severity": "warning",
+        "rule_function": "apps.diagnostics.rules.f4797_zero_depreciation",
+    },
+    {
+        "code": "F4797_GAIN_NO_RECAPTURE",
+        "name": "4797: Gain with No Recapture",
+        "description": "Flags §1245 property with gain but zero depreciation to recapture.",
+        "severity": "warning",
+        "rule_function": "apps.diagnostics.rules.f4797_gain_no_recapture",
+    },
+    {
+        "code": "F4797_ZERO_SALE",
+        "name": "4797: Zero Sale Price",
+        "description": "Flags disposed assets with a zero sale price.",
+        "severity": "warning",
+        "rule_function": "apps.diagnostics.rules.f4797_zero_sale_price",
+    },
+    {
+        "code": "F4797_1231_LOOKBACK",
+        "name": "4797: §1231 Loss Lookback",
+        "description": "Flags long-term §1231 losses for 5-year lookback review.",
+        "severity": "info",
+        "rule_function": "apps.diagnostics.rules.f4797_1231_loss_lookback",
     },
 ]

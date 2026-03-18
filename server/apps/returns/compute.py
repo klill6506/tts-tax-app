@@ -589,15 +589,35 @@ def _set_field_value(tax_return, line_number: str, value: str) -> None:
         pass  # Line doesn't exist in this form — skip silently
 
 
+def _holding_period_months(date_acquired, date_sold) -> int:
+    """Compute holding period in whole months between two dates.
+
+    IRS §1231 requires holding >12 months for long-term treatment.
+    Uses month arithmetic: (year_diff * 12) + month_diff.
+    """
+    return (date_sold.year - date_acquired.year) * 12 + (date_sold.month - date_acquired.month)
+
+
+def _is_1250_property(group_label: str) -> bool:
+    """§1250 property = depreciable real property (buildings, improvements)."""
+    return group_label in ("Buildings", "Improvements")
+
+
 def aggregate_dispositions(tax_return) -> None:
     """
     Compute Form 4797 disposition totals and flow to return lines.
 
-    Uses the same IRS routing logic as render_4797():
-    - Short-term (≤365 days) → Part II (ordinary)
-    - Long-term loss → Part I Line 2
-    - Long-term gain, no depreciation → Part I Line 2
-    - Long-term gain WITH depreciation → Part III (recapture)
+    Rebuilt from Rule Studio spec (4797_TY2025_v1):
+    - R001: Holding period >12 months = long-term, else short-term
+    - R002: Short-term → Part II; long-term + gain + depreciable → Part III;
+             long-term + gain + no depr → Part I; long-term + loss → Part I
+    - R003: gain = sale_price - adjusted_basis
+    - R004: adjusted_basis = cost - depreciation_allowed
+    - R005: §1245 recapture = min(gain, depreciation_allowed)
+    - R006: §1245 excess = max(0, gain - depreciation_allowed)
+    - R007: §1250 recapture = 0 (post-1986 SL, additional_depr = 0)
+    - R008: Unrecaptured §1250 = min(gain, depreciation) - ordinary_1250
+    - R010: Net §1231 = total_1231_gains - total_1231_losses
 
     Flow OUT:
     - 1120-S: K9 = Section 1231, Line 4 = ordinary 4797 gains
@@ -611,25 +631,33 @@ def aggregate_dispositions(tax_return) -> None:
     if not disposed.exists():
         return
 
-    # Route assets — mirrors render_4797 logic exactly
     part1_line2_total = ZERO
     part2_ordinary = ZERO
     p3_total_gain = ZERO
     p3_total_recapture = ZERO
 
     for a in disposed:
+        # R001 — holding period classification (months)
         if a.date_acquired and a.date_sold:
-            holding_days = (a.date_sold - a.date_acquired).days
+            months = _holding_period_months(a.date_acquired, a.date_sold)
         else:
-            holding_days = 366  # assume long-term if dates missing
+            months = 13  # assume long-term if dates missing
 
-        gain = a.gain_loss_on_sale or ZERO
+        is_long_term = months > 12
+
+        # R004 — adjusted basis
         total_depr = (
             a.prior_depreciation + a.current_depreciation
             + a.bonus_amount + a.sec_179_elected
         )
+        cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
+        adjusted_basis = cost_plus - total_depr
 
-        if holding_days <= 365:
+        # R003 — gain or loss
+        gain = (a.sales_price or ZERO) - adjusted_basis
+
+        # R002 — routing
+        if not is_long_term:
             # Short-term → Part II ordinary
             part2_ordinary += gain
         elif gain <= 0:
@@ -637,11 +665,14 @@ def aggregate_dispositions(tax_return) -> None:
             part1_line2_total += gain
         elif total_depr > 0:
             # Long-term gain with depreciation → Part III
-            cost_plus = a.cost_basis + (a.expenses_of_sale or ZERO)
-            adjusted_basis = cost_plus - total_depr
-            total_gain = (a.sales_price or ZERO) - adjusted_basis
-            recapture = min(total_gain, total_depr)
-            p3_total_gain += total_gain
+            is_1250 = _is_1250_property(a.group_label)
+            if is_1250:
+                # R007 — §1250 ordinary recapture = 0 (post-1986 SL)
+                recapture = ZERO
+            else:
+                # R005 — §1245 recapture = min(gain, depreciation)
+                recapture = min(gain, total_depr)
+            p3_total_gain += gain
             p3_total_recapture += recapture
         else:
             # Long-term gain, no depreciation → Part I Line 2
