@@ -1,0 +1,717 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "SCHD_1120S",
+    "form_title": "Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "description",
+      "label": "Description of property",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_acquired",
+      "label": "Date acquired",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_sold",
+      "label": "Date sold",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "proceeds",
+      "label": "Sales price (proceeds)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "cost_basis",
+      "label": "Cost or other basis",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "adjustment_code",
+      "label": "Adjustment code",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "B",
+        "T",
+        "W",
+        "O"
+      ],
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "adjustment_amount",
+      "label": "Adjustment amount",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_short_term_gain_loss",
+      "label": "Total net short-term capital gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_long_term_gain_loss",
+      "label": "Total net long-term capital gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "built_in_gains_tax_applicable",
+      "label": "Built-in gains tax applicable (\u00a71374)",
+      "data_type": "boolean",
+      "required": false,
+      "default_value": "false",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 20,
+      "notes": ""
+    },
+    {
+      "fact_key": "s_election_date",
+      "label": "Date of S election",
+      "data_type": "date",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_unrealized_built_in_gain",
+      "label": "Net unrealized built-in gain at conversion",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_recognized_built_in_gain",
+      "label": "Net recognized built-in gain (current year)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Short-term vs long-term classification",
+      "description": "Property held more than 1 year is long-term. 1 year or less is short-term.",
+      "rule_type": "classification",
+      "conditions": {},
+      "formula": "if holding_period_months > 12 then \"long_term\" else \"short_term\"",
+      "inputs": [
+        "date_acquired",
+        "date_sold"
+      ],
+      "outputs": [
+        "holding_period_class"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71222 defines short-term vs long-term",
+          "source_code": "IRC_1222",
+          "title": "IRC \u00a71222 \u2014 Other Terms Relating to Capital Gains and Losses",
+          "citation": "26 U.S.C. \u00a71222",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Aggregate short-term",
+      "description": "Sum all short-term capital gains and losses from Form 8949 categories.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "sum of all short-term gains/losses from Form 8949 Part I",
+      "inputs": [
+        "short_term_transactions"
+      ],
+      "outputs": [
+        "total_short_term_gain_loss"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule D Part I \u2014 short-term aggregation",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Form 8949 provides individual transactions",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Aggregate long-term",
+      "description": "Sum all long-term capital gains and losses from Form 8949 categories.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "sum of all long-term gains/losses from Form 8949 Part II",
+      "inputs": [
+        "long_term_transactions"
+      ],
+      "outputs": [
+        "total_long_term_gain_loss"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule D Part II \u2014 long-term aggregation",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Form 8949 provides individual transactions",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Flow to Schedule K",
+      "description": "Net STCG \u2192 K Line 7, Net LTCG \u2192 K Line 8a. These are separately stated items.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "total_short_term_gain_loss \u2192 K Line 7; total_long_term_gain_loss \u2192 K Line 8a",
+      "inputs": [
+        "total_short_term_gain_loss",
+        "total_long_term_gain_loss"
+      ],
+      "outputs": [
+        "k_line_7",
+        "k_line_8a"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "1120-S instructions \u2014 Schedule K Lines 7-8",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule D totals flow to K",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Built-in gains tax (\u00a71374)",
+      "description": "C-Corp converting to S-Corp may owe BIG tax on built-in gains recognized within 5-year recognition period. Tax is at 21% corporate rate. Limited to net unrealized built-in gain at conversion.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "built_in_gains_tax_applicable == true AND within recognition period (5 years)"
+      },
+      "formula": "net_recognized_built_in_gain * 0.21",
+      "inputs": [
+        "built_in_gains_tax_applicable",
+        "net_recognized_built_in_gain",
+        "net_unrealized_built_in_gain"
+      ],
+      "outputs": [
+        "big_tax"
+      ],
+      "precedence": 15,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW \u2014 recognition period rules, net unrealized built-in gain limitation, and carryover of unused BIG.",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71374 \u2014 built-in gains tax",
+          "source_code": "IRC_1374",
+          "title": "IRC \u00a71374 \u2014 Tax Imposed on Certain Built-in Gains",
+          "citation": "26 U.S.C. \u00a71374",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Part III \u2014 BIG tax computation",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R010",
+      "title": "Schedule D does NOT include Section 1231",
+      "description": "Section 1231 gains/losses from Form 4797 are reported on Schedule K Line 9 directly. They do NOT flow through Schedule D on the 1120-S. Schedule D handles only capital asset transactions (stocks, bonds, etc.) through Form 8949.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "schedule_d does NOT include 4797_section_1231",
+      "inputs": [],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "VERIFIED from fresh IRS instructions. 4797 bypasses Schedule D on 1120-S. This is different from 1040 where Section 1231 gains treated as capital gains DO flow to Schedule D.",
+      "sort_order": 10,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule D does NOT include Section 1231",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR_FULL",
+          "title": "Instructions for Schedule D (Form 1120-S) (2025) \u2014 fetched 2026-03-18",
+          "citation": "Instructions for Schedule D (Form 1120-S) (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "4797 -> K9 directly, bypasses Schedule D",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R011",
+      "title": "Part I Line 5 -> K Line 7",
+      "description": "Schedule D Part I Line 5 (net short-term capital gain/loss) flows to Schedule K Line 7.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K7 = ScheduleD_Part1_Line5",
+      "inputs": [
+        "net_short_term_gain_loss"
+      ],
+      "outputs": [
+        "K_line_7"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 11,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Part I Line 5 -> K Line 7",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR_FULL",
+          "title": "Instructions for Schedule D (Form 1120-S) (2025) \u2014 fetched 2026-03-18",
+          "citation": "Instructions for Schedule D (Form 1120-S) (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R012",
+      "title": "Part II Line 12 -> K Line 8a",
+      "description": "Schedule D Part II Line 12 (net long-term capital gain/loss) flows to Schedule K Line 8a.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K8a = ScheduleD_Part2_Line12",
+      "inputs": [
+        "net_long_term_gain_loss"
+      ],
+      "outputs": [
+        "K_line_8a"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 12,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Part II Line 12 -> K Line 8a",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR_FULL",
+          "title": "Instructions for Schedule D (Form 1120-S) (2025) \u2014 fetched 2026-03-18",
+          "citation": "Instructions for Schedule D (Form 1120-S) (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1a",
+      "description": "Short-term totals from Form 8949, Box A (basis reported to IRS)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "1b",
+      "description": "Short-term totals from Form 8949, Box B (basis NOT reported)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "1c",
+      "description": "Short-term totals from Form 8949, Box C (no 1099-B)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "2",
+      "description": "Short-term capital gain from installment sales (Form 6252)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "3",
+      "description": "Short-term capital gain from like-kind exchanges (Form 8824)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "5",
+      "description": "Net short-term capital gain (loss) \u2014 combine lines 1 through 4",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "6",
+      "description": "Enter amount from line 5 on Schedule K, line 7",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Schedule K Line 7 \u2192 K-1 Box 7",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "7a",
+      "description": "Long-term totals from Form 8949, Box D (basis reported)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "7b",
+      "description": "Long-term totals from Form 8949, Box E (basis NOT reported)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "7c",
+      "description": "Long-term totals from Form 8949, Box F (no 1099-B)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "8",
+      "description": "Long-term capital gain from installment sales (Form 6252)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "9",
+      "description": "Long-term capital gain from like-kind exchanges (Form 8824)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "11",
+      "description": "Net long-term capital gain (loss) \u2014 combine lines 7 through 10",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 15
+    },
+    {
+      "line_number": "12",
+      "description": "Enter amount from line 11 on Schedule K, line 8a",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Schedule K Line 8a \u2192 K-1 Box 8a",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 16
+    },
+    {
+      "line_number": "13",
+      "description": "Net recognized built-in gain (Part III)",
+      "calculation": "",
+      "source_facts": [
+        "net_recognized_built_in_gain"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "Only if \u00a71374 applies",
+      "sort_order": 20
+    },
+    {
+      "line_number": "15",
+      "description": "Net unrealized built-in gain limitation",
+      "calculation": "",
+      "source_facts": [
+        "net_unrealized_built_in_gain"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 21
+    },
+    {
+      "line_number": "19",
+      "description": "Tax \u2014 multiply taxable income by 21%",
+      "calculation": "net_recognized_built_in_gain * 0.21",
+      "source_facts": [],
+      "source_rules": [
+        "R005"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 22
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "BIG tax applicability",
+      "severity": "info",
+      "condition": "S election within last 5 years AND was C-Corp",
+      "message": "This S corporation may be subject to the built-in gains tax under \u00a71374. Check if any assets disposed of have built-in gain from the C-Corp period.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "8949 category mismatch",
+      "severity": "warning",
+      "condition": "basis_reported_to_irs inconsistent with reporting category",
+      "message": "The Form 8949 reporting category does not match the basis reporting indicator. Verify whether the IRS received the basis on the 1099-B.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Two ST transactions, one LT \u2014 correct aggregation",
+      "scenario_type": "normal",
+      "inputs": {
+        "transactions": [
+          {
+            "type": "short_term",
+            "proceeds": 10000,
+            "gain_loss": 2000,
+            "cost_basis": 8000
+          },
+          {
+            "type": "short_term",
+            "proceeds": 5000,
+            "gain_loss": -1000,
+            "cost_basis": 6000
+          },
+          {
+            "type": "long_term",
+            "proceeds": 20000,
+            "gain_loss": 8000,
+            "cost_basis": 12000
+          }
+        ]
+      },
+      "expected_outputs": {
+        "k_line_7": 1000,
+        "k_line_8a": 8000,
+        "total_long_term_gain_loss": 8000,
+        "total_short_term_gain_loss": 1000
+      },
+      "notes": "ST net = 2000-1000 = 1000. LT net = 8000. Each flows to its K line.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "BIG tax scenario \u2014 C\u2192S conversion, asset sold within 5 years",
+      "scenario_type": "edge",
+      "inputs": {
+        "net_recognized_built_in_gain": 100000,
+        "net_unrealized_built_in_gain": 150000,
+        "built_in_gains_tax_applicable": true
+      },
+      "expected_outputs": {
+        "big_tax": 21000
+      },
+      "notes": "NEEDS REVIEW \u2014 BIG tax = 100K \u00d7 21% = 21K. Limited to NUBIG of 150K (not exceeded here).",
+      "sort_order": 2
+    }
+  ]
+}

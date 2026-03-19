@@ -1,0 +1,986 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "K1_1120S",
+    "form_title": "Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "shareholder_name",
+      "label": "Shareholder's name",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "shareholder_tin",
+      "label": "Shareholder's TIN",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "shares_owned_start",
+      "label": "Shares owned \u2014 beginning of year",
+      "data_type": "integer",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "shares_owned_end",
+      "label": "Shares owned \u2014 end of year",
+      "data_type": "integer",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "ownership_percentage",
+      "label": "Shareholder's percentage of stock ownership",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_1_ordinary_income",
+      "label": "Box 1 \u2014 Ordinary business income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_2_rental_real_estate",
+      "label": "Box 2 \u2014 Net rental real estate income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_3_other_rental",
+      "label": "Box 3 \u2014 Other net rental income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_4_interest",
+      "label": "Box 4 \u2014 Interest income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_5a_ordinary_dividends",
+      "label": "Box 5a \u2014 Ordinary dividends",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_5b_qualified_dividends",
+      "label": "Box 5b \u2014 Qualified dividends",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_6_royalties",
+      "label": "Box 6 \u2014 Royalties",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 16,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_7_net_stcg",
+      "label": "Box 7 \u2014 Net short-term capital gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 17,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_8a_net_ltcg",
+      "label": "Box 8a \u2014 Net long-term capital gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 18,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_8b_collectibles",
+      "label": "Box 8b \u2014 Collectibles (28%) gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 19,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_8c_unrecaptured_1250",
+      "label": "Box 8c \u2014 Unrecaptured \u00a71250 gain",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 20,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_9_net_1231",
+      "label": "Box 9 \u2014 Net \u00a71231 gain (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_10_other_income",
+      "label": "Box 10 \u2014 Other income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_11_section_179",
+      "label": "Box 11 \u2014 \u00a7179 deduction",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_12_other_deductions",
+      "label": "Box 12 \u2014 Other deductions (coded)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 24,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_13_credits",
+      "label": "Box 13 \u2014 Credits (coded)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 25,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_16a_tax_exempt_interest",
+      "label": "Box 16a \u2014 Tax-exempt interest income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 26,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_16c_nondeductible",
+      "label": "Box 16c \u2014 Nondeductible expenses",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 27,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_16d_distributions",
+      "label": "Box 16d \u2014 Distributions",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 28,
+      "notes": ""
+    },
+    {
+      "fact_key": "box_17_other_info",
+      "label": "Box 17 \u2014 Other information (QBI, investment)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 29,
+      "notes": ""
+    },
+    {
+      "fact_key": "stock_basis_boy",
+      "label": "Stock basis \u2014 beginning of year",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 40,
+      "notes": ""
+    },
+    {
+      "fact_key": "debt_basis",
+      "label": "Debt basis \u2014 direct loans to S-Corp",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 41,
+      "notes": ""
+    },
+    {
+      "fact_key": "at_risk_amount",
+      "label": "At-risk amount (Form 6198)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 42,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Box 1 allocation",
+      "description": "Box 1 = shareholder's pro rata share of Schedule K Line 1.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_1 * ownership_percentage",
+      "inputs": [
+        "ordinary_business_income",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_1_ordinary_income"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 shareholder reports pro rata share",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71377(a) \u2014 per share per day allocation",
+          "source_code": "IRC_1377",
+          "title": "IRC \u00a71377 \u2014 Definitions and Special Rule",
+          "citation": "26 U.S.C. \u00a71377",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 1 instructions \u2014 ordinary income \u2192 Sch E Part II",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Box 2 allocation",
+      "description": "Box 2 = shareholder's share of K Line 2.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_2 * ownership_percentage",
+      "inputs": [
+        "net_rental_real_estate_income",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_2_rental_real_estate"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 pro rata share of rental income",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 2 instructions",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R007",
+      "title": "Box 7 allocation \u2014 STCG",
+      "description": "Box 7 = shareholder's share of K Line 7 (net STCG).",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_7 * ownership_percentage",
+      "inputs": [
+        "net_short_term_capital_gain",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_7_net_stcg"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 7,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 pro rata share of STCG",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 7 \u2192 Schedule D line 5",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R008",
+      "title": "Box 8a allocation \u2014 LTCG",
+      "description": "Box 8a = shareholder's share of K Line 8a (net LTCG).",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_8a * ownership_percentage",
+      "inputs": [
+        "net_long_term_capital_gain",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_8a_net_ltcg"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 8,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 pro rata share of LTCG",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 8a \u2192 Schedule D line 12",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R009",
+      "title": "Box 9 allocation \u2014 \u00a71231",
+      "description": "Box 9 = shareholder's share of K Line 9.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_9 * ownership_percentage",
+      "inputs": [
+        "net_section_1231_gain",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_9_net_1231"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 9,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 pro rata share of \u00a71231",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 9 \u2192 Form 4797 Part I",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R011",
+      "title": "Box 11 allocation \u2014 \u00a7179",
+      "description": "Box 11 = shareholder's share of \u00a7179. Subject to shareholder's own \u00a7179 limits.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_11 * ownership_percentage",
+      "inputs": [
+        "section_179_deduction",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_11_section_179"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 11,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7179(d)(4) \u2014 \u00a7179 passes through to shareholder",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 11 instructions",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R017",
+      "title": "Box 17 allocation \u2014 QBI",
+      "description": "Box 17 QBI items = shareholder's share. Used for \u00a7199A computation on 1040.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "k_line_17_qbi_items * ownership_percentage",
+      "inputs": [
+        "qbi_ordinary_income",
+        "qbi_w2_wages",
+        "qbi_ubia",
+        "ownership_percentage"
+      ],
+      "outputs": [
+        "box_17_other_info"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 17,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7199A QBI items for shareholder computation",
+          "source_code": "IRC_199A",
+          "title": "IRC \u00a7199A \u2014 Qualified Business Income Deduction",
+          "citation": "26 U.S.C. \u00a7199A",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Box 17 \u2014 other information",
+          "source_code": "IRS_2025_1120S_K1_INSTR",
+          "title": "Instructions for Schedule K-1 (Form 1120-S) \u2014 Shareholder's Share of Income, Deductions, Credits, etc.",
+          "citation": "Schedule K-1 (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R018",
+      "title": "Basis limitation check",
+      "description": "Shareholder cannot deduct losses exceeding stock + debt basis. Losses limited in order: (1) ordinary loss, (2) separately stated losses, (3) capital losses. Form 7203 required.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "total_losses <= stock_basis_boy + debt_basis",
+      "inputs": [
+        "box_1_ordinary_income",
+        "stock_basis_boy",
+        "debt_basis"
+      ],
+      "outputs": [
+        "deductible_loss",
+        "suspended_loss"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW \u2014 ordering of loss limitation categories across all box types.",
+      "sort_order": 18,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(d) \u2014 loss limited to stock + debt basis",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Form 7203 \u2014 basis computation and loss limitation",
+          "source_code": "IRS_2025_7203_INSTR",
+          "title": "Instructions for Form 7203 \u2014 S Corporation Shareholder Stock and Debt Basis Limitations",
+          "citation": "Form 7203 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R019",
+      "title": "At-risk limitation (post-basis)",
+      "description": "After basis limitation, remaining deductible amounts are further limited to at-risk amount under \u00a7465. Form 6198.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "deductible_after_basis <= at_risk_amount",
+      "inputs": [
+        "deductible_loss",
+        "at_risk_amount"
+      ],
+      "outputs": [
+        "deductible_after_at_risk"
+      ],
+      "precedence": 11,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 19,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7465 \u2014 at-risk limitation",
+          "source_code": "IRC_465",
+          "title": "IRC \u00a7465 \u2014 Deductions Limited to Amount at Risk",
+          "citation": "26 U.S.C. \u00a7465",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R020",
+      "title": "Passive activity limitation (post-at-risk)",
+      "description": "After at-risk, passive losses limited under \u00a7469. Three-tier ordering: basis \u2192 at-risk \u2192 passive. Form 8582.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "passive losses limited under \u00a7469",
+      "inputs": [
+        "deductible_after_at_risk"
+      ],
+      "outputs": [
+        "final_deductible_loss"
+      ],
+      "precedence": 12,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 20,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7469 \u2014 passive activity loss limitation",
+          "source_code": "IRC_469",
+          "title": "IRC \u00a7469 \u2014 Passive Activity Losses and Credits Limited",
+          "citation": "26 U.S.C. \u00a7469",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "Box1",
+      "description": "Ordinary business income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": "Schedule E Part II, Line 28",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "Box2",
+      "description": "Net rental real estate income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": "Schedule E Part II (passive)",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "Box3",
+      "description": "Other net rental income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule E Part II",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "Box4",
+      "description": "Interest income",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule B or Form 1040 Line 2b",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "Box5a",
+      "description": "Ordinary dividends",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Form 1040 Line 3b",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "Box5b",
+      "description": "Qualified dividends",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Form 1040 Line 3a",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "Box6",
+      "description": "Royalties",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule E Page 1",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "Box7",
+      "description": "Net short-term capital gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R007"
+      ],
+      "destination_form": "Schedule D Line 5",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "Box8a",
+      "description": "Net long-term capital gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R008"
+      ],
+      "destination_form": "Schedule D Line 12",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "Box8b",
+      "description": "Collectibles (28%) gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule D Line 18 (28% Rate Gain Worksheet)",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "Box8c",
+      "description": "Unrecaptured \u00a71250 gain",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule D Line 19 (Unrecaptured \u00a71250 Gain Worksheet)",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "Box9",
+      "description": "Net \u00a71231 gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R009"
+      ],
+      "destination_form": "Form 4797 Part I",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "Box10",
+      "description": "Other income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "See K-1 instructions for codes",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "Box11",
+      "description": "\u00a7179 deduction",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R011"
+      ],
+      "destination_form": "Form 4562 (shareholder's own)",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "Box12",
+      "description": "Other deductions (coded: A=cash charitable, B=noncash, C=inv interest, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Schedule A / Form 4952 / etc. per code",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 15
+    },
+    {
+      "line_number": "Box13",
+      "description": "Credits (coded: A-G per type)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Form 3800 / Form 1116 / etc. per code",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 16
+    },
+    {
+      "line_number": "Box16",
+      "description": "Items affecting shareholder basis (A=tax-exempt interest, C=nondeductible, D=distributions)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Form 7203",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 17
+    },
+    {
+      "line_number": "Box17",
+      "description": "Other information \u2014 \u00a7199A QBI, investment income/expenses",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R017"
+      ],
+      "destination_form": "Form 8995 or 8995-A",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 18
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Loss exceeds basis",
+      "severity": "error",
+      "condition": "total_allocated_losses > stock_basis_boy + debt_basis",
+      "message": "Shareholder's deductible losses cannot exceed the sum of stock basis and debt basis. Use Form 7203 to compute. Excess losses are suspended and carry forward.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Missing Form 7203",
+      "severity": "warning",
+      "condition": "any allocated loss exists AND no Form 7203 prepared",
+      "message": "Shareholder has allocated losses. Form 7203 (S Corporation Shareholder Stock and Debt Basis Limitations) is required when claiming a loss deduction.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Passive activity indicator",
+      "severity": "info",
+      "condition": "shareholder does not materially participate",
+      "message": "Reminder: if the shareholder does not materially participate in the S corporation's activities, losses may be subject to passive activity limitations under \u00a7469. Check Form 8582.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Simple K-1 \u2014 all income, no limitations",
+      "scenario_type": "normal",
+      "inputs": {
+        "ownership_percentage": 1.0,
+        "section_179_deduction": 50000,
+        "ordinary_business_income": 200000,
+        "net_long_term_capital_gain": 30000
+      },
+      "expected_outputs": {
+        "box_8a_net_ltcg": 30000,
+        "box_11_section_179": 50000,
+        "box_1_ordinary_income": 200000
+      },
+      "notes": "100% shareholder, all income flows through 1:1.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Loss limitation triggered",
+      "scenario_type": "edge",
+      "inputs": {
+        "debt_basis": 0,
+        "stock_basis_boy": 30000,
+        "ownership_percentage": 0.5,
+        "ordinary_business_income": -80000
+      },
+      "expected_outputs": {
+        "suspended_loss": -10000,
+        "deductible_loss": -30000,
+        "box_1_ordinary_income": -40000
+      },
+      "notes": "50% of -80K = -40K allocated. Stock basis 30K limits deduction to -30K, 10K suspended.",
+      "sort_order": 2
+    }
+  ]
+}

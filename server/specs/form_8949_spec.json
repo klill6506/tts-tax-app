@@ -1,0 +1,529 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "8949",
+    "form_title": "Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065",
+      "1120",
+      "1040"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "description",
+      "label": "Description of property",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_acquired",
+      "label": "Date acquired",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_sold",
+      "label": "Date sold or disposed of",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "proceeds",
+      "label": "Proceeds (sales price)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": "must be >= 0",
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "cost_basis",
+      "label": "Cost or other basis",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "adjustment_code",
+      "label": "Adjustment code(s)",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "B",
+        "T",
+        "W",
+        "O"
+      ],
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "adjustment_amount",
+      "label": "Amount of adjustment",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "gain_or_loss",
+      "label": "Gain or (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "reporting_category",
+      "label": "Reporting category",
+      "data_type": "choice",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "sort_order": 9,
+      "notes": "A=ST basis reported, B=ST not reported, C=ST no 1099-B, D=LT basis reported, E=LT not reported, F=LT no 1099-B"
+    },
+    {
+      "fact_key": "basis_reported_to_irs",
+      "label": "Was basis reported to IRS on 1099-B?",
+      "data_type": "boolean",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Determine reporting category",
+      "description": "Category A/B/C (short-term) or D/E/F (long-term) based on holding period and 1099-B basis reporting.",
+      "rule_type": "classification",
+      "conditions": {},
+      "formula": "category based on (1) ST vs LT holding period, (2) whether basis reported on 1099-B",
+      "inputs": [
+        "date_acquired",
+        "date_sold",
+        "basis_reported_to_irs"
+      ],
+      "outputs": [
+        "reporting_category"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Form 8949 instructions \u2014 reporting category determination",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "\u00a71222 \u2014 ST vs LT holding period definitions",
+          "source_code": "IRC_1222",
+          "title": "IRC \u00a71222 \u2014 Other Terms Relating to Capital Gains and Losses",
+          "citation": "26 U.S.C. \u00a71222",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Calculate gain or loss per transaction",
+      "description": "Gain/loss = proceeds minus cost basis plus/minus adjustments (adjustments can be positive or negative).",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "proceeds - cost_basis + adjustment_amount",
+      "inputs": [
+        "proceeds",
+        "cost_basis",
+        "adjustment_amount"
+      ],
+      "outputs": [
+        "gain_or_loss"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Column (h) instructions \u2014 gain/loss computation",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Adjustment codes",
+      "description": "Code B = basis incorrect on 1099-B (correction amount). Code T = wash sale (loss disallowed under \u00a71091). Code W = collectibles (28% rate). Code O = other.",
+      "rule_type": "classification",
+      "conditions": {},
+      "formula": "code depends on type of adjustment",
+      "inputs": [
+        "adjustment_code"
+      ],
+      "outputs": [
+        "adjustment_treatment"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Column (f)/(g) instructions \u2014 adjustment codes",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Aggregate to Schedule D",
+      "description": "Part I (ST categories A/B/C) totals \u2192 Schedule D Part I lines 1a/1b/1c. Part II (LT categories D/E/F) totals \u2192 Schedule D Part II lines 7a/7b/7c.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Part I totals \u2192 Schedule D Part I; Part II totals \u2192 Schedule D Part II",
+      "inputs": [
+        "reporting_category",
+        "gain_or_loss"
+      ],
+      "outputs": [
+        "schedule_d_part_i",
+        "schedule_d_part_ii"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Totals flow to Schedule D",
+          "source_code": "IRS_2025_8949_INSTR",
+          "title": "Instructions for Form 8949 \u2014 Sales and Other Dispositions of Capital Assets",
+          "citation": "Form 8949 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule D receives 8949 totals",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1a_col_d",
+      "description": "Part I, Column (d) \u2014 Proceeds",
+      "calculation": "",
+      "source_facts": [
+        "proceeds"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "1a_col_e",
+      "description": "Part I, Column (e) \u2014 Cost or other basis",
+      "calculation": "",
+      "source_facts": [
+        "cost_basis"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "1a_col_f",
+      "description": "Part I, Column (f) \u2014 Adjustment code",
+      "calculation": "",
+      "source_facts": [
+        "adjustment_code"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "1a_col_g",
+      "description": "Part I, Column (g) \u2014 Amount of adjustment",
+      "calculation": "",
+      "source_facts": [
+        "adjustment_amount"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "1a_col_h",
+      "description": "Part I, Column (h) \u2014 Gain or (loss) = (d) - (e) + (g)",
+      "calculation": "proceeds - cost_basis + adjustment_amount",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "2",
+      "description": "Part I totals \u2014 Short-term",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Schedule D Part I (lines 1a-1c by category)",
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "3a_col_d",
+      "description": "Part II, Column (d) \u2014 Proceeds",
+      "calculation": "",
+      "source_facts": [
+        "proceeds"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "3a_col_e",
+      "description": "Part II, Column (e) \u2014 Cost or other basis",
+      "calculation": "",
+      "source_facts": [
+        "cost_basis"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "3a_col_f",
+      "description": "Part II, Column (f) \u2014 Adjustment code",
+      "calculation": "",
+      "source_facts": [
+        "adjustment_code"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "3a_col_g",
+      "description": "Part II, Column (g) \u2014 Amount of adjustment",
+      "calculation": "",
+      "source_facts": [
+        "adjustment_amount"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "3a_col_h",
+      "description": "Part II, Column (h) \u2014 Gain or (loss)",
+      "calculation": "proceeds - cost_basis + adjustment_amount",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "4",
+      "description": "Part II totals \u2014 Long-term",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Schedule D Part II (lines 7a-7c by category)",
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 15
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Proceeds differ from 1099-B",
+      "severity": "warning",
+      "condition": "basis_reported_to_irs == true AND adjustment needed but no code entered",
+      "message": "Proceeds or basis on 1099-B may differ from actual amounts. If basis is incorrect, use Code B with the correction in column (g).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Wash sale not coded",
+      "severity": "warning",
+      "condition": "same security sold at loss within 30-day window",
+      "message": "A wash sale may apply. If the same or substantially identical security was purchased within 30 days before or after this sale at a loss, use Code T and enter the disallowed loss in column (g).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Missing date acquired",
+      "severity": "error",
+      "condition": "date_acquired is null",
+      "message": "Date acquired is required to determine holding period (short-term vs long-term) and correct reporting category.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Simple stock sale \u2014 basis correct, no adjustments",
+      "scenario_type": "normal",
+      "inputs": {
+        "proceeds": 15000,
+        "date_sold": "2025-06-01",
+        "cost_basis": 10000,
+        "description": "100 shares XYZ Corp",
+        "date_acquired": "2023-01-15",
+        "adjustment_code": null,
+        "adjustment_amount": 0,
+        "basis_reported_to_irs": true
+      },
+      "expected_outputs": {
+        "gain_or_loss": 5000,
+        "reporting_category": "D"
+      },
+      "notes": "Held >1yr = LT. Basis reported = category D. Gain = 15K-10K = 5K.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Basis adjustment \u2014 1099-B shows wrong basis",
+      "scenario_type": "normal",
+      "inputs": {
+        "proceeds": 8000,
+        "date_sold": "2025-02-15",
+        "cost_basis": 6000,
+        "description": "200 shares ABC Inc",
+        "date_acquired": "2024-03-01",
+        "adjustment_code": "B",
+        "adjustment_amount": -500,
+        "basis_reported_to_irs": true
+      },
+      "expected_outputs": {
+        "gain_or_loss": 1500,
+        "reporting_category": "A"
+      },
+      "notes": "Held \u22641yr = ST. Code B adjusts basis. Gain = 8000-6000+(-500) = 1500.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "Wash sale \u2014 loss disallowed",
+      "scenario_type": "edge",
+      "inputs": {
+        "proceeds": 4000,
+        "date_sold": "2025-04-05",
+        "cost_basis": 5000,
+        "description": "50 shares DEF Ltd",
+        "date_acquired": "2025-01-10",
+        "adjustment_code": "T",
+        "adjustment_amount": 1000,
+        "basis_reported_to_irs": true
+      },
+      "expected_outputs": {
+        "gain_or_loss": 0,
+        "reporting_category": "A"
+      },
+      "notes": "Loss of $1K disallowed as wash sale. Code T, adjustment +1000. Net = 4000-5000+1000 = 0.",
+      "sort_order": 3
+    }
+  ]
+}

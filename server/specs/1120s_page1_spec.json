@@ -1,0 +1,1017 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "1120S_PAGE1",
+    "form_title": "Form 1120-S Page 1 \u2014 Income and Deductions",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "gross_receipts",
+      "label": "Gross receipts or sales (Line 1a)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "returns_allowances",
+      "label": "Returns and allowances (Line 1b)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_receipts",
+      "label": "Net receipts (Line 1c = 1a - 1b)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "cost_of_goods_sold",
+      "label": "Cost of goods sold (Line 2, from Form 1125-A)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "gross_profit",
+      "label": "Gross profit (Line 3 = 1c - 2)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_gain_4797",
+      "label": "Net gain (loss) from Form 4797, Part II, Line 17 (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_income",
+      "label": "Other income (loss) (Line 5)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_income",
+      "label": "Total income (loss) (Line 6 = 3 + 4 + 5)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "officer_compensation",
+      "label": "Compensation of officers (Line 7)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "salaries_wages",
+      "label": "Salaries and wages (Line 8)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "repairs_maintenance",
+      "label": "Repairs and maintenance (Line 9)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "bad_debts",
+      "label": "Bad debts (Line 10)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "rents",
+      "label": "Rents (Line 11)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "taxes_licenses",
+      "label": "Taxes and licenses (Line 12)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    },
+    {
+      "fact_key": "interest",
+      "label": "Interest (Line 13)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciation",
+      "label": "Depreciation (Line 14, from Form 4562, NOT including section 179)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 16,
+      "notes": ""
+    },
+    {
+      "fact_key": "depletion",
+      "label": "Depletion (Line 15)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 17,
+      "notes": ""
+    },
+    {
+      "fact_key": "advertising",
+      "label": "Advertising (Line 16)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 18,
+      "notes": ""
+    },
+    {
+      "fact_key": "pension_plans",
+      "label": "Pension, profit-sharing, etc., plans (Line 17)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 19,
+      "notes": ""
+    },
+    {
+      "fact_key": "employee_benefits",
+      "label": "Employee benefit programs (Line 18)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 20,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_deductions",
+      "label": "Other deductions (Line 19, attach statement)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_deductions",
+      "label": "Total deductions (Line 20 = sum of Lines 7-19)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "ordinary_business_income",
+      "label": "Ordinary business income (loss) (Line 21 = Line 6 - Line 20)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Net receipts",
+      "description": "Line 1c = Line 1a - Line 1b",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "gross_receipts - returns_allowances",
+      "inputs": [
+        "gross_receipts",
+        "returns_allowances"
+      ],
+      "outputs": [
+        "net_receipts"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Page 1 income computation",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Gross profit",
+      "description": "Line 3 = Line 1c - Line 2 (cost of goods sold from Form 1125-A)",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "net_receipts - cost_of_goods_sold",
+      "inputs": [
+        "net_receipts",
+        "cost_of_goods_sold"
+      ],
+      "outputs": [
+        "gross_profit"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Gross profit = net receipts - COGS",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Page 1 Line 4 = Form 4797 Part II Line 17",
+      "description": "Net gain (loss) from Form 4797. This is the ORDINARY gain/loss from Part II Line 17, which includes short-term dispositions and recapture from Part III Line 31. NOT the Section 1231 gain from Part I \u2014 that goes to Schedule K Line 9.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Form_4797_Part_II_Line_17",
+      "inputs": [
+        "4797_part2_line17"
+      ],
+      "outputs": [
+        "net_gain_4797"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "VERIFIED from fresh IRS 1120-S instructions fetch 2026-03-18. This was a persistent bug source in tts-tax-app.",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 4 = Form 4797 Part II Line 17 (verified from fetched instructions)",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Form 4797 Part II Line 17 = ordinary gains/losses",
+          "source_code": "IRS_2025_4797_INSTR",
+          "title": "Instructions for Form 4797 (2025) \u2014 Sales of Business Property",
+          "citation": "Instructions for Form 4797 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Total income",
+      "description": "Line 6 = Line 3 + Line 4 + Line 5",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "gross_profit + net_gain_4797 + other_income",
+      "inputs": [
+        "gross_profit",
+        "net_gain_4797",
+        "other_income"
+      ],
+      "outputs": [
+        "total_income"
+      ],
+      "precedence": 4,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Total income = lines 3+4+5",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Total deductions",
+      "description": "Line 20 = sum of Lines 7 through 19. Section 179 is NOT included here \u2014 it is separately stated on Schedule K Line 11.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "officer_compensation + salaries_wages + repairs_maintenance + bad_debts + rents + taxes_licenses + interest + depreciation + depletion + advertising + pension_plans + employee_benefits + other_deductions",
+      "inputs": [
+        "officer_compensation",
+        "salaries_wages",
+        "repairs_maintenance",
+        "bad_debts",
+        "rents",
+        "taxes_licenses",
+        "interest",
+        "depreciation",
+        "depletion",
+        "advertising",
+        "pension_plans",
+        "employee_benefits",
+        "other_deductions"
+      ],
+      "outputs": [
+        "total_deductions"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Total deductions = sum lines 7-19",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "Ordinary business income (loss)",
+      "description": "Line 21 = Line 6 - Line 20. This is the key output of Page 1. Flows to Schedule K Line 1 for shareholder allocation.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "total_income - total_deductions",
+      "inputs": [
+        "total_income",
+        "total_deductions"
+      ],
+      "outputs": [
+        "ordinary_business_income"
+      ],
+      "precedence": 6,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 21 = Line 6 - Line 20, flows to K Line 1",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 1363(b) \u2014 separately stated items excluded",
+          "source_code": "IRC_1363",
+          "title": "IRC \u00a71363 \u2014 Effect of Election on Corporation",
+          "citation": "26 U.S.C. \u00a71363",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R007",
+      "title": "Section 179 exclusion from Page 1",
+      "description": "Section 179 deduction is a SEPARATELY STATED item under IRC 1363(b). It must appear on Schedule K Line 11, NOT on Page 1 Line 14 (depreciation). Page 1 Line 14 includes regular depreciation and bonus depreciation only.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "depreciation_line_14 must NOT include section_179_amount",
+      "inputs": [
+        "depreciation",
+        "section_179_deduction"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "IRC 1363(b) requires separately stated items to be excluded from ordinary income computation.",
+      "sort_order": 7,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "IRC 1363(b) \u2014 section 179 is separately stated",
+          "source_code": "IRC_1363",
+          "title": "IRC \u00a71363 \u2014 Effect of Election on Corporation",
+          "citation": "26 U.S.C. \u00a71363",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 179(d)(4) \u2014 passthrough separately stated for S-Corps",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R008",
+      "title": "Line 14 depreciation source",
+      "description": "Page 1 Line 14 = Form 4562 total depreciation minus section 179 (which is separately stated on K Line 11). Includes MACRS regular depreciation and bonus depreciation.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Form_4562_total_depreciation - section_179",
+      "inputs": [
+        "form_4562_depreciation",
+        "section_179_deduction"
+      ],
+      "outputs": [
+        "depreciation"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 8,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 14 depreciation from Form 4562",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1a",
+      "description": "Gross receipts or sales",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "1b",
+      "description": "Returns and allowances",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "1c",
+      "description": "Balance (1a minus 1b)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "2",
+      "description": "Cost of goods sold (Form 1125-A)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Form 1125-A",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "3",
+      "description": "Gross profit (1c minus 2)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "4",
+      "description": "Net gain (loss) from Form 4797, Part II, line 17",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": "Form 4797 Part II Line 17",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "5",
+      "description": "Other income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "6",
+      "description": "Total income (loss) (add lines 3 through 5)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "7",
+      "description": "Compensation of officers",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "8",
+      "description": "Salaries and wages",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "9",
+      "description": "Repairs and maintenance",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "10",
+      "description": "Bad debts",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "11",
+      "description": "Rents",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "12",
+      "description": "Taxes and licenses",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "13",
+      "description": "Interest",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 15
+    },
+    {
+      "line_number": "14",
+      "description": "Depreciation (Form 4562, NOT including section 179)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R008"
+      ],
+      "destination_form": "Form 4562",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 16
+    },
+    {
+      "line_number": "15",
+      "description": "Depletion",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 17
+    },
+    {
+      "line_number": "16",
+      "description": "Advertising",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 18
+    },
+    {
+      "line_number": "17",
+      "description": "Pension, profit-sharing, etc., plans",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 19
+    },
+    {
+      "line_number": "18",
+      "description": "Employee benefit programs",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 20
+    },
+    {
+      "line_number": "19",
+      "description": "Other deductions (attach statement)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 21
+    },
+    {
+      "line_number": "20",
+      "description": "Total deductions (add lines 7 through 19)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R005"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 22
+    },
+    {
+      "line_number": "21",
+      "description": "Ordinary business income (loss) (line 6 minus line 20)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": "Schedule K Line 1",
+      "line_type": "total",
+      "notes": "Key output of Page 1. Flows to Schedule K Line 1 for shareholder allocation.",
+      "sort_order": 23
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Section 179 on Page 1",
+      "severity": "error",
+      "condition": "depreciation includes section_179_amount",
+      "message": "Section 179 must be separately stated on Schedule K Line 11, not included in Page 1 Line 14 depreciation. Per IRC 1363(b).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Line 4 source mismatch",
+      "severity": "warning",
+      "condition": "net_gain_4797 != Form_4797_Part_II_Line_17",
+      "message": "Page 1 Line 4 should equal Form 4797 Part II Line 17. Verify 4797 is computed correctly.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Charitable on Page 1",
+      "severity": "error",
+      "condition": "other_deductions includes charitable_contributions",
+      "message": "Charitable contributions are separately stated on Schedule K Lines 12a/12b, not deducted on Page 1.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic S-Corp \u2014 ordinary income only",
+      "scenario_type": "normal",
+      "inputs": {
+        "rents": 12000,
+        "interest": 3000,
+        "bad_debts": 0,
+        "depletion": 0,
+        "advertising": 2000,
+        "depreciation": 15000,
+        "other_income": 0,
+        "net_gain_4797": 0,
+        "pension_plans": 5000,
+        "gross_receipts": 500000,
+        "salaries_wages": 60000,
+        "taxes_licenses": 8000,
+        "other_deductions": 6000,
+        "employee_benefits": 4000,
+        "cost_of_goods_sold": 200000,
+        "returns_allowances": 5000,
+        "repairs_maintenance": 5000,
+        "officer_compensation": 80000
+      },
+      "expected_outputs": {
+        "gross_profit": 295000,
+        "net_receipts": 495000,
+        "total_income": 295000,
+        "total_deductions": 200000,
+        "ordinary_business_income": 95000
+      },
+      "notes": "No dispositions, no special items. All income flows through K1.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "S-Corp with 4797 gain flowing to Page 1 Line 4",
+      "scenario_type": "normal",
+      "inputs": {
+        "rents": 0,
+        "interest": 2000,
+        "bad_debts": 0,
+        "depletion": 0,
+        "advertising": 0,
+        "depreciation": 10000,
+        "other_income": 0,
+        "net_gain_4797": 25000,
+        "pension_plans": 0,
+        "gross_receipts": 300000,
+        "salaries_wages": 30000,
+        "taxes_licenses": 5000,
+        "other_deductions": 3000,
+        "employee_benefits": 0,
+        "cost_of_goods_sold": 100000,
+        "returns_allowances": 0,
+        "repairs_maintenance": 0,
+        "officer_compensation": 50000
+      },
+      "expected_outputs": {
+        "gross_profit": 200000,
+        "total_income": 225000,
+        "total_deductions": 100000,
+        "ordinary_business_income": 125000
+      },
+      "notes": "4797 Part II Line 17 = 25000 flows to Line 4. Section 1231 gain flows separately to K9.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "S-Corp with disposed equipment \u2014 4797 recapture + 1231 flow",
+      "scenario_type": "normal",
+      "inputs": {
+        "depreciation": 20000,
+        "other_income": 0,
+        "gross_receipts": 400000,
+        "salaries_wages": 40000,
+        "other_deductions": 10000,
+        "cost_of_goods_sold": 150000,
+        "returns_allowances": 0,
+        "officer_compensation": 60000,
+        "form_4797_part1_line7": 8000,
+        "form_4797_part2_line17": 15000
+      },
+      "expected_outputs": {
+        "K1": 135000,
+        "K9": 8000,
+        "page1_line4": 15000,
+        "total_income": 265000,
+        "net_gain_4797": 15000,
+        "ordinary_business_income": 135000
+      },
+      "notes": "4797 Part II L17 ($15K recapture) -> Page 1 Line 4. 4797 Part I L7 ($8K Section 1231) -> K Line 9 directly. These are DIFFERENT flows.",
+      "sort_order": 10
+    },
+    {
+      "scenario_name": "S-Corp with M&E limitation \u2014 meals nondeductible flow",
+      "scenario_type": "normal",
+      "inputs": {
+        "gross_receipts": 300000,
+        "salaries_wages": 30000,
+        "other_deductions": 25000,
+        "cost_of_goods_sold": 100000,
+        "meals_total_on_books": 10000,
+        "officer_compensation": 50000,
+        "meals_deductible_50pct": 5000,
+        "meals_nondeductible_50pct": 5000
+      },
+      "expected_outputs": {
+        "K16c": 5000,
+        "M1_line_3b": 5000,
+        "ordinary_business_income": 90000
+      },
+      "notes": "$10K meals on books, only $5K deductible (50%). $5K nondeductible -> K16c and M-1 Line 3b (as positive ADD-BACK).",
+      "sort_order": 11
+    },
+    {
+      "scenario_name": "Short-term capital gain \u2014 Schedule D to K Line 7",
+      "scenario_type": "normal",
+      "inputs": {
+        "form_8949_box_A_gain": 5000,
+        "form_8949_box_B_gain": 0,
+        "form_8949_box_C_gain": 0
+      },
+      "expected_outputs": {
+        "K7": 5000,
+        "schedule_d_part1_line5": 5000
+      },
+      "notes": "Short-term gain from 8949 -> Schedule D Part I Line 5 -> K Line 7. NOT K5a (that's dividends).",
+      "sort_order": 12
+    },
+    {
+      "scenario_name": "Long-term capital gain \u2014 Schedule D to K Line 8a",
+      "scenario_type": "normal",
+      "inputs": {
+        "form_8949_box_D_gain": 12000,
+        "form_8949_box_E_gain": 0,
+        "form_8949_box_F_gain": 3000
+      },
+      "expected_outputs": {
+        "K8a": 15000,
+        "schedule_d_part2_line12": 15000
+      },
+      "notes": "Long-term gain from 8949 -> Schedule D Part II Line 12 -> K Line 8a. NOT K5b (that's qualified dividends).",
+      "sort_order": 13
+    },
+    {
+      "scenario_name": "Section 1231 from 4797 bypasses Schedule D",
+      "scenario_type": "normal",
+      "inputs": {
+        "form_4797_part1_line7": 20000,
+        "schedule_d_part2_line12": 0
+      },
+      "expected_outputs": {
+        "K9": 20000,
+        "K8a": 0,
+        "schedule_d_includes_1231": false
+      },
+      "notes": "Section 1231 gain from 4797 goes to K9 directly. Schedule D is NOT involved. This is a key 1120-S vs 1040 difference.",
+      "sort_order": 14
+    },
+    {
+      "scenario_name": "Distributions exceeding AAA \u2014 M-2 floor at zero",
+      "scenario_type": "edge",
+      "inputs": {
+        "aaa_beginning": 30000,
+        "total_distributions": 100000,
+        "ordinary_business_income": 50000
+      },
+      "expected_outputs": {
+        "aaa_ending": 0,
+        "aaa_combined": 80000,
+        "excess_distribution": 20000
+      },
+      "notes": "AAA = 30K + 50K income = 80K combined. Distributions of $100K: first $80K from AAA (reduces to zero), then $20K is return of basis/capital gain per section 1368.",
+      "sort_order": 15
+    }
+  ]
+}

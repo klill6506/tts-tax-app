@@ -1,0 +1,495 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "1120S_M1",
+    "form_title": "Schedule M-1 \u2014 Reconciliation of Income (Loss) per Books With Income (Loss) per Return",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "book_net_income",
+      "label": "Net income (loss) per books (Line 1)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "income_on_k_not_books",
+      "label": "Income on Schedule K not recorded on books (Line 2)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": "Items included on Schedule K lines 1-10 that are NOT on the financial statements."
+    },
+    {
+      "fact_key": "guaranteed_payments",
+      "label": "Guaranteed payments, section 707(c) (Line 3a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": "PARTNERSHIPS ONLY. Should be $0 for S-Corps."
+    },
+    {
+      "fact_key": "expenses_not_on_k",
+      "label": "Expenses on books not on Schedule K (Line 3b)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": "ADD-BACK: 50% nondeductible meals, fines, penalties, political contributions. This is a POSITIVE number that INCREASES taxable income."
+    },
+    {
+      "fact_key": "line_4_subtotal",
+      "label": "Add lines 1 through 3b (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "income_on_books_not_k",
+      "label": "Income on books not on Schedule K (Line 5a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": "Tax-exempt interest, life insurance proceeds, other non-taxable book income."
+    },
+    {
+      "fact_key": "deductions_on_k_not_books",
+      "label": "Deductions on Schedule K not on books (Line 5b)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": "Bonus depreciation, section 179 in excess of book depreciation, etc."
+    },
+    {
+      "fact_key": "line_6_subtotal",
+      "label": "Add lines 5a and 5b (Line 6)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "income_per_return",
+      "label": "Income (loss) per return (Line 7 = Line 4 - Line 6)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Line 4 subtotal",
+      "description": "Line 4 = Line 1 + Line 2 + Line 3a + Line 3b. This is book income plus add-backs.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "book_net_income + income_on_k_not_books + guaranteed_payments + expenses_not_on_k",
+      "inputs": [
+        "book_net_income",
+        "income_on_k_not_books",
+        "guaranteed_payments",
+        "expenses_not_on_k"
+      ],
+      "outputs": [
+        "line_4_subtotal"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "M-1 Lines 1-3b: book income + add-backs",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Line 6 subtotal",
+      "description": "Line 6 = Line 5a + Line 5b. These are subtractions (book income not taxable + tax deductions not on books).",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "income_on_books_not_k + deductions_on_k_not_books",
+      "inputs": [
+        "income_on_books_not_k",
+        "deductions_on_k_not_books"
+      ],
+      "outputs": [
+        "line_6_subtotal"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "M-1 Lines 5a-5b: subtractions",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Line 7 = Income per return",
+      "description": "Line 7 = Line 4 - Line 6. This is the taxable income per the return.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "line_4_subtotal - line_6_subtotal",
+      "inputs": [
+        "line_4_subtotal",
+        "line_6_subtotal"
+      ],
+      "outputs": [
+        "income_per_return"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "M-1 Line 7 = Line 4 - Line 6",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "M-1 balance check",
+      "description": "Line 7 (and Line 8) must equal Page 1 Line 21 (ordinary business income). If they differ, the M-1 reconciliation is incorrect.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "income_per_return == page1_line_21",
+      "inputs": [
+        "income_per_return"
+      ],
+      "outputs": [],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 8 must equal Page 1 Line 21",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Line 3b must be positive (add-back)",
+      "description": "Line 3b represents expenses on books that are NOT deductible on the return (e.g., 50% of meals, fines, penalties). This is an ADD-BACK to book income, so it must be a positive number. A negative value would incorrectly subtract from taxable income.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "expenses_not_on_k >= 0",
+      "inputs": [
+        "expenses_not_on_k"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "CRITICAL: M-1 Line 3b sign error was a persistent bug in tts-tax-app. Line 3b is ALWAYS an addition.",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 3b is expenses on books not deducted = ADD-BACK",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "Guaranteed payments must be zero for S-Corps",
+      "description": "Line 3a (guaranteed payments under section 707(c)) applies only to partnerships. For S-Corps, this line must be zero.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "guaranteed_payments == 0 when entity_type == '1120S'",
+      "inputs": [
+        "guaranteed_payments"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 3a guaranteed payments \u2014 partnerships only",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Net income (loss) per books",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Income included on Schedule K, lines 1-10, not recorded on books",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3a",
+      "description": "Guaranteed payments (section 707(c)) \u2014 should be $0 for S-Corps",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "3b",
+      "description": "Expenses on books not on Schedule K (50% meals, fines, etc.) \u2014 ADD-BACK",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "CRITICAL: This is a POSITIVE number. It increases taxable income. A negative value here is a bug.",
+      "sort_order": 4
+    },
+    {
+      "line_number": "4",
+      "description": "Add lines 1 through 3b",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "5a",
+      "description": "Income on books not on Schedule K (tax-exempt interest, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "5b",
+      "description": "Deductions on Schedule K not charged against book income (bonus depr, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "6",
+      "description": "Add lines 5a and 5b",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "7",
+      "description": "Income (loss) per return (line 4 minus line 6)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": null,
+      "line_type": "total",
+      "notes": "Must equal Page 1 Line 21 and Schedule K Line 18.",
+      "sort_order": 9
+    },
+    {
+      "line_number": "8",
+      "description": "Income per return \u2014 must equal Schedule K line 18 and Page 1 line 21",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Page 1 Line 21",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 10
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "M-1 does not balance",
+      "severity": "error",
+      "condition": "income_per_return != page1_line_21",
+      "message": "Schedule M-1 Line 7 does not equal Page 1 Line 21. The reconciliation is incorrect.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "M-1 Line 3b is negative",
+      "severity": "error",
+      "condition": "expenses_not_on_k < 0",
+      "message": "M-1 Line 3b (expenses on books not on return) should be a POSITIVE add-back. A negative value here incorrectly reduces taxable income. This is a common bug \u2014 Line 3b adds the nondeductible portion (e.g., 50% of meals).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Guaranteed payments on S-Corp M-1",
+      "severity": "error",
+      "condition": "guaranteed_payments != 0 AND entity_type == '1120S'",
+      "message": "M-1 Line 3a (guaranteed payments) should be $0 for S corporations. Guaranteed payments apply only to partnerships under section 707(c).",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "M-1 with meals nondeductible add-back",
+      "scenario_type": "normal",
+      "inputs": {
+        "book_net_income": 85000,
+        "expenses_not_on_k": 5000,
+        "guaranteed_payments": 0,
+        "income_on_books_not_k": 0,
+        "income_on_k_not_books": 0,
+        "deductions_on_k_not_books": 0
+      },
+      "expected_outputs": {
+        "line_4_subtotal": 90000,
+        "line_6_subtotal": 0,
+        "income_per_return": 90000
+      },
+      "notes": "Book income $85K + $5K meals add-back (50% of $10K meals) = $90K taxable income. Line 3b is POSITIVE.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "M-1 with bonus depreciation difference",
+      "scenario_type": "normal",
+      "inputs": {
+        "book_net_income": 120000,
+        "expenses_not_on_k": 2000,
+        "guaranteed_payments": 0,
+        "income_on_books_not_k": 3000,
+        "income_on_k_not_books": 0,
+        "deductions_on_k_not_books": 50000
+      },
+      "expected_outputs": {
+        "line_4_subtotal": 122000,
+        "line_6_subtotal": 53000,
+        "income_per_return": 69000
+      },
+      "notes": "Book income + meals add-back - tax-exempt interest - bonus depr excess = taxable income.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "M-1 with loss",
+      "scenario_type": "edge",
+      "inputs": {
+        "book_net_income": -30000,
+        "expenses_not_on_k": 1000,
+        "guaranteed_payments": 0,
+        "income_on_books_not_k": 0,
+        "income_on_k_not_books": 5000,
+        "deductions_on_k_not_books": 20000
+      },
+      "expected_outputs": {
+        "line_4_subtotal": -24000,
+        "line_6_subtotal": 20000,
+        "income_per_return": -44000
+      },
+      "notes": "Book loss scenario. M-1 still balances \u2014 large deductions on K not on books (bonus depr).",
+      "sort_order": 3
+    }
+  ]
+}

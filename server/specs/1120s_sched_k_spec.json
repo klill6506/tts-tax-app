@@ -1,0 +1,1622 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "SCH_K_1120S",
+    "form_title": "Schedule K \u2014 Shareholders' Pro Rata Share Items (Form 1120-S)",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "ordinary_business_income",
+      "label": "Ordinary business income (loss) \u2014 from Page 1 Line 21",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_rental_real_estate_income",
+      "label": "Net rental real estate income (loss) \u2014 from Form 8825",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_net_rental_income",
+      "label": "Other net rental income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "interest_income",
+      "label": "Interest income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "dividend_income",
+      "label": "Ordinary dividends",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "qualified_dividends",
+      "label": "Qualified dividends",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "royalties",
+      "label": "Royalties",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_short_term_capital_gain",
+      "label": "Net short-term capital gain (loss) \u2014 from Schedule D",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_long_term_capital_gain",
+      "label": "Net long-term capital gain (loss) \u2014 from Schedule D",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_section_1231_gain",
+      "label": "Net \u00a71231 gain (loss) \u2014 from Form 4797 Part I",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_income",
+      "label": "Other income (loss)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "section_179_deduction",
+      "label": "\u00a7179 deduction \u2014 from Form 4562",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "charitable_contributions_cash",
+      "label": "Charitable contributions \u2014 cash",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "charitable_contributions_noncash",
+      "label": "Charitable contributions \u2014 noncash",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    },
+    {
+      "fact_key": "investment_interest_expense",
+      "label": "Investment interest expense \u2014 \u00a7163(d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_deductions",
+      "label": "Other deductions",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 16,
+      "notes": ""
+    },
+    {
+      "fact_key": "low_income_housing_credit",
+      "label": "Low-income housing credit \u2014 \u00a742",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 17,
+      "notes": ""
+    },
+    {
+      "fact_key": "rehabilitation_credit",
+      "label": "Qualified rehabilitation expenditures",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 18,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_rental_credits",
+      "label": "Other rental credits",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 19,
+      "notes": ""
+    },
+    {
+      "fact_key": "foreign_tax_credit",
+      "label": "Foreign tax credit",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 20,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_credits",
+      "label": "Other credits",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "tax_exempt_interest",
+      "label": "Tax-exempt interest income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_tax_exempt_income",
+      "label": "Other tax-exempt income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    },
+    {
+      "fact_key": "nondeductible_expenses",
+      "label": "Nondeductible expenses",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 24,
+      "notes": ""
+    },
+    {
+      "fact_key": "distributions_cash",
+      "label": "Distributions \u2014 cash and marketable securities",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 25,
+      "notes": ""
+    },
+    {
+      "fact_key": "distributions_property",
+      "label": "Distributions \u2014 other property",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 26,
+      "notes": ""
+    },
+    {
+      "fact_key": "investment_income",
+      "label": "Investment income for Form 4952",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 27,
+      "notes": ""
+    },
+    {
+      "fact_key": "investment_expenses",
+      "label": "Investment expenses for Form 4952",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 28,
+      "notes": ""
+    },
+    {
+      "fact_key": "qbi_ordinary_income",
+      "label": "\u00a7199A QBI \u2014 ordinary income component",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 29,
+      "notes": ""
+    },
+    {
+      "fact_key": "qbi_w2_wages",
+      "label": "\u00a7199A QBI \u2014 W-2 wages",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 30,
+      "notes": ""
+    },
+    {
+      "fact_key": "qbi_ubia",
+      "label": "\u00a7199A QBI \u2014 UBIA of qualified property",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 31,
+      "notes": ""
+    },
+    {
+      "fact_key": "qbi_sstb_indicator",
+      "label": "\u00a7199A \u2014 Specified service trade or business (SSTB) indicator",
+      "data_type": "boolean",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 32,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_shares_outstanding",
+      "label": "Total shares outstanding",
+      "data_type": "integer",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 40,
+      "notes": ""
+    },
+    {
+      "fact_key": "days_in_year",
+      "label": "Days in tax year",
+      "data_type": "integer",
+      "required": false,
+      "default_value": "365",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 41,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Ordinary business income passthrough",
+      "description": "Page 1 Line 21 flows directly to Schedule K Line 1. No modification.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "ordinary_business_income",
+      "inputs": [
+        "ordinary_business_income"
+      ],
+      "outputs": [
+        "k_line_1"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule K Line 1 \u2014 ordinary income from page 1 line 21",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Rental real estate from Form 8825",
+      "description": "Net income/loss from Form 8825 flows to K Line 2.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "net_rental_real_estate_income",
+      "inputs": [
+        "net_rental_real_estate_income"
+      ],
+      "outputs": [
+        "k_line_2"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule K Line 2 \u2014 rental real estate from Form 8825",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Capital gains routing",
+      "description": "Net STCG \u2192 K Line 7, Net LTCG \u2192 K Line 8a. From Schedule D.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "net_short_term_capital_gain \u2192 K Line 7; net_long_term_capital_gain \u2192 K Line 8a",
+      "inputs": [
+        "net_short_term_capital_gain",
+        "net_long_term_capital_gain"
+      ],
+      "outputs": [
+        "k_line_7",
+        "k_line_8a"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule K Lines 7-8 \u2014 capital gains from Schedule D",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule D aggregates \u2192 K lines",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR",
+          "title": "Instructions for Schedule D (Form 1120-S) \u2014 Capital Gains and Losses and Built-in Gains",
+          "citation": "Schedule D (Form 1120-S) Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Section 1231 gain routing",
+      "description": "Net \u00a71231 gain from 4797 Part I \u2192 K Line 9. EXCESS gain after recapture. Ordinary recapture goes to Page 1 Line 4.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "net_section_1231_gain",
+      "inputs": [
+        "net_section_1231_gain"
+      ],
+      "outputs": [
+        "k_line_9"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule K Line 9 \u2014 \u00a71231 gain from Form 4797",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Section 179 routing \u2014 separately stated",
+      "description": "\u00a7179 deduction from Form 4562 \u2192 K Line 11. NOT Page 1. This is a separately stated item that passes through to shareholders. Common error: \u00a7179 should NOT reduce ordinary income on Page 1.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "section_179_deduction",
+      "inputs": [
+        "section_179_deduction"
+      ],
+      "outputs": [
+        "k_line_11"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7179(d)(4) \u2014 separately stated for S-Corps",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule K Line 11 instructions",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Form 4562 Part I \u2192 K Line 11",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "Charitable contributions \u2014 separately stated",
+      "description": "Charitable contributions \u2192 K Line 12a (cash) and 12b (noncash). Separately stated, NOT deducted on Page 1.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "charitable_contributions_cash + charitable_contributions_noncash",
+      "inputs": [
+        "charitable_contributions_cash",
+        "charitable_contributions_noncash"
+      ],
+      "outputs": [
+        "k_line_12a",
+        "k_line_12b"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71363(b)(2) \u2014 charitable not deducted at entity level",
+          "source_code": "IRC_1363",
+          "title": "IRC \u00a71363 \u2014 Effect of Election on Corporation",
+          "citation": "26 U.S.C. \u00a71363",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule K Line 12 instructions",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "\u00a7170 \u2014 charitable contribution rules",
+          "source_code": "IRC_170",
+          "title": "IRC \u00a7170 \u2014 Charitable Contributions",
+          "citation": "26 U.S.C. \u00a7170",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R007",
+      "title": "QBI information routing",
+      "description": "\u00a7199A QBI items flow through K Line 17. Includes ordinary income, W-2 wages, UBIA of qualified property, SSTB indicator.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "qbi_ordinary_income, qbi_w2_wages, qbi_ubia, qbi_sstb_indicator \u2192 K Line 17",
+      "inputs": [
+        "qbi_ordinary_income",
+        "qbi_w2_wages",
+        "qbi_ubia",
+        "qbi_sstb_indicator"
+      ],
+      "outputs": [
+        "k_line_17_qbi"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 7,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7199A QBI deduction \u2014 items reported on K Line 17",
+          "source_code": "IRC_199A",
+          "title": "IRC \u00a7199A \u2014 Qualified Business Income Deduction",
+          "citation": "26 U.S.C. \u00a7199A",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule K Line 17 \u2014 other information",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R008",
+      "title": "Pro rata allocation base",
+      "description": "Each K line item is allocated to shareholders based on pro rata share (daily ownership percentage). Unlike partnerships, S-Corps cannot do special allocations \u2014 must be pro rata per share per day.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "item_amount * (shareholder_shares / total_shares) * (days_owned / days_in_year)",
+      "inputs": [
+        "total_shares_outstanding",
+        "days_in_year"
+      ],
+      "outputs": [
+        "shareholder_allocation"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 8,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71366(a) \u2014 pro rata share determination",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a71377(a) \u2014 per share per day allocation rule",
+          "source_code": "IRC_1377",
+          "title": "IRC \u00a71377 \u2014 Definitions and Special Rule",
+          "citation": "26 U.S.C. \u00a71377",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R010",
+      "title": "K Line 1 source: Page 1 Line 21",
+      "description": "Schedule K Line 1 = Page 1 Line 21 (ordinary business income/loss). This is the direct flow of the S-Corp's operating result to Schedule K for shareholder allocation.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K1 = Page1_Line21",
+      "inputs": [
+        "page1_ordinary_income"
+      ],
+      "outputs": [
+        "K1"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 10,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K1 = Page 1 Line 21",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R011",
+      "title": "K Line 4 = Interest income",
+      "description": "Schedule K Line 4 is INTEREST INCOME (portfolio income). This is NOT Section 1231 gain. Interest income is separately stated because it is portfolio income under IRC 469.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K4 = interest_income",
+      "inputs": [
+        "interest_income"
+      ],
+      "outputs": [
+        "K4"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "IMPORTANT: K4 is NOT Section 1231. K9 is Section 1231. This was a source of confusion.",
+      "sort_order": 11,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K4 = interest income (portfolio)",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R012",
+      "title": "K Line 5a/5b = Dividends",
+      "description": "K Line 5a = ordinary dividends, K Line 5b = qualified dividends (subset of 5a). Portfolio income, separately stated. NOT capital gains.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K5a = ordinary_dividends; K5b = qualified_dividends",
+      "inputs": [
+        "dividend_income",
+        "qualified_dividends"
+      ],
+      "outputs": [
+        "K5a",
+        "K5b"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 12,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K5a/5b = dividends",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R013",
+      "title": "K Line 7 source: Schedule D Part I Line 5",
+      "description": "Schedule K Line 7 = net short-term capital gain (loss) from Schedule D Part I Line 5. This comes from Form 8949 capital asset transactions, NOT from Form 4797.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K7 = ScheduleD_Part1_Line5",
+      "inputs": [
+        "schedule_d_net_short_term"
+      ],
+      "outputs": [
+        "K7"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 13,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule D Part I Line 5 -> K7",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR_FULL",
+          "title": "Instructions for Schedule D (Form 1120-S) (2025) \u2014 fetched 2026-03-18",
+          "citation": "Instructions for Schedule D (Form 1120-S) (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R014",
+      "title": "K Line 8a source: Schedule D Part II Line 12",
+      "description": "Schedule K Line 8a = net long-term capital gain (loss) from Schedule D Part II Line 12. From Form 8949 capital asset transactions, NOT from Form 4797.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K8a = ScheduleD_Part2_Line12",
+      "inputs": [
+        "schedule_d_net_long_term"
+      ],
+      "outputs": [
+        "K8a"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 14,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule D Part II Line 12 -> K8a",
+          "source_code": "IRS_2025_1120S_SCHD_INSTR_FULL",
+          "title": "Instructions for Schedule D (Form 1120-S) (2025) \u2014 fetched 2026-03-18",
+          "citation": "Instructions for Schedule D (Form 1120-S) (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R015",
+      "title": "K Line 9 source: Form 4797 Part I Line 7",
+      "description": "Schedule K Line 9 = net section 1231 gain (loss) from Form 4797 Part I Line 7. Section 1231 transactions BYPASS Schedule D on the 1120-S and flow directly to K Line 9. This is a key architectural difference from the 1040.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K9 = Form4797_Part1_Line7",
+      "inputs": [
+        "form_4797_net_1231"
+      ],
+      "outputs": [
+        "K9"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "VERIFIED: 4797 Part I -> K9 directly. Does NOT go through Schedule D on 1120-S.",
+      "sort_order": 15,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K9 = Form 4797 Part I Line 7 (verified)",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "4797 bypasses Schedule D on 1120-S",
+          "source_code": "IRS_2025_4797_INSTR",
+          "title": "Instructions for Form 4797 (2025) \u2014 Sales of Business Property",
+          "citation": "Instructions for Form 4797 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R016",
+      "title": "K Line 16c = Nondeductible meals",
+      "description": "K Line 16c (nondeductible expenses) includes the 50% nondeductible portion of meals. This amount also flows to M-1 Line 3b as an add-back and to M-2 as a reduction to AAA.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K16c = nondeductible_meals + other_nondeductible",
+      "inputs": [
+        "nondeductible_expenses"
+      ],
+      "outputs": [
+        "K16c"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 16,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K16c = nondeductible expenses",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R017",
+      "title": "K Line 16d = Total distributions",
+      "description": "K Line 16d = total distributions (property and cash) to shareholders. This amount flows to M-2 Line 7 and to each shareholder's K-1.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K16d = total_distributions",
+      "inputs": [
+        "total_distributions"
+      ],
+      "outputs": [
+        "K16d"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 17,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K16d = distributions",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1368 distribution rules",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R018",
+      "title": "K Line 18 = Income/loss reconciliation",
+      "description": "Schedule K Line 18 is a reconciliation total. It should equal Page 1 Line 21. This is the same number that M-1 Line 7/8 must also equal.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "K18 = Page1_Line21",
+      "inputs": [
+        "K1_through_K10_net"
+      ],
+      "outputs": [
+        "K18"
+      ],
+      "precedence": 50,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 18,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "K18 must equal Page 1 Line 21",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Ordinary business income (loss) (page 1, line 21)",
+      "calculation": "",
+      "source_facts": [
+        "ordinary_business_income"
+      ],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": "Schedule K-1 Box 1",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Net rental real estate income (loss) (Form 8825)",
+      "calculation": "",
+      "source_facts": [
+        "net_rental_real_estate_income"
+      ],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": "Schedule K-1 Box 2",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3a",
+      "description": "Other gross rental income (loss)",
+      "calculation": "",
+      "source_facts": [
+        "other_net_rental_income"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 3",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "4",
+      "description": "Interest income",
+      "calculation": "",
+      "source_facts": [
+        "interest_income"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 4",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "5a",
+      "description": "Ordinary dividends",
+      "calculation": "",
+      "source_facts": [
+        "dividend_income"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 5a",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "5b",
+      "description": "Qualified dividends",
+      "calculation": "",
+      "source_facts": [
+        "qualified_dividends"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 5b",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "6",
+      "description": "Royalties",
+      "calculation": "",
+      "source_facts": [
+        "royalties"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 6",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "7",
+      "description": "Net short-term capital gain (loss) (Schedule D)",
+      "calculation": "",
+      "source_facts": [
+        "net_short_term_capital_gain"
+      ],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": "Schedule K-1 Box 7",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "8a",
+      "description": "Net long-term capital gain (loss) (Schedule D)",
+      "calculation": "",
+      "source_facts": [
+        "net_long_term_capital_gain"
+      ],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": "Schedule K-1 Box 8a",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "9",
+      "description": "Net section 1231 gain (loss) (Form 4797)",
+      "calculation": "",
+      "source_facts": [
+        "net_section_1231_gain"
+      ],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": "Schedule K-1 Box 9",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "10",
+      "description": "Other income (loss)",
+      "calculation": "",
+      "source_facts": [
+        "other_income"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 10",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "11",
+      "description": "Section 179 deduction (Form 4562)",
+      "calculation": "",
+      "source_facts": [
+        "section_179_deduction"
+      ],
+      "source_rules": [
+        "R005"
+      ],
+      "destination_form": "Schedule K-1 Box 11",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "12a",
+      "description": "Charitable contributions \u2014 cash",
+      "calculation": "",
+      "source_facts": [
+        "charitable_contributions_cash"
+      ],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": "Schedule K-1 Box 12 Code A",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "12b",
+      "description": "Charitable contributions \u2014 noncash",
+      "calculation": "",
+      "source_facts": [
+        "charitable_contributions_noncash"
+      ],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": "Schedule K-1 Box 12 Code B",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "12c",
+      "description": "Investment interest expense \u2014 \u00a7163(d)",
+      "calculation": "",
+      "source_facts": [
+        "investment_interest_expense"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 12 Code C",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 15
+    },
+    {
+      "line_number": "12d",
+      "description": "Other deductions",
+      "calculation": "",
+      "source_facts": [
+        "other_deductions"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 12",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 16
+    },
+    {
+      "line_number": "13a",
+      "description": "Low-income housing credit (\u00a742) \u2014 current year",
+      "calculation": "",
+      "source_facts": [
+        "low_income_housing_credit"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 13 Code A",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 17
+    },
+    {
+      "line_number": "13d",
+      "description": "Other rental real estate credits",
+      "calculation": "",
+      "source_facts": [
+        "rehabilitation_credit"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 13 Code D",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 18
+    },
+    {
+      "line_number": "13f",
+      "description": "Foreign tax credit (Form 1116)",
+      "calculation": "",
+      "source_facts": [
+        "foreign_tax_credit"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 13 Code F",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 19
+    },
+    {
+      "line_number": "13g",
+      "description": "Other credits",
+      "calculation": "",
+      "source_facts": [
+        "other_credits"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 13 Code G",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 20
+    },
+    {
+      "line_number": "16a",
+      "description": "Tax-exempt interest income",
+      "calculation": "",
+      "source_facts": [
+        "tax_exempt_interest"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 16 Code A",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 21
+    },
+    {
+      "line_number": "16b",
+      "description": "Other tax-exempt income",
+      "calculation": "",
+      "source_facts": [
+        "other_tax_exempt_income"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 16 Code B",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 22
+    },
+    {
+      "line_number": "16c",
+      "description": "Nondeductible expenses",
+      "calculation": "",
+      "source_facts": [
+        "nondeductible_expenses"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 16 Code C",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 23
+    },
+    {
+      "line_number": "16d",
+      "description": "Distributions \u2014 cash and marketable securities",
+      "calculation": "",
+      "source_facts": [
+        "distributions_cash"
+      ],
+      "source_rules": [],
+      "destination_form": "Schedule K-1 Box 16 Code D",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 24
+    },
+    {
+      "line_number": "17",
+      "description": "Other information \u2014 \u00a7199A QBI items, investment income/expenses",
+      "calculation": "",
+      "source_facts": [
+        "qbi_ordinary_income",
+        "qbi_w2_wages",
+        "qbi_ubia",
+        "qbi_sstb_indicator"
+      ],
+      "source_rules": [
+        "R007"
+      ],
+      "destination_form": "Schedule K-1 Box 17",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 25
+    },
+    {
+      "line_number": "18",
+      "description": "Total income (loss) \u2014 combine lines 1 through 10",
+      "calculation": "Sum of lines 1-10",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "total",
+      "notes": "Informational total. Each line item flows separately to K-1.",
+      "sort_order": 26
+    },
+    {
+      "line_number": "K1->Box1",
+      "description": "K Line 1 -> K-1 Box 1: Ordinary business income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 1",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 100
+    },
+    {
+      "line_number": "K2->Box2",
+      "description": "K Line 2 -> K-1 Box 2: Net rental real estate income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 2",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 101
+    },
+    {
+      "line_number": "K3->Box3",
+      "description": "K Line 3c -> K-1 Box 3: Other net rental income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 3",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 102
+    },
+    {
+      "line_number": "K4->Box4",
+      "description": "K Line 4 -> K-1 Box 4: Interest income",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 4",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 103
+    },
+    {
+      "line_number": "K5->Box5",
+      "description": "K Line 5a/5b -> K-1 Box 5a/5b: Dividends",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 5",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 104
+    },
+    {
+      "line_number": "K6->Box6",
+      "description": "K Line 6 -> K-1 Box 6: Royalties",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 6",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 105
+    },
+    {
+      "line_number": "K7->Box7",
+      "description": "K Line 7 -> K-1 Box 7: Net short-term capital gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 7",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 106
+    },
+    {
+      "line_number": "K8->Box8",
+      "description": "K Line 8a/8b/8c -> K-1 Box 8a/8b/8c: Long-term capital gain, collectibles, unrec 1250",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 8",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 107
+    },
+    {
+      "line_number": "K9->Box9",
+      "description": "K Line 9 -> K-1 Box 9: Net section 1231 gain (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 9",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 108
+    },
+    {
+      "line_number": "K10->Box10",
+      "description": "K Line 10 -> K-1 Box 10: Other income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 10",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 109
+    },
+    {
+      "line_number": "K11->Box11",
+      "description": "K Line 11 -> K-1 Box 11: Section 179 deduction",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 11",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 110
+    },
+    {
+      "line_number": "K12->Box12",
+      "description": "K Line 12a-e -> K-1 Box 12: Deductions",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 12",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 111
+    },
+    {
+      "line_number": "K13->Box13",
+      "description": "K Line 13a-g -> K-1 Box 13: Credits",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 13",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 112
+    },
+    {
+      "line_number": "K16->Box16",
+      "description": "K Line 16a-f -> K-1 Box 16: Items affecting shareholder basis",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 16",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 113
+    },
+    {
+      "line_number": "K17->Box17",
+      "description": "K Line 17a-d -> K-1 Box 17: Other information (QBI, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "K-1 Box 17",
+      "line_type": "informational",
+      "notes": "",
+      "sort_order": 114
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "\u00a7179 on Page 1",
+      "severity": "error",
+      "condition": "section_179_deduction > 0 AND ordinary_business_income appears reduced by \u00a7179",
+      "message": "\u00a7179 deduction should NOT reduce ordinary income on Page 1. It must flow to Schedule K Line 11 as a separately stated item.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Charitable on Page 1",
+      "severity": "error",
+      "condition": "charitable_contributions > 0 AND deducted on Page 1",
+      "message": "Charitable contributions are separately stated items. They should NOT be deducted on Page 1 \u2014 they flow to K Line 12a/12b.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Capital gain/loss not separately stated",
+      "severity": "warning",
+      "condition": "capital gains included in ordinary_business_income",
+      "message": "Capital gains and losses must be separately stated on K Lines 7-8. They should not be included in ordinary business income (K Line 1).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D004",
+      "title": "Missing QBI information",
+      "severity": "warning",
+      "condition": "ordinary_business_income != 0 AND qbi_ordinary_income is null",
+      "message": "Ordinary business income exists but no \u00a7199A QBI information on Line 17. Most S-Corps must report QBI items for the shareholder's \u00a7199A computation.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D010",
+      "title": "Section 1231 double-count check",
+      "severity": "error",
+      "condition": "K4 contains section_1231_gain AND K9 contains section_1231_gain",
+      "message": "Section 1231 gain appears on both K Line 4 (interest income) and K Line 9 (net section 1231). K Line 4 is for INTEREST INCOME, not Section 1231. Verify that 1231 gain is only on K Line 9.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D011",
+      "title": "Page 1 Line 4 source verification",
+      "severity": "warning",
+      "condition": "page1_line4 != form_4797_part2_line17",
+      "message": "Page 1 Line 4 does not match Form 4797 Part II Line 17. Line 4 should equal the ordinary gain/loss from 4797 Part II, NOT the Section 1231 gain from Part I.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D012",
+      "title": "K18 does not equal Page 1 Line 21",
+      "severity": "error",
+      "condition": "K18 != page1_line21",
+      "message": "Schedule K Line 18 (income/loss reconciliation) does not equal Page 1 Line 21. These must match.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D013",
+      "title": "Schedule D Section 1231 contamination",
+      "severity": "error",
+      "condition": "schedule_d includes section_1231_amounts",
+      "message": "Section 1231 amounts appear on Schedule D. On the 1120-S, Section 1231 goes directly to K Line 9 from Form 4797 Part I Line 7, NOT through Schedule D.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D014",
+      "title": "Schedule D totals vs 8949",
+      "severity": "warning",
+      "condition": "schedule_d_totals != form_8949_category_totals",
+      "message": "Schedule D totals do not match Form 8949 category totals. Verify all 8949 transactions are correctly categorized (A-F) and totaled on Schedule D.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic S-Corp \u2014 ordinary income only",
+      "scenario_type": "normal",
+      "inputs": {
+        "section_179_deduction": 50000,
+        "ordinary_business_income": 200000
+      },
+      "expected_outputs": {
+        "k_line_1": 200000,
+        "k_line_11": 50000
+      },
+      "notes": "\u00a7179 is separate from ordinary income. K Line 1=200K, K Line 11=50K.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "S-Corp with capital gains and recapture",
+      "scenario_type": "normal",
+      "inputs": {
+        "net_section_1231_gain": 20000,
+        "ordinary_business_income": 150000,
+        "net_long_term_capital_gain": 30000
+      },
+      "expected_outputs": {
+        "k_line_1": 150000,
+        "k_line_9": 20000,
+        "k_line_8a": 30000
+      },
+      "notes": "Each item flows to its own K line \u2014 nothing combined.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "Pro rata allocation \u2014 2 equal shareholders",
+      "scenario_type": "normal",
+      "inputs": {
+        "days_owned": 365,
+        "days_in_year": 365,
+        "shareholder_shares": 50,
+        "ordinary_business_income": 100000,
+        "total_shares_outstanding": 100
+      },
+      "expected_outputs": {
+        "shareholder_allocation": 50000
+      },
+      "notes": "50/100 shares \u00d7 365/365 days = 50% pro rata share.",
+      "sort_order": 3
+    }
+  ]
+}

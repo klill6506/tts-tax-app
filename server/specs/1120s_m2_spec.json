@@ -1,0 +1,503 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "1120S_M2",
+    "form_title": "Schedule M-2 \u2014 Analysis of AAA, OAA, PTEP, and Shareholders' Undistributed Taxable Income",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "aaa_beginning",
+      "label": "AAA balance at beginning of year (Line 1, col a)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "aaa_ordinary_income",
+      "label": "AAA ordinary business income (Line 2, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": "From Page 1 Line 21 \u2014 only if positive."
+    },
+    {
+      "fact_key": "aaa_other_additions",
+      "label": "AAA other additions (Line 3, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "aaa_loss",
+      "label": "AAA loss (Line 4, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": "From Page 1 Line 21 if a loss. Entered as a positive number."
+    },
+    {
+      "fact_key": "aaa_other_reductions",
+      "label": "AAA other reductions (Line 5, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": "Nondeductible expenses, oil/gas depletion."
+    },
+    {
+      "fact_key": "aaa_combined",
+      "label": "AAA combine lines 1-5 (Line 6, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "aaa_distributions",
+      "label": "AAA distributions (Line 7, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": "Cannot reduce AAA below zero. Excess distributions treated as return of basis then capital gain."
+    },
+    {
+      "fact_key": "aaa_ending",
+      "label": "AAA balance at end of year (Line 8, col a)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "oaa_beginning",
+      "label": "OAA balance at beginning of year (Line 1, col d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "oaa_additions",
+      "label": "OAA additions \u2014 tax-exempt income (Line 3, col d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "oaa_reductions",
+      "label": "OAA reductions \u2014 related nondeductible expenses (Line 5, col d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "oaa_distributions",
+      "label": "OAA distributions (Line 7, col d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "oaa_ending",
+      "label": "OAA balance at end of year (Line 8, col d)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "retained_earnings_beginning",
+      "label": "Retained earnings at beginning of year",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_distributions",
+      "label": "Total distributions to shareholders during year",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "AAA combine (Line 6)",
+      "description": "AAA Line 6 = Line 1 + Line 2 + Line 3 - Line 4 - Line 5. Beginning balance plus income and additions, minus losses and reductions.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "aaa_beginning + aaa_ordinary_income + aaa_other_additions - aaa_loss - aaa_other_reductions",
+      "inputs": [
+        "aaa_beginning",
+        "aaa_ordinary_income",
+        "aaa_other_additions",
+        "aaa_loss",
+        "aaa_other_reductions"
+      ],
+      "outputs": [
+        "aaa_combined"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "M-2 AAA computation",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1368 \u2014 distributions from S corporations",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "AAA ending balance (Line 8)",
+      "description": "AAA Line 8 = Line 6 - Line 7 (distributions). Distributions cannot reduce AAA below zero.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "aaa_combined - min(aaa_distributions, max(0, aaa_combined))",
+      "inputs": [
+        "aaa_combined",
+        "aaa_distributions"
+      ],
+      "outputs": [
+        "aaa_ending"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "The min/max formula ensures distributions cannot make AAA negative, but losses CAN.",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "AAA distributions cannot reduce below zero",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "primary",
+          "relevance_note": "Section 1368(e)(1) \u2014 AAA ordering rule",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Distribution ordering \u2014 AAA first",
+      "description": "Under section 1368(c), distributions are first applied to AAA (tax-free return of basis), then to accumulated E&P (taxed as dividends), then to remaining basis (return of capital), then as capital gain. Unless the corporation elects to distribute AE&P first.",
+      "rule_type": "conditional",
+      "conditions": {},
+      "formula": "if aaa_combined >= aaa_distributions then all_from_aaa else excess_to_basis_or_gain",
+      "inputs": [
+        "aaa_combined",
+        "aaa_distributions"
+      ],
+      "outputs": [
+        "distribution_treatment"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Section 1368(c) \u2014 distribution ordering",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1367 \u2014 adjustments to basis of shareholder stock",
+          "source_code": "IRC_1367",
+          "title": "IRC \u00a71367 \u2014 Adjustments to Basis of Stock of Shareholders",
+          "citation": "26 U.S.C. \u00a71367",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "OAA ending balance",
+      "description": "OAA tracks tax-exempt income and related nondeductible expenses. OAA ending = beginning + additions - reductions - distributions from OAA.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "oaa_beginning + oaa_additions - oaa_reductions - oaa_distributions",
+      "inputs": [
+        "oaa_beginning",
+        "oaa_additions",
+        "oaa_reductions",
+        "oaa_distributions"
+      ],
+      "outputs": [
+        "oaa_ending"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "OAA tracks tax-exempt income",
+          "source_code": "IRS_2025_1120S_INSTR_FULL",
+          "title": "Instructions for Form 1120-S (2025) \u2014 Full Document (fetched 2026-03-18)",
+          "citation": "Instructions for Form 1120-S (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Balance at beginning of tax year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Ordinary income from Page 1, line 21 (or loss on line 4)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Page 1 Line 21",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3",
+      "description": "Other additions",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "4",
+      "description": "Loss from Page 1, line 21 (if a loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "5",
+      "description": "Other reductions (nondeductible expenses, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "For OAA: includes expenses related to tax-exempt income.",
+      "sort_order": 5
+    },
+    {
+      "line_number": "6",
+      "description": "Combine lines 1 through 5",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "7",
+      "description": "Distributions other than dividend distributions",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "8",
+      "description": "Balance at end of tax year (line 6 minus line 7)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "total",
+      "notes": "AAA: distributions cannot reduce below zero. Losses CAN make AAA negative.",
+      "sort_order": 8
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "AAA distributions exceed balance",
+      "severity": "warning",
+      "condition": "aaa_distributions > max(0, aaa_combined)",
+      "message": "Distributions exceed AAA balance. Excess treated as return of basis (section 1368). AAA cannot be reduced below zero by distributions.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "AAA negative from losses",
+      "severity": "info",
+      "condition": "aaa_ending < 0",
+      "message": "AAA ending balance is negative due to losses exceeding income. This is permitted \u2014 only distributions cannot make AAA negative, not losses.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic M-2 \u2014 income, additions, distributions within AAA",
+      "scenario_type": "normal",
+      "inputs": {
+        "aaa_loss": 0,
+        "aaa_beginning": 50000,
+        "aaa_distributions": 40000,
+        "aaa_ordinary_income": 95000,
+        "aaa_other_additions": 0,
+        "aaa_other_reductions": 3000
+      },
+      "expected_outputs": {
+        "aaa_ending": 102000,
+        "aaa_combined": 142000
+      },
+      "notes": "Simple case: 50K + 95K - 3K = 142K combined - 40K distributions = 102K ending.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Distributions exceeding AAA \u2014 capped at zero",
+      "scenario_type": "edge",
+      "inputs": {
+        "aaa_loss": 0,
+        "aaa_beginning": 20000,
+        "aaa_distributions": 80000,
+        "aaa_ordinary_income": 30000,
+        "aaa_other_additions": 0,
+        "aaa_other_reductions": 0
+      },
+      "expected_outputs": {
+        "aaa_ending": 0,
+        "aaa_combined": 50000
+      },
+      "notes": "Distributions ($80K) exceed AAA ($50K). AAA goes to zero, not negative. Excess $30K treated as return of basis/capital gain per section 1368.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "Loss making AAA negative",
+      "scenario_type": "edge",
+      "inputs": {
+        "aaa_loss": 50000,
+        "aaa_beginning": 20000,
+        "aaa_distributions": 0,
+        "aaa_ordinary_income": 0,
+        "aaa_other_additions": 0,
+        "aaa_other_reductions": 0
+      },
+      "expected_outputs": {
+        "aaa_ending": -30000,
+        "aaa_combined": -30000
+      },
+      "notes": "Losses CAN make AAA negative (unlike distributions). AAA = 20K - 50K loss = -30K.",
+      "sort_order": 3
+    }
+  ]
+}

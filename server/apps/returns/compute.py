@@ -108,12 +108,13 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     # K16c = nondeductible expenses (meals nondeductible portion auto-populates)
     ("K16c", lambda v: _d(v, "D_MEALS_NONDED")),
     # K18 = income/loss reconciliation (= M-1 Line 8)
-    # Only income (K1-K10) and deduction (K11, K12a) items.
+    # Per IRS instructions: combine K1-K10, subtract K11 through K12d.
     # K16a/K16b/K16c are separately stated items that flow through M-1
     # adjustments (M1_5a, M1_3b) — including them here would double-count.
     ("K18", lambda v: (
         _sum(v, "K1", "K2", "K3", "K4", "K5a", "K6", "K7", "K8a", "K9", "K10")
-        - _d(v, "K11") - _d(v, "K12a")
+        - _d(v, "K11") - _d(v, "K12a") - _d(v, "K12b")
+        - _d(v, "K12c") - _d(v, "K12d")
     )),
 
     # Schedule L — Balance Sheet
@@ -159,13 +160,16 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     # Column (a) AAA — auto-computed
     ("M2_2a", lambda v: max(ZERO, _d(v, "K1"))),
     ("M2_4a", lambda v: max(ZERO, -_d(v, "K1"))),
-    ("M2_5a", lambda v: _sum(v, "K12a", "K11", "K16c")),
+    # Per IRS instructions: M-2 Line 5 col (a) = K11 + K12a-K12d + K16c
+    ("M2_5a", lambda v: _sum(v, "K11", "K12a", "K12b", "K12c", "K12d", "K16c")),
     ("M2_6a", lambda v: (
         _d(v, "M2_1a") + _d(v, "M2_2a") + _d(v, "M2_3a")
         - _d(v, "M2_4a") - _d(v, "M2_5a")
     )),
     ("M2_7a", lambda v: _d(v, "K16d")),
-    ("M2_8a", lambda v: _d(v, "M2_6a") - _d(v, "M2_7a")),
+    # Per IRC 1368(e)(1): distributions cannot reduce AAA below zero.
+    # Losses CAN make AAA negative, but distributions are capped.
+    ("M2_8a", lambda v: _d(v, "M2_6a") - min(_d(v, "M2_7a"), max(ZERO, _d(v, "M2_6a")))),
     # Column (b) OAA — line 6 and 8 computed, rest manual
     ("M2_6b", lambda v: (
         _d(v, "M2_1b") + _d(v, "M2_2b") + _d(v, "M2_3b")
