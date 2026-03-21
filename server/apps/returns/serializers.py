@@ -613,6 +613,12 @@ class TaxReturnListSerializer(serializers.ModelSerializer):
     client_id = serializers.UUIDField(
         source="tax_year.entity.client.id", read_only=True
     )
+    preparer_name = serializers.CharField(
+        source="preparer.name", default="", read_only=True
+    )
+    fein = serializers.CharField(
+        source="tax_year.entity.ein", default="", read_only=True
+    )
 
     class Meta:
         model = TaxReturn
@@ -627,7 +633,11 @@ class TaxReturnListSerializer(serializers.ModelSerializer):
             "client_id",
             "form_code",
             "status",
+            "preparer_name",
+            "fein",
+            "extension_filed",
             "created_at",
+            "updated_at",
         )
 
 

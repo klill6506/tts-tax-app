@@ -716,15 +716,20 @@ class TaxReturnViewSet(
             "tax_year__entity__client",
             "created_by",
             "preparer",
-        ).prefetch_related(
-            "field_values__form_line__section",
-            "other_deductions",
-            "officers",
-            "shareholders",
-            "rental_properties",
-            "dispositions",
-            "preparer_info",
         )
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                "field_values__form_line__section",
+                "other_deductions",
+                "officers",
+                "shareholders",
+                "rental_properties",
+                "dispositions",
+                "preparer_info",
+            )
+        # Exclude state returns from list view
+        if self.action == "list":
+            qs = qs.exclude(form_definition__code__startswith="GA-")
         # Filter by tax year UUID (existing)
         tax_year_id = self.request.query_params.get("tax_year")
         if tax_year_id:
@@ -741,14 +746,77 @@ class TaxReturnViewSet(
         form_code = self.request.query_params.get("form_code")
         if form_code:
             qs = qs.filter(form_definition__code=form_code)
-        # Search across client name and entity name
+        # Filter by entity type
+        entity_type = self.request.query_params.get("entity_type")
+        if entity_type:
+            qs = qs.filter(tax_year__entity__entity_type=entity_type)
+        # Filter by preparer
+        preparer_id = self.request.query_params.get("preparer")
+        if preparer_id:
+            qs = qs.filter(preparer_id=preparer_id)
+        # Search across client name, entity name, and FEIN
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(
                 Q(tax_year__entity__name__icontains=search)
                 | Q(tax_year__entity__client__name__icontains=search)
+                | Q(tax_year__entity__ein__icontains=search)
             )
+        # Ordering
+        ordering = self.request.query_params.get("ordering", "-updated_at")
+        allowed_ordering = {
+            "client_name": "tax_year__entity__client__name",
+            "entity_name": "tax_year__entity__name",
+            "status": "status",
+            "updated_at": "updated_at",
+            "created_at": "created_at",
+            "-client_name": "-tax_year__entity__client__name",
+            "-entity_name": "-tax_year__entity__name",
+            "-status": "-status",
+            "-updated_at": "-updated_at",
+            "-created_at": "-created_at",
+        }
+        db_field = allowed_ordering.get(ordering, "-updated_at")
+        qs = qs.order_by(db_field)
         return qs
+
+    def list(self, request, *args, **kwargs):
+        from django.db.models import Q as DjQ
+
+        # Get the base queryset (without entity_type filter) for counts
+        base_qs = TaxReturn.objects.filter(
+            tax_year__entity__client__firm=request.firm
+        ).exclude(form_definition__code__startswith="GA-")
+
+        # Apply all filters EXCEPT entity_type for counts
+        year = request.query_params.get("year")
+        if year:
+            base_qs = base_qs.filter(tax_year__year=year)
+        search = request.query_params.get("search")
+        if search:
+            base_qs = base_qs.filter(
+                DjQ(tax_year__entity__name__icontains=search)
+                | DjQ(tax_year__entity__client__name__icontains=search)
+                | DjQ(tax_year__entity__ein__icontains=search)
+            )
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            base_qs = base_qs.filter(status=status_filter)
+        preparer_id = request.query_params.get("preparer")
+        if preparer_id:
+            base_qs = base_qs.filter(preparer_id=preparer_id)
+
+        counts = {}
+        counts["all"] = base_qs.count()
+        for et in ["scorp", "partnership", "ccorp", "trust", "individual"]:
+            counts[et] = base_qs.filter(
+                tax_year__entity__entity_type=et
+            ).count()
+
+        # Standard DRF pagination
+        response = super().list(request, *args, **kwargs)
+        response.data["counts"] = counts
+        return response
 
     def retrieve(self, request, *args, **kwargs):
         """Retrieve a tax return, backfilling any missing form lines first."""
