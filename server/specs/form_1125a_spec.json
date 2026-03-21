@@ -1,0 +1,389 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "1125A",
+    "form_title": "Form 1125-A \u2014 Cost of Goods Sold",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065",
+      "1120"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "inventory_beginning",
+      "label": "Inventory at beginning of year (Line 1)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "purchases",
+      "label": "Purchases (Line 2)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "cost_of_labor",
+      "label": "Cost of labor (Line 3)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "section_263a_costs",
+      "label": "Additional section 263A costs (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": "Uniform capitalization (UNICAP) \u2014 indirect costs that must be capitalized into inventory."
+    },
+    {
+      "fact_key": "other_costs",
+      "label": "Other costs (Line 5)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_line6",
+      "label": "Total (Line 6 = Lines 1-5)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "inventory_ending",
+      "label": "Inventory at end of year (Line 7)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "cogs",
+      "label": "Cost of goods sold (Line 8 = Line 6 - Line 7)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "inventory_method",
+      "label": "Inventory valuation method (Line 9a)",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "cost",
+        "lower_of_cost_or_market",
+        "other"
+      ],
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "inventory_subelection",
+      "label": "Inventory subelection \u2014 FIFO, LIFO, etc. (Lines 9b-9d)",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "FIFO",
+        "LIFO",
+        "weighted_average",
+        "specific_identification"
+      ],
+      "sort_order": 10,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Total costs (Line 6)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "inventory_beginning + purchases + cost_of_labor + section_263a_costs + other_costs",
+      "inputs": [
+        "inventory_beginning",
+        "purchases",
+        "cost_of_labor",
+        "section_263a_costs",
+        "other_costs"
+      ],
+      "outputs": [
+        "total_line6"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Lines 1-6 COGS computation",
+          "source_code": "IRS_2025_1125A_INSTR",
+          "title": "Instructions for Form 1125-A (2025) \u2014 Cost of Goods Sold",
+          "citation": "Form 1125-A Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "COGS (Line 8)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "total_line6 - inventory_ending",
+      "inputs": [
+        "total_line6",
+        "inventory_ending"
+      ],
+      "outputs": [
+        "cogs"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 8 = Line 6 - Line 7",
+          "source_code": "IRS_2025_1125A_INSTR",
+          "title": "Instructions for Form 1125-A (2025) \u2014 Cost of Goods Sold",
+          "citation": "Form 1125-A Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Flow to 1120-S Page 1 Line 2",
+      "description": "Form 1125-A Line 8 (COGS) flows to Form 1120-S Page 1 Line 2.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Page1_Line2 = cogs",
+      "inputs": [
+        "cogs"
+      ],
+      "outputs": [
+        "page1_line2"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 8 -> Page 1 Line 2",
+          "source_code": "IRS_2025_1125A_INSTR",
+          "title": "Instructions for Form 1125-A (2025) \u2014 Cost of Goods Sold",
+          "citation": "Form 1125-A Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Inventory at beginning of year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Purchases",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3",
+      "description": "Cost of labor",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "4",
+      "description": "Additional section 263A costs",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "5",
+      "description": "Other costs",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "6",
+      "description": "Total (add lines 1 through 5)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "7",
+      "description": "Inventory at end of year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "8",
+      "description": "Cost of goods sold (line 6 minus line 7)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": "1120-S Page 1 Line 2",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 8
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Beginning inventory mismatch",
+      "severity": "warning",
+      "condition": "inventory_beginning != prior_year_inventory_ending",
+      "message": "Beginning inventory should equal prior year ending inventory.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Negative COGS",
+      "severity": "error",
+      "condition": "cogs < 0",
+      "message": "COGS is negative (ending inventory exceeds total). Verify inventory amounts.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Inventory method not specified",
+      "severity": "warning",
+      "condition": "inventory_method is null",
+      "message": "Inventory valuation method not specified on Line 9a.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic COGS calculation",
+      "scenario_type": "normal",
+      "inputs": {
+        "purchases": 200000,
+        "other_costs": 2000,
+        "cost_of_labor": 30000,
+        "inventory_ending": 55000,
+        "section_263a_costs": 5000,
+        "inventory_beginning": 50000
+      },
+      "expected_outputs": {
+        "cogs": 232000,
+        "total_line6": 287000
+      },
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Service company \u2014 zero COGS",
+      "scenario_type": "edge",
+      "inputs": {
+        "purchases": 0,
+        "other_costs": 0,
+        "cost_of_labor": 0,
+        "inventory_ending": 0,
+        "section_263a_costs": 0,
+        "inventory_beginning": 0
+      },
+      "expected_outputs": {
+        "cogs": 0,
+        "total_line6": 0
+      },
+      "notes": "",
+      "sort_order": 2
+    }
+  ]
+}

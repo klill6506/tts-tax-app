@@ -1,0 +1,103 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "7004",
+    "form_title": "Form 7004 \u2014 Application for Automatic Extension of Time to File",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065",
+      "1120"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Automatic 6-month extension",
+      "description": "S-Corp original due: March 15. Extended due: September 15. No estimated tax payment required (pass-through entity).",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "extended_due_date = original_due_date + 6_months",
+      "inputs": [
+        "original_due_date"
+      ],
+      "outputs": [
+        "extended_due_date"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "1120-S filing deadlines",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Inclusion in print packages",
+      "description": "Form 7004 only included in printed return if extension was filed.",
+      "rule_type": "conditional",
+      "conditions": {},
+      "formula": "include_in_print = extension_filed == True",
+      "inputs": [
+        "extension_filed"
+      ],
+      "outputs": [
+        "include_form_7004"
+      ],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Extension filing requirement",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Form code (25 for 1120-S)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "5a",
+      "description": "Tentative total tax (usually $0 for S-Corps)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    }
+  ],
+  "diagnostics": [],
+  "tests": []
+}

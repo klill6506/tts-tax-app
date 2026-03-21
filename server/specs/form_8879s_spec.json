@@ -1,0 +1,48 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "8879S",
+    "form_title": "Form 8879-S \u2014 IRS e-file Signature Authorization for Form 1120-S",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Signature authorization",
+      "description": "Corporate officer must sign or provide PIN to authorize e-filing.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "requires_officer_signature OR pin",
+      "inputs": [
+        "officer_signature",
+        "pin"
+      ],
+      "outputs": [],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "E-file signature requirements",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [],
+  "diagnostics": [],
+  "tests": []
+}

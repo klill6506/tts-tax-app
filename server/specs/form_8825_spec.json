@@ -1,0 +1,615 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "8825",
+    "form_title": "Form 8825 \u2014 Rental Real Estate Income and Expenses of a Partnership or an S Corporation",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "property_address",
+      "label": "Property address/description",
+      "data_type": "string",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "property_type",
+      "label": "Type of property (residential, commercial, etc.)",
+      "data_type": "string",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "gross_rents",
+      "label": "Gross rents (Line 2)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "advertising",
+      "label": "Advertising (Line 3)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "auto_travel",
+      "label": "Auto and travel (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "cleaning",
+      "label": "Cleaning and maintenance (Line 5)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "commissions",
+      "label": "Commissions (Line 6)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "insurance",
+      "label": "Insurance (Line 7)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "legal_professional",
+      "label": "Legal and other professional fees (Line 8)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "mortgage_interest",
+      "label": "Mortgage interest paid (Line 9)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "other_interest",
+      "label": "Other interest (Line 10)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "repairs",
+      "label": "Repairs (Line 11)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "taxes",
+      "label": "Taxes (Line 12)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "utilities",
+      "label": "Utilities (Line 13)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciation",
+      "label": "Depreciation (Line 14)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": "Rental property depreciation \u2014 appears HERE, NOT on Page 1 Line 14."
+    },
+    {
+      "fact_key": "other_expenses",
+      "label": "Other expenses (Line 15)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 16,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_expenses",
+      "label": "Total expenses per property (Line 16)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 17,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_rent",
+      "label": "Net rent per property (Line 17 = Line 2 - Line 16)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 18,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_net_rental",
+      "label": "Total net rental real estate income/loss (Line 21)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 19,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Total expenses per property (Line 16)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "sum(Lines 3-15)",
+      "inputs": [
+        "advertising",
+        "auto_travel",
+        "cleaning",
+        "commissions",
+        "insurance",
+        "legal_professional",
+        "mortgage_interest",
+        "other_interest",
+        "repairs",
+        "taxes",
+        "utilities",
+        "depreciation",
+        "other_expenses"
+      ],
+      "outputs": [
+        "total_expenses"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Per-property expense total",
+          "source_code": "IRS_2025_8825_INSTR_FULL",
+          "title": "Instructions for Form 8825 (2025) \u2014 Rental Real Estate Income and Expenses (fetched 2026-03-18)",
+          "citation": "Instructions for Form 8825 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Net rent per property (Line 17)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "gross_rents - total_expenses",
+      "inputs": [
+        "gross_rents",
+        "total_expenses"
+      ],
+      "outputs": [
+        "net_rent"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Net rent = gross - expenses",
+          "source_code": "IRS_2025_8825_INSTR_FULL",
+          "title": "Instructions for Form 8825 (2025) \u2014 Rental Real Estate Income and Expenses (fetched 2026-03-18)",
+          "citation": "Instructions for Form 8825 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Total net rental -> K Line 2",
+      "description": "Sum of all property net rents flows to Schedule K Line 2.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "K2 = sum(all net_rent)",
+      "inputs": [
+        "net_rent"
+      ],
+      "outputs": [
+        "K_line_2"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Total net rental -> K Line 2",
+          "source_code": "IRS_2025_8825_INSTR_FULL",
+          "title": "Instructions for Form 8825 (2025) \u2014 Rental Real Estate Income and Expenses (fetched 2026-03-18)",
+          "citation": "Instructions for Form 8825 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Rental depreciation stays on 8825",
+      "description": "Rental property depreciation is reported on Form 8825 Line 14, not on Form 4562/Page 1 Line 14. This keeps rental and trade/business depreciation separate for passive activity purposes.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "rental_depreciation NOT on Page1_Line14",
+      "inputs": [
+        "depreciation"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Rental depreciation on 8825, not Page 1",
+          "source_code": "IRS_2025_8825_INSTR_FULL",
+          "title": "Instructions for Form 8825 (2025) \u2014 Rental Real Estate Income and Expenses (fetched 2026-03-18)",
+          "citation": "Instructions for Form 8825 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "2",
+      "description": "Gross rents",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "3",
+      "description": "Advertising",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "4",
+      "description": "Auto and travel",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "5",
+      "description": "Cleaning and maintenance",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "6",
+      "description": "Commissions",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "7",
+      "description": "Insurance",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "8",
+      "description": "Legal and other professional fees",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "9",
+      "description": "Mortgage interest paid to banks, etc.",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "10",
+      "description": "Other interest",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "11",
+      "description": "Repairs",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "12",
+      "description": "Taxes",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "13",
+      "description": "Utilities",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 12
+    },
+    {
+      "line_number": "14",
+      "description": "Depreciation (rental property only)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 13
+    },
+    {
+      "line_number": "15",
+      "description": "Other expenses",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "16",
+      "description": "Total expenses (sum lines 3-15)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 15
+    },
+    {
+      "line_number": "17",
+      "description": "Net rent per property (line 2 minus line 16)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 16
+    },
+    {
+      "line_number": "21",
+      "description": "Net rental real estate income (loss)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": "Schedule K Line 2",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 17
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "No rents on property",
+      "severity": "warning",
+      "condition": "gross_rents == 0",
+      "message": "Property listed but gross rents = $0. Verify this property had rental activity.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Missing rental depreciation",
+      "severity": "warning",
+      "condition": "depreciation == 0 AND property has depreciable improvements",
+      "message": "Rental property has no depreciation. Buildings and improvements should be depreciated.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "More than 8 properties",
+      "severity": "info",
+      "condition": "property_count > 8",
+      "message": "More than 8 rental properties \u2014 attach additional Form 8825.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Single rental property \u2014 net income",
+      "scenario_type": "normal",
+      "inputs": {
+        "taxes": 3000,
+        "repairs": 800,
+        "insurance": 1200,
+        "utilities": 0,
+        "gross_rents": 24000,
+        "depreciation": 5000,
+        "other_expenses": 500,
+        "mortgage_interest": 6000
+      },
+      "expected_outputs": {
+        "net_rent": 7500,
+        "total_expenses": 16500
+      },
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Net rental loss",
+      "scenario_type": "normal",
+      "inputs": {
+        "taxes": 4000,
+        "insurance": 2000,
+        "gross_rents": 12000,
+        "depreciation": 10000,
+        "mortgage_interest": 8000
+      },
+      "expected_outputs": {
+        "net_rent": -12000,
+        "total_expenses": 24000
+      },
+      "notes": "",
+      "sort_order": 2
+    }
+  ]
+}

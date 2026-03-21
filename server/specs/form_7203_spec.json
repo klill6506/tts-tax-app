@@ -1,0 +1,641 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "7203",
+    "form_title": "Form 7203 \u2014 S Corporation Shareholder Stock and Debt Basis Limitation",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "stock_basis_boy",
+      "label": "Stock basis at beginning of year (Line 1)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "additional_stock",
+      "label": "Stock acquired during year (Line 2)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "income_items",
+      "label": "Pro rata share of income items from K-1 (Line 3)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "stock_basis_before_decreases",
+      "label": "Subtotal before decreases (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "distributions",
+      "label": "Nondividend distributions from K-1 (Line 6)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "nondeductible_expenses",
+      "label": "Nondeductible expenses from K-1 (Lines 7-8)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "losses_deductions",
+      "label": "Losses and deductions from K-1 (Part III)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "stock_basis_eoy",
+      "label": "Stock basis at end of year (Line 10)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "debt_basis_boy",
+      "label": "Debt basis at beginning of year (Line 21)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "new_loans",
+      "label": "New loans to corporation during year (Line 22)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "debt_basis_restoration",
+      "label": "Debt basis restoration from net income (Line 23)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "debt_basis_eoy",
+      "label": "Debt basis at end of year",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "suspended_losses",
+      "label": "Losses suspended (carried forward)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "prior_suspended_losses",
+      "label": "Suspended losses from prior years",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Stock basis before decreases (Line 4)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "stock_basis_boy + additional_stock + income_items",
+      "inputs": [
+        "stock_basis_boy",
+        "additional_stock",
+        "income_items"
+      ],
+      "outputs": [
+        "stock_basis_before_decreases"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Stock basis computation",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1367 \u2014 adjustments to basis",
+          "source_code": "IRC_1367",
+          "title": "IRC \u00a71367 \u2014 Adjustments to Basis of Stock of Shareholders",
+          "citation": "26 U.S.C. \u00a71367",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Distributions reduce basis first (Line 6)",
+      "description": "Distributions reduce stock basis but not below zero. Excess distributions are return of basis/capital gain per section 1368.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "stock_after_dist = max(0, stock_basis_before_decreases - distributions)",
+      "inputs": [
+        "stock_basis_before_decreases",
+        "distributions"
+      ],
+      "outputs": [
+        "stock_after_distributions"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Distributions reduce first, floor at zero",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1368 \u2014 distributions",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Nondeductible expenses reduce next (Lines 7-8)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "stock_after_nonded = max(0, stock_after_distributions - nondeductible_expenses)",
+      "inputs": [
+        "stock_after_distributions",
+        "nondeductible_expenses"
+      ],
+      "outputs": [
+        "stock_after_nondeductible"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Nondeductible expenses reduce next",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Losses reduce last \u2014 stock then debt (Part III)",
+      "description": "Losses first reduce stock basis to zero, then debt basis. Excess is suspended and carried forward indefinitely with character retained.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "allowed_from_stock = min(losses_deductions, stock_after_nondeductible); allowed_from_debt = min(remaining, debt_basis); suspended = total - allowed",
+      "inputs": [
+        "losses_deductions",
+        "stock_after_nondeductible",
+        "debt_basis_boy"
+      ],
+      "outputs": [
+        "stock_basis_eoy",
+        "debt_basis_eoy",
+        "suspended_losses"
+      ],
+      "precedence": 4,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Losses reduce last \u2014 stock then debt",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Section 1366(d) \u2014 loss limitation",
+          "source_code": "IRC_1366",
+          "title": "IRC \u00a71366 \u2014 Pass-Through of Items to Shareholders",
+          "citation": "26 U.S.C. \u00a71366",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Stock basis floor at zero",
+      "description": "Stock basis cannot go below zero. If computed negative, there is a calculation error.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "stock_basis_eoy >= 0",
+      "inputs": [
+        "stock_basis_eoy"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Stock basis cannot be negative",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "Debt basis restoration",
+      "description": "Net income increases restore previously reduced debt basis, up to original loan face value.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "debt_restoration = min(net_income_increase, prior_debt_reduction)",
+      "inputs": [
+        "income_items",
+        "debt_basis_boy"
+      ],
+      "outputs": [
+        "debt_basis_restoration"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Debt basis restoration via net income",
+          "source_code": "IRS_2025_7203_INSTR_FULL",
+          "title": "Instructions for Form 7203 (2025) \u2014 S Corporation Shareholder Stock and Debt Basis Limitation (fetched 2026-03-18)",
+          "citation": "Instructions for Form 7203 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R007",
+      "title": "Distribution excess = capital gain",
+      "description": "Distributions exceeding stock basis are treated as capital gain per section 1368. Report on Schedule D/Form 8949.",
+      "rule_type": "conditional",
+      "conditions": {},
+      "formula": "if distributions > stock_basis_before_decreases then excess = capital_gain",
+      "inputs": [
+        "distributions",
+        "stock_basis_before_decreases"
+      ],
+      "outputs": [
+        "distribution_capital_gain"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 7,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Section 1368 \u2014 excess distributions = capital gain",
+          "source_code": "IRC_1368",
+          "title": "IRC \u00a71368 \u2014 Distributions",
+          "citation": "26 U.S.C. \u00a71368",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Stock basis at beginning of tax year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Stock acquired during year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3",
+      "description": "Pro rata share of all income items (from K-1)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "4",
+      "description": "Subtotal \u2014 stock basis before decreases",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "6",
+      "description": "Nondividend distributions (K-1 Box 16d)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "7-8",
+      "description": "Nondeductible expenses and oil/gas depletion",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "10",
+      "description": "Stock basis at end of year (cannot be below zero)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": null,
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "21",
+      "description": "Debt basis at beginning of year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "22",
+      "description": "New loans during year",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "23",
+      "description": "Debt basis restoration",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 10
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Stock basis negative",
+      "severity": "error",
+      "condition": "stock_basis_eoy < 0",
+      "message": "Stock basis computed as negative \u2014 this is a calculation error. Stock basis cannot go below zero.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Losses suspended",
+      "severity": "info",
+      "condition": "suspended_losses > 0",
+      "message": "Losses exceed stock + debt basis and are suspended. Carried forward indefinitely with character retained.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Distribution exceeds basis",
+      "severity": "warning",
+      "condition": "distributions > stock_basis_before_decreases",
+      "message": "Distributions exceed stock basis. Excess is capital gain to shareholder per section 1368.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D004",
+      "title": "No beginning basis",
+      "severity": "warning",
+      "condition": "stock_basis_boy == 0 AND additional_stock == 0",
+      "message": "Beginning stock basis is $0 with no additions. All income/loss items will be limited.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Sufficient basis \u2014 all items flow",
+      "scenario_type": "normal",
+      "inputs": {
+        "income_items": 50000,
+        "distributions": 30000,
+        "stock_basis_boy": 100000,
+        "additional_stock": 0,
+        "losses_deductions": 0,
+        "nondeductible_expenses": 2000
+      },
+      "expected_outputs": {
+        "stock_basis_eoy": 118000,
+        "suspended_losses": 0,
+        "stock_basis_before_decreases": 150000
+      },
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Distribution exceeds basis \u2014 capital gain",
+      "scenario_type": "edge",
+      "inputs": {
+        "income_items": 10000,
+        "distributions": 50000,
+        "stock_basis_boy": 20000,
+        "additional_stock": 0,
+        "losses_deductions": 0,
+        "nondeductible_expenses": 0
+      },
+      "expected_outputs": {
+        "stock_basis_eoy": 0,
+        "distribution_capital_gain": 20000,
+        "stock_basis_before_decreases": 30000
+      },
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "Losses suspended \u2014 insufficient basis",
+      "scenario_type": "edge",
+      "inputs": {
+        "income_items": 5000,
+        "distributions": 0,
+        "debt_basis_boy": 5000,
+        "stock_basis_boy": 15000,
+        "additional_stock": 0,
+        "losses_deductions": 30000,
+        "nondeductible_expenses": 0
+      },
+      "expected_outputs": {
+        "debt_basis_eoy": 0,
+        "stock_basis_eoy": 0,
+        "suspended_losses": 5000
+      },
+      "notes": "20K stock basis absorbs 20K of losses. 5K debt basis absorbs 5K more. 5K suspended.",
+      "sort_order": 3
+    },
+    {
+      "scenario_name": "Debt basis restoration",
+      "scenario_type": "edge",
+      "inputs": {
+        "income_items": 25000,
+        "distributions": 0,
+        "debt_basis_boy": 10000,
+        "stock_basis_boy": 0,
+        "losses_deductions": 0,
+        "prior_debt_reduction": 8000,
+        "nondeductible_expenses": 0
+      },
+      "expected_outputs": {
+        "stock_basis_eoy": 25000,
+        "debt_basis_restoration": 8000
+      },
+      "notes": "Net income increase restores previously reduced debt basis.",
+      "sort_order": 4
+    }
+  ]
+}

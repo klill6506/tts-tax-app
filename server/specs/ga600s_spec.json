@@ -1,0 +1,598 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "GA600S",
+    "form_title": "GA-600S \u2014 Georgia S-Corporation Tax Return",
+    "jurisdiction": "GA",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "federal_taxable_income",
+      "label": "Federal taxable income (from 1120-S Page 1 Line 21)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "ga_addition_bonus_depr",
+      "label": "Georgia addition: federal bonus depreciation (addback)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": "GA does NOT conform to IRC 168(k). Federal bonus depreciation must be added back."
+    },
+    {
+      "fact_key": "ga_addition_other",
+      "label": "Georgia addition: other items",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "ga_subtraction_depr",
+      "label": "Georgia subtraction: GA depreciation (computed under pre-bonus rules)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "ga_subtraction_other",
+      "label": "Georgia subtraction: other items",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "ga_taxable_income",
+      "label": "Georgia taxable income (Schedule 1 result)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "ptet_elected",
+      "label": "PTET election made?",
+      "data_type": "boolean",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "ptet_rate",
+      "label": "PTET rate",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": "5.49",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "ptet_taxable_income",
+      "label": "Income subject to PTET",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "ptet_tax",
+      "label": "PTET computed tax",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_assets",
+      "label": "Total assets (from balance sheet)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_liabilities",
+      "label": "Total liabilities (from balance sheet)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_worth",
+      "label": "Net worth (assets - liabilities)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_worth_tax",
+      "label": "Net worth tax (year = income year + 1)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 14,
+      "notes": "NEEDS REVIEW: net worth tax brackets not fetched from GA DOR (site returned 404)."
+    },
+    {
+      "fact_key": "ga_apportionment_pct",
+      "label": "Georgia apportionment percentage",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": "100.00",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 15,
+      "notes": ""
+    },
+    {
+      "fact_key": "property_factor",
+      "label": "Property factor",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 16,
+      "notes": ""
+    },
+    {
+      "fact_key": "payroll_factor",
+      "label": "Payroll factor",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 17,
+      "notes": ""
+    },
+    {
+      "fact_key": "sales_factor",
+      "label": "Sales factor",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 18,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Schedule 1 \u2014 GA taxable income",
+      "description": "Start with federal income, add GA additions (bonus depr addback), subtract GA subtractions (GA depreciation).",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "federal_taxable_income + ga_addition_bonus_depr + ga_addition_other - ga_subtraction_depr - ga_subtraction_other",
+      "inputs": [
+        "federal_taxable_income",
+        "ga_addition_bonus_depr",
+        "ga_addition_other",
+        "ga_subtraction_depr",
+        "ga_subtraction_other"
+      ],
+      "outputs": [
+        "ga_taxable_income"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Schedule 1 GA taxable income computation",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Georgia bonus depreciation addback",
+      "description": "Georgia does NOT conform to IRC 168(k). ALL federal bonus depreciation must be added back on Schedule 1. Georgia computes its own depreciation under pre-bonus rules.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "ga_addition_bonus_depr = federal_bonus_depreciation_taken",
+      "inputs": [
+        "federal_bonus_depreciation"
+      ],
+      "outputs": [
+        "ga_addition_bonus_depr"
+      ],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "GA does NOT conform to IRC 168(k) bonus",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Schedule 2 \u2014 PTET computation",
+      "description": "Pass-Through Entity Tax = GA taxable income * 5.49%. Elective entity-level tax.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "ptet_tax = ptet_taxable_income * 0.0549",
+      "inputs": [
+        "ptet_taxable_income",
+        "ptet_rate"
+      ],
+      "outputs": [
+        "ptet_tax"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW: verify 5.49% is the current rate from GA DOR.",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "PTET at 5.49% \u2014 elective",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "Schedule 3 \u2014 Net worth tax",
+      "description": "Net worth tax based on total assets minus liabilities. Bracket table applies. Net worth tax year = income tax year + 1.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "net_worth = total_assets - total_liabilities; tax = bracket_lookup(net_worth)",
+      "inputs": [
+        "total_assets",
+        "total_liabilities"
+      ],
+      "outputs": [
+        "net_worth",
+        "net_worth_tax"
+      ],
+      "precedence": 3,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW: Georgia net worth tax brackets not fetched (GA DOR site returned 404). Bracket table needs manual entry.",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Net worth tax \u2014 bracket lookup",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Schedule 4 \u2014 Apportionment",
+      "description": "Three-factor formula (or single sales factor if elected). Most single-state GA S-Corps = 100%.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "ga_apportionment_pct = (property_factor + payroll_factor + sales_factor) / 3, or single_sales_factor if elected",
+      "inputs": [
+        "property_factor",
+        "payroll_factor",
+        "sales_factor"
+      ],
+      "outputs": [
+        "ga_apportionment_pct"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Three-factor apportionment",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "Georgia Section 179 limits",
+      "description": "Georgia Section 179 limit is $1,050,000 with phaseout at $2,620,000. This is LOWER than federal $2,500,000/$4,000,000 (OBBBA). Georgia has NOT adopted OBBBA.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "ga_179_limit = 1050000; ga_179_phaseout = 2620000",
+      "inputs": [
+        "section_179_elected"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "GA Section 179: $1,050,000/$2,620,000",
+          "source_code": "GA_2025_600S_INSTR",
+          "title": "Georgia Form GA-600S Instructions (2025) \u2014 S Corporation Tax Return",
+          "citation": "GA-600S Instructions (2025)",
+          "source_type": "state_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "S1_1",
+      "description": "Federal taxable income (from 1120-S Page 1 Line 21)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "1120-S Page 1 Line 21",
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "S1_2",
+      "description": "Georgia additions (bonus depreciation addback, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "S1_3",
+      "description": "Georgia subtractions (GA depreciation, etc.)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "S1_4",
+      "description": "Georgia taxable income",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": null,
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "S2_1",
+      "description": "PTET election and computation",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "S3_1",
+      "description": "Net worth (assets - liabilities)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "S3_2",
+      "description": "Net worth tax (year = income year + 1)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "S4_1",
+      "description": "Georgia apportionment percentage",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R005"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 8
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Missing bonus depreciation addback",
+      "severity": "error",
+      "condition": "federal_bonus > 0 AND ga_addition_bonus_depr == 0",
+      "message": "Federal return has bonus depreciation but no Georgia addback. GA does NOT conform to IRC 168(k).",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "PTET rate verification",
+      "severity": "info",
+      "condition": "ptet_rate != 5.49",
+      "message": "PTET rate is not 5.49%. Verify current Georgia rate.",
+      "notes": "NEEDS REVIEW: rate should be verified from current GA DOR instructions."
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Net worth tax year",
+      "severity": "warning",
+      "condition": "nw_tax_year != income_tax_year + 1",
+      "message": "Net worth tax year should equal income tax year + 1.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D004",
+      "title": "100% apportionment but out-of-state activity",
+      "severity": "warning",
+      "condition": "ga_apportionment_pct == 100 AND has_out_of_state_activity",
+      "message": "Apportionment is 100% but entity appears to have out-of-state activity. Verify.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D005",
+      "title": "GA nonconformity items",
+      "severity": "info",
+      "condition": "federal_return_has_obbba_items AND no_ga_adjustment",
+      "message": "Federal return includes OBBBA provisions that Georgia does not conform to. Review for required adjustments.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Single-state GA S-Corp \u2014 no bonus difference",
+      "scenario_type": "normal",
+      "inputs": {
+        "ga_subtraction_depr": 0,
+        "ga_apportionment_pct": 100,
+        "federal_taxable_income": 95000,
+        "ga_addition_bonus_depr": 0
+      },
+      "expected_outputs": {
+        "ga_taxable_income": 95000
+      },
+      "notes": "No bonus depreciation, so GA income = federal income.",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "S-Corp with bonus depreciation \u2014 GA addback",
+      "scenario_type": "normal",
+      "inputs": {
+        "ga_subtraction_depr": 14286,
+        "ga_apportionment_pct": 100,
+        "federal_taxable_income": 50000,
+        "ga_addition_bonus_depr": 100000
+      },
+      "expected_outputs": {
+        "ga_taxable_income": 135714
+      },
+      "notes": "Federal took $100K bonus. GA adds back $100K, subtracts $14,286 GA depreciation (7yr SL year 1). GA income much higher.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "PTET election",
+      "scenario_type": "normal",
+      "inputs": {
+        "ptet_rate": 5.49,
+        "ptet_elected": true,
+        "ptet_taxable_income": 200000
+      },
+      "expected_outputs": {
+        "ptet_tax": 10980
+      },
+      "notes": "$200K * 5.49% = $10,980 PTET.",
+      "sort_order": 3
+    },
+    {
+      "scenario_name": "Multi-state \u2014 60% GA apportionment",
+      "scenario_type": "edge",
+      "inputs": {
+        "ga_apportionment_pct": 60,
+        "federal_taxable_income": 200000
+      },
+      "expected_outputs": {
+        "ga_apportioned_income": 120000
+      },
+      "notes": "60% of $200K = $120K subject to GA tax.",
+      "sort_order": 4
+    }
+  ]
+}

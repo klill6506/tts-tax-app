@@ -1756,6 +1756,224 @@ def render_4797(tax_return) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Schedule D (Form 1120-S) rendering
+# ---------------------------------------------------------------------------
+
+
+def render_schedule_d(tax_return) -> bytes:
+    """
+    Render Schedule D (Form 1120-S) — Capital Gains and Losses.
+
+    Data source: Disposition instances where is_4797=False.
+    Per spec (SCHD_1120S):
+    - Part I: Short-term capital gains/losses (Lines 1a-7)
+    - Part II: Long-term capital gains/losses (Lines 8a-15)
+    - R004: K7 = Part I Line 7 (net ST); K8a = Part II Line 15 (net LT)
+    - R010: Section 1231 does NOT flow through Schedule D on 1120-S
+    """
+    from apps.returns.models import Disposition
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    dispositions = Disposition.objects.filter(
+        tax_return=tax_return,
+        is_4797=False,
+    ).order_by("term", "sort_order", "description")
+
+    if not dispositions.exists():
+        return render(
+            form_id="f1120ssd",
+            tax_year=tax_year_applicable,
+            field_values={},
+            header_data=header_data,
+        )
+
+    field_values: dict[str, tuple[str, str]] = {}
+
+    # Separate by term
+    st_disps = [d for d in dispositions if d.term == "short"]
+    lt_disps = [d for d in dispositions if d.term == "long"]
+
+    # Part I — Short-term: aggregate into Line 1b (Box A — basis reported)
+    # For simplicity, all ST dispositions aggregate to Line 1a
+    # (basis reported to IRS, no adjustments needed)
+    st_proceeds = ZERO
+    st_cost = ZERO
+    st_gain = ZERO
+    for d in st_disps:
+        st_proceeds += d.sales_price
+        st_cost += d.cost_basis + d.expenses_of_sale
+        st_gain += d.sales_price - d.cost_basis - d.expenses_of_sale
+
+    if st_disps:
+        field_values["SD_1a_proceeds"] = (str(st_proceeds), "currency")
+        field_values["SD_1a_cost"] = (str(st_cost), "currency")
+        field_values["SD_1a_gain"] = (str(st_gain), "currency")
+        # Line 7 = net short-term
+        field_values["SD_7"] = (str(st_gain), "currency")
+
+    # Part II — Long-term: aggregate into Line 8a (Box D — basis reported)
+    lt_proceeds = ZERO
+    lt_cost = ZERO
+    lt_gain = ZERO
+    for d in lt_disps:
+        lt_proceeds += d.sales_price
+        lt_cost += d.cost_basis + d.expenses_of_sale
+        lt_gain += d.sales_price - d.cost_basis - d.expenses_of_sale
+
+    if lt_disps:
+        field_values["SD_8a_proceeds"] = (str(lt_proceeds), "currency")
+        field_values["SD_8a_cost"] = (str(lt_cost), "currency")
+        field_values["SD_8a_gain"] = (str(lt_gain), "currency")
+        # Line 15 = net long-term
+        field_values["SD_15"] = (str(lt_gain), "currency")
+
+    return render(
+        form_id="f1120ssd",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Form 8949 rendering
+# ---------------------------------------------------------------------------
+
+
+def render_8949(tax_return) -> bytes:
+    """
+    Render Form 8949 — Sales and Other Dispositions of Capital Assets.
+
+    Data source: Disposition instances where is_4797=False.
+    Per spec (8949):
+    - Part I: Short-term transactions (Rows 1-11 per page)
+    - Part II: Long-term transactions (Rows 1-11 per page)
+    - R001: Category A-F based on holding period and basis reporting
+    """
+    from apps.returns.models import Disposition
+
+    tax_year_applicable = tax_return.form_definition.tax_year_applicable
+    entity = tax_return.tax_year.entity
+
+    header_data = {
+        "entity_name": entity.legal_name or entity.name,
+        "ein": entity.ein or "",
+    }
+
+    dispositions = Disposition.objects.filter(
+        tax_return=tax_return,
+        is_4797=False,
+    ).order_by("term", "sort_order", "description")
+
+    if not dispositions.exists():
+        return render(
+            form_id="f8949",
+            tax_year=tax_year_applicable,
+            field_values={},
+            header_data=header_data,
+        )
+
+    field_values: dict[str, tuple[str, str]] = {}
+
+    st_disps = [d for d in dispositions if d.term == "short"]
+    lt_disps = [d for d in dispositions if d.term == "long"]
+
+    # Part I — Short-term (Box A = basis reported to IRS)
+    if st_disps:
+        field_values["F8949_P1_A"] = ("true", "boolean")
+
+    st_total_proceeds = ZERO
+    st_total_cost = ZERO
+    st_total_gain = ZERO
+
+    for i, d in enumerate(st_disps[:11], start=1):
+        gain_loss = d.sales_price - d.cost_basis - d.expenses_of_sale
+        field_values[f"F8949_P1_R{i}_desc"] = (
+            d.description[:30] if d.description else "", "text"
+        )
+        if d.date_acquired:
+            field_values[f"F8949_P1_R{i}_acquired"] = (
+                d.date_acquired.strftime("%m/%d/%y"), "text"
+            )
+        elif d.date_acquired_various:
+            field_values[f"F8949_P1_R{i}_acquired"] = ("VARIOUS", "text")
+        if d.date_sold:
+            field_values[f"F8949_P1_R{i}_sold"] = (
+                d.date_sold.strftime("%m/%d/%y"), "text"
+            )
+        elif d.date_sold_various:
+            field_values[f"F8949_P1_R{i}_sold"] = ("VARIOUS", "text")
+        field_values[f"F8949_P1_R{i}_proceeds"] = (str(d.sales_price), "currency")
+        field_values[f"F8949_P1_R{i}_cost"] = (
+            str(d.cost_basis + d.expenses_of_sale), "currency"
+        )
+        field_values[f"F8949_P1_R{i}_gain"] = (str(gain_loss), "currency")
+
+        st_total_proceeds += d.sales_price
+        st_total_cost += d.cost_basis + d.expenses_of_sale
+        st_total_gain += gain_loss
+
+    if st_disps:
+        field_values["F8949_P1_TOT_proceeds"] = (str(st_total_proceeds), "currency")
+        field_values["F8949_P1_TOT_cost"] = (str(st_total_cost), "currency")
+        field_values["F8949_P1_TOT_gain"] = (str(st_total_gain), "currency")
+
+    # Part II — Long-term (Box D = basis reported to IRS)
+    if lt_disps:
+        field_values["F8949_P2_D"] = ("true", "boolean")
+
+    lt_total_proceeds = ZERO
+    lt_total_cost = ZERO
+    lt_total_gain = ZERO
+
+    for i, d in enumerate(lt_disps[:11], start=1):
+        gain_loss = d.sales_price - d.cost_basis - d.expenses_of_sale
+        field_values[f"F8949_P2_R{i}_desc"] = (
+            d.description[:30] if d.description else "", "text"
+        )
+        if d.date_acquired:
+            field_values[f"F8949_P2_R{i}_acquired"] = (
+                d.date_acquired.strftime("%m/%d/%y"), "text"
+            )
+        elif d.date_acquired_various:
+            field_values[f"F8949_P2_R{i}_acquired"] = ("VARIOUS", "text")
+        if d.date_sold:
+            field_values[f"F8949_P2_R{i}_sold"] = (
+                d.date_sold.strftime("%m/%d/%y"), "text"
+            )
+        elif d.date_sold_various:
+            field_values[f"F8949_P2_R{i}_sold"] = ("VARIOUS", "text")
+        field_values[f"F8949_P2_R{i}_proceeds"] = (str(d.sales_price), "currency")
+        field_values[f"F8949_P2_R{i}_cost"] = (
+            str(d.cost_basis + d.expenses_of_sale), "currency"
+        )
+        field_values[f"F8949_P2_R{i}_gain"] = (str(gain_loss), "currency")
+
+        lt_total_proceeds += d.sales_price
+        lt_total_cost += d.cost_basis + d.expenses_of_sale
+        lt_total_gain += gain_loss
+
+    if lt_disps:
+        field_values["F8949_P2_TOT_proceeds"] = (str(lt_total_proceeds), "currency")
+        field_values["F8949_P2_TOT_cost"] = (str(lt_total_cost), "currency")
+        field_values["F8949_P2_TOT_gain"] = (str(lt_total_gain), "currency")
+
+    return render(
+        form_id="f8949",
+        tax_year=tax_year_applicable,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Depreciation Schedule rendering (standalone report)
 # ---------------------------------------------------------------------------
 
@@ -2325,6 +2543,17 @@ def render_complete_return(
             _append(render_4797(tax_return), "Form 4797")
     except Exception as e:
         logger.warning("render_complete: 4797 failed: %s", e)
+
+    # 3c2. Schedule D / Form 8949 — only if capital dispositions exist
+    try:
+        from apps.returns.models import Disposition
+        if Disposition.objects.filter(
+            tax_return=tax_return, is_4797=False,
+        ).exists():
+            _append(render_8949(tax_return), "Form 8949")
+            _append(render_schedule_d(tax_return), "Schedule D")
+    except Exception as e:
+        logger.warning("render_complete: Schedule D / 8949 failed: %s", e)
 
     # 3e. Depreciation Schedule (if depreciation assets exist)
     try:

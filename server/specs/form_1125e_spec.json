@@ -1,0 +1,275 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "1125E",
+    "form_title": "Form 1125-E \u2014 Compensation of Officers",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1120"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "officer_name",
+      "label": "Officer name",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "officer_ssn",
+      "label": "Officer SSN",
+      "data_type": "string",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "pct_time_devoted",
+      "label": "Percent of time devoted to business",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "pct_stock_owned",
+      "label": "Percent of corporation stock owned",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "compensation_amount",
+      "label": "Amount of compensation",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_compensation",
+      "label": "Total compensation of all officers (Line 4)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_receipts",
+      "label": "Total receipts (for filing threshold)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Total compensation (Line 4)",
+      "description": "",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "sum(compensation_amount for each officer)",
+      "inputs": [
+        "compensation_amount"
+      ],
+      "outputs": [
+        "total_compensation"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Sum of officer compensation",
+          "source_code": "IRS_2025_1125E_INSTR",
+          "title": "Instructions for Form 1125-E (2025) \u2014 Compensation of Officers",
+          "citation": "Form 1125-E Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "Flow to Page 1 Line 7",
+      "description": "Total officer compensation -> 1120-S Page 1 Line 7.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Page1_Line7 = total_compensation",
+      "inputs": [
+        "total_compensation"
+      ],
+      "outputs": [
+        "page1_line7"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Line 4 -> Page 1 Line 7",
+          "source_code": "IRS_2025_1125E_INSTR",
+          "title": "Instructions for Form 1125-E (2025) \u2014 Compensation of Officers",
+          "citation": "Form 1125-E Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "Filing threshold",
+      "description": "Form 1125-E required when total receipts >= $500,000.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "required when total_receipts >= 500000",
+      "inputs": [
+        "total_receipts"
+      ],
+      "outputs": [],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "$500K receipts threshold",
+          "source_code": "IRS_2025_1125E_INSTR",
+          "title": "Instructions for Form 1125-E (2025) \u2014 Compensation of Officers",
+          "citation": "Form 1125-E Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Officer details (name, SSN, % time, % stock, compensation)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "4",
+      "description": "Total compensation of officers",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": "1120-S Page 1 Line 7",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 2
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Threshold not met",
+      "severity": "info",
+      "condition": "total_receipts < 500000",
+      "message": "Total receipts < $500K but Form 1125-E is being filed. Filing is optional below threshold.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Missing 1125-E",
+      "severity": "warning",
+      "condition": "total_receipts >= 500000 AND no 1125E data",
+      "message": "Total receipts >= $500K \u2014 Form 1125-E is required.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Zero compensation officer",
+      "severity": "warning",
+      "condition": "compensation_amount == 0",
+      "message": "Officer listed but compensation is $0. Verify this is correct.",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Single officer, 100% shareholder",
+      "scenario_type": "normal",
+      "inputs": {
+        "officers": [
+          {
+            "name": "John Smith",
+            "pct_time": 100,
+            "pct_stock": 100,
+            "compensation": 80000
+          }
+        ]
+      },
+      "expected_outputs": {
+        "total_compensation": 80000
+      },
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "Multiple officers",
+      "scenario_type": "normal",
+      "inputs": {
+        "officers": [
+          {
+            "name": "A",
+            "compensation": 60000
+          },
+          {
+            "name": "B",
+            "compensation": 40000
+          }
+        ]
+      },
+      "expected_outputs": {
+        "total_compensation": 100000
+      },
+      "notes": "",
+      "sort_order": 2
+    }
+  ]
+}

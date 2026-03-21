@@ -1,0 +1,1166 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "4562",
+    "form_title": "Form 4562 \u2014 Depreciation and Amortization",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065",
+      "1120",
+      "1040"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "section_179_elected_cost",
+      "label": "\u00a7179 \u2014 elected cost of property",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "section_179_limitation",
+      "label": "\u00a7179 \u2014 maximum deduction ($2,500,000 for 2025)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": "2500000",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "section_179_phaseout_threshold",
+      "label": "\u00a7179 \u2014 phaseout threshold ($4,000,000 for 2025)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": "4000000",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_section_179_placed_in_service",
+      "label": "Total cost of \u00a7179 property placed in service",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "taxable_income_limitation",
+      "label": "Taxable income from active trade or business",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "bonus_eligible_basis",
+      "label": "Bonus-eligible property basis (after \u00a7179)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "bonus_percentage",
+      "label": "Applicable bonus percentage",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "100",
+        "40",
+        "0"
+      ],
+      "sort_order": 11,
+      "notes": "100% for assets acquired after 1/19/2025, 40% for prior acquisitions"
+    },
+    {
+      "fact_key": "bonus_depreciation_amount",
+      "label": "Bonus depreciation amount",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "acquisition_date",
+      "label": "Date property acquired",
+      "data_type": "date",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 13,
+      "notes": "Determines 100% vs 40% bonus rate under OBBBA binding contract rule"
+    },
+    {
+      "fact_key": "recovery_period",
+      "label": "MACRS recovery period (years)",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "3",
+        "5",
+        "7",
+        "10",
+        "15",
+        "20",
+        "25",
+        "27.5",
+        "39"
+      ],
+      "sort_order": 20,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciation_method",
+      "label": "Depreciation method",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "200DB",
+        "150DB",
+        "SL"
+      ],
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "convention",
+      "label": "Convention",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "HY",
+        "MQ",
+        "MM"
+      ],
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciable_basis",
+      "label": "Depreciable basis (after \u00a7179 and bonus)",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    },
+    {
+      "fact_key": "current_year_depreciation",
+      "label": "Current year MACRS depreciation",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 24,
+      "notes": ""
+    },
+    {
+      "fact_key": "amortizable_amount",
+      "label": "Amortizable amount",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 30,
+      "notes": ""
+    },
+    {
+      "fact_key": "amortization_period_months",
+      "label": "Amortization period (months)",
+      "data_type": "integer",
+      "required": false,
+      "default_value": "180",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 31,
+      "notes": "180 months for \u00a7197 intangibles, \u00a7195 start-up, \u00a7248 organizational"
+    },
+    {
+      "fact_key": "amortization_start_date",
+      "label": "Date amortization begins",
+      "data_type": "date",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 32,
+      "notes": ""
+    },
+    {
+      "fact_key": "current_year_amortization",
+      "label": "Current year amortization",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 33,
+      "notes": ""
+    },
+    {
+      "fact_key": "entity_type",
+      "label": "Entity type filing this form",
+      "data_type": "choice",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "1120S",
+        "1065",
+        "1120",
+        "1040"
+      ],
+      "sort_order": 40,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "\u00a7179 limitation",
+      "description": "\u00a7179 deduction = lesser of: (a) elected cost, (b) $2,500,000 minus dollar-for-dollar reduction for total placed in service exceeding $4,000,000, (c) taxable income from active business. GA limit is $1,050,000/$2,620,000.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "min(elected_cost, max(0, 2500000 - max(0, total_placed_in_service - 4000000)), taxable_income)",
+      "inputs": [
+        "section_179_elected_cost",
+        "total_section_179_placed_in_service",
+        "taxable_income_limitation"
+      ],
+      "outputs": [
+        "allowed_179_deduction"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7179(b) \u2014 limitation and phaseout computation",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Part I instructions \u2014 \u00a7179 election and limits",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R002",
+      "title": "OBBBA bonus depreciation",
+      "description": "100% for assets acquired AND placed in service after 1/19/2025 (permanent under OBBBA). 40% for assets acquired before 1/20/2025 (binding contract rule). Bonus is on remaining basis after \u00a7179.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "bonus_percentage > 0"
+      },
+      "formula": "bonus_eligible_basis * bonus_percentage",
+      "inputs": [
+        "bonus_eligible_basis",
+        "bonus_percentage",
+        "acquisition_date"
+      ],
+      "outputs": [
+        "bonus_depreciation_amount"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW \u2014 verify binding contract date rules for 40% rate.",
+      "sort_order": 2,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7168(k) \u2014 bonus depreciation as amended by OBBBA",
+          "source_code": "IRC_168",
+          "title": "IRC \u00a7168 \u2014 Accelerated Cost Recovery System (MACRS)",
+          "citation": "26 U.S.C. \u00a7168",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Part II instructions \u2014 special depreciation allowance",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R003",
+      "title": "MACRS depreciation calculation",
+      "description": "Apply IRS Pub 946 tables based on recovery period, method, and convention. Depreciable basis = original cost minus \u00a7179 minus bonus.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "depreciable_basis * pub_946_percentage(recovery_period, method, convention, year)",
+      "inputs": [
+        "depreciable_basis",
+        "recovery_period",
+        "depreciation_method",
+        "convention"
+      ],
+      "outputs": [
+        "current_year_depreciation"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 3,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7168(a)-(b) \u2014 MACRS general rules",
+          "source_code": "IRC_168",
+          "title": "IRC \u00a7168 \u2014 Accelerated Cost Recovery System (MACRS)",
+          "citation": "26 U.S.C. \u00a7168",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "primary",
+          "relevance_note": "Pub 946 \u2014 MACRS percentage tables",
+          "source_code": "IRS_PUB_946",
+          "title": "IRS Publication 946 \u2014 How to Depreciate Property",
+          "citation": "Publication 946 (2025)",
+          "source_type": "official_publication",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Part III instructions \u2014 MACRS depreciation",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R004",
+      "title": "\u00a7179 flows to Schedule K (not Page 1)",
+      "description": "For S-Corps and partnerships, \u00a7179 is a separately stated item. It does NOT reduce ordinary income. It flows to Schedule K Line 11 (1120-S) or K Line 12 (1065).",
+      "rule_type": "routing",
+      "conditions": {
+        "when": "entity_type in [\"1120S\", \"1065\"]"
+      },
+      "formula": "allowed_179_deduction \u2192 Schedule K Line 11 (1120S) or K Line 12 (1065)",
+      "inputs": [
+        "allowed_179_deduction",
+        "entity_type"
+      ],
+      "outputs": [
+        "schedule_k_179"
+      ],
+      "precedence": 15,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 4,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7179(d)(4) \u2014 separately stated for passthrough entities",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Schedule K Line 11 \u2014 \u00a7179 deduction",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R005",
+      "title": "Depreciation flows to Page 1",
+      "description": "MACRS + bonus depreciation (excluding \u00a7179) flows to Page 1 Line 14 (1120-S). Unlike \u00a7179, regular depreciation and bonus are NOT separately stated.",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "current_year_depreciation + bonus_depreciation_amount \u2192 Page 1 deduction line",
+      "inputs": [
+        "current_year_depreciation",
+        "bonus_depreciation_amount"
+      ],
+      "outputs": [
+        "page_1_depreciation"
+      ],
+      "precedence": 15,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 5,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Page 1 Line 14 \u2014 depreciation (non-\u00a7179)",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Line 22 total \u2192 entity return",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R006",
+      "title": "\u00a7197 amortization",
+      "description": "\u00a7197 intangibles amortized over 180 months (15 years) straight-line. Includes goodwill, going concern value, covenants not to compete, franchises, trademarks.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "amortizable_amount / 180 * months_in_service_this_year",
+      "inputs": [
+        "amortizable_amount",
+        "amortization_period_months",
+        "amortization_start_date"
+      ],
+      "outputs": [
+        "current_year_amortization"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 6,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "\u00a7197 \u2014 180-month amortization of intangibles",
+          "source_code": "IRC_197",
+          "title": "IRC \u00a7197 \u2014 Amortization of Goodwill and Certain Other Intangibles",
+          "citation": "26 U.S.C. \u00a7197",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "Part V instructions \u2014 amortization",
+          "source_code": "IRS_2025_4562_INSTR",
+          "title": "Instructions for Form 4562 \u2014 Depreciation and Amortization",
+          "citation": "Form 4562 Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    },
+    {
+      "rule_id": "R010",
+      "title": "Section 179 dollar limit (OBBBA 2025)",
+      "description": "OBBBA 2025: Section 179 max = $2,500,000, phaseout threshold = $4,000,000. Dollar-for-dollar reduction above threshold.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "max_179 = 2500000; threshold = 4000000; reduction = max(0, total_placed - threshold); allowed = max(0, max_179 - reduction)",
+      "inputs": [
+        "total_section_179_placed_in_service"
+      ],
+      "outputs": [
+        "section_179_dollar_limit"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 10,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "OBBBA 2025: $2.5M/$4M Section 179 limits",
+          "source_code": "IRS_2025_4562_INSTR_FULL",
+          "title": "Instructions for Form 4562 (2025) \u2014 Depreciation and Amortization (fetched 2026-03-18)",
+          "citation": "Instructions for Form 4562 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 179 election and limitations",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R011",
+      "title": "Section 179 business income limitation",
+      "description": "Section 179 cannot exceed taxable income from active conduct of trade or business. Excess carries forward.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "final_179 = min(dollar_limited_179, taxable_income_from_active_business)",
+      "inputs": [
+        "section_179_dollar_limit",
+        "taxable_income_limitation"
+      ],
+      "outputs": [
+        "allowed_179_deduction"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 11,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "Business income limitation for Section 179",
+          "source_code": "IRS_2025_4562_INSTR_FULL",
+          "title": "Instructions for Form 4562 (2025) \u2014 Depreciation and Amortization (fetched 2026-03-18)",
+          "citation": "Instructions for Form 4562 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 179(b) \u2014 income limitation",
+          "source_code": "IRC_179",
+          "title": "IRC \u00a7179 \u2014 Election to Expense Certain Depreciable Business Assets",
+          "citation": "26 U.S.C. \u00a7179",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R012",
+      "title": "Bonus depreciation rate determination (OBBBA)",
+      "description": "OBBBA: 100% for post-1/19/2025 acquisitions (permanent). 40% for pre-1/20/2025 (binding contract rule). Applies to MACRS property with recovery period <= 20 years.",
+      "rule_type": "conditional",
+      "conditions": {},
+      "formula": "if acquired_after_2025_01_19 then 100%; elif acquired_before_2025_01_20 then 40%; else 0%",
+      "inputs": [
+        "acquisition_date"
+      ],
+      "outputs": [
+        "bonus_percentage"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "Georgia does NOT conform to federal bonus depreciation. GA addback required.",
+      "sort_order": 12,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "OBBBA bonus rates: 100%/40%",
+          "source_code": "IRS_2025_4562_INSTR_FULL",
+          "title": "Instructions for Form 4562 (2025) \u2014 Depreciation and Amortization (fetched 2026-03-18)",
+          "citation": "Instructions for Form 4562 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 168(k) bonus depreciation",
+          "source_code": "IRC_168",
+          "title": "IRC \u00a7168 \u2014 Accelerated Cost Recovery System (MACRS)",
+          "citation": "26 U.S.C. \u00a7168",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    },
+    {
+      "rule_id": "R013",
+      "title": "Depreciation by destination (S-Corp)",
+      "description": "S-Corp depreciation is split by destination: trade/business -> Page 1 Line 14, rental -> Form 8825 Line 14, farm -> Schedule F, Section 179 -> K Line 11 (separately stated).",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "Page1_Line14 = trade_business_depr; Form8825_Line14 = rental_depr; ScheduleF = farm_depr; K_Line11 = section_179",
+      "inputs": [
+        "depreciation_by_activity"
+      ],
+      "outputs": [
+        "page1_line14",
+        "form_8825_line14",
+        "sched_f_depr",
+        "k_line11"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 13,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "S-Corp depreciation by destination",
+          "source_code": "IRS_2025_4562_INSTR_FULL",
+          "title": "Instructions for Form 4562 (2025) \u2014 Depreciation and Amortization (fetched 2026-03-18)",
+          "citation": "Instructions for Form 4562 (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        },
+        {
+          "support_level": "secondary",
+          "relevance_note": "IRC 1363(b) \u2014 separately stated items",
+          "source_code": "IRC_1363",
+          "title": "IRC \u00a71363 \u2014 Effect of Election on Corporation",
+          "citation": "26 U.S.C. \u00a71363",
+          "source_type": "code_section",
+          "source_rank": "controlling"
+        }
+      ]
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "1",
+      "description": "Maximum amount (see limitations) \u2014 $2,500,000 for 2025",
+      "calculation": "",
+      "source_facts": [
+        "section_179_limitation"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 1
+    },
+    {
+      "line_number": "2",
+      "description": "Total cost of section 179 property placed in service",
+      "calculation": "",
+      "source_facts": [
+        "total_section_179_placed_in_service"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 2
+    },
+    {
+      "line_number": "3",
+      "description": "Threshold cost of \u00a7179 property before reduction \u2014 $4,000,000",
+      "calculation": "",
+      "source_facts": [
+        "section_179_phaseout_threshold"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 3
+    },
+    {
+      "line_number": "4",
+      "description": "Reduction in limitation (line 2 minus line 3, if positive)",
+      "calculation": "max(0, total_placed_in_service - 4000000)",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 4
+    },
+    {
+      "line_number": "5",
+      "description": "Dollar limitation for tax year (line 1 minus line 4)",
+      "calculation": "max(0, limitation - reduction)",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 5
+    },
+    {
+      "line_number": "6",
+      "description": "Listed property \u2014 enter amount from line 29",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 6
+    },
+    {
+      "line_number": "7",
+      "description": "Total elected cost of \u00a7179 property",
+      "calculation": "",
+      "source_facts": [
+        "section_179_elected_cost"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 7
+    },
+    {
+      "line_number": "8",
+      "description": "Total elected cost of \u00a7179 property \u2014 enter smaller of line 5 or line 7",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 8
+    },
+    {
+      "line_number": "9",
+      "description": "Tentative deduction \u2014 enter smaller of line 5 or line 8",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 9
+    },
+    {
+      "line_number": "11",
+      "description": "Business income limitation",
+      "calculation": "",
+      "source_facts": [
+        "taxable_income_limitation"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 10
+    },
+    {
+      "line_number": "12",
+      "description": "\u00a7179 expense deduction \u2014 enter smaller of line 9 or line 11",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R001"
+      ],
+      "destination_form": "Schedule K Line 11 (1120-S) or Page 1 Line 14 (1040/1120)",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 11
+    },
+    {
+      "line_number": "14",
+      "description": "Special depreciation allowance for qualified property (other than listed)",
+      "calculation": "",
+      "source_facts": [
+        "bonus_depreciation_amount"
+      ],
+      "source_rules": [
+        "R002"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 14
+    },
+    {
+      "line_number": "19a",
+      "description": "3-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 19
+    },
+    {
+      "line_number": "19b",
+      "description": "5-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 20
+    },
+    {
+      "line_number": "19c",
+      "description": "7-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 21
+    },
+    {
+      "line_number": "19d",
+      "description": "10-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 22
+    },
+    {
+      "line_number": "19e",
+      "description": "15-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 23
+    },
+    {
+      "line_number": "19f",
+      "description": "20-year property",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 24
+    },
+    {
+      "line_number": "19g",
+      "description": "25-year property (SL)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 25
+    },
+    {
+      "line_number": "19h",
+      "description": "Residential rental property \u2014 27.5 years (SL/MM)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 26
+    },
+    {
+      "line_number": "19i",
+      "description": "Nonresidential real property \u2014 39 years (SL/MM)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 27
+    },
+    {
+      "line_number": "22",
+      "description": "Total depreciation (add Part III amounts + Part II + prior MACRS)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R003",
+        "R005"
+      ],
+      "destination_form": "Page 1 Line 14 (1120-S) or appropriate deduction line",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 30
+    },
+    {
+      "line_number": "42",
+      "description": "Amortization of costs that begins during current year",
+      "calculation": "",
+      "source_facts": [
+        "amortizable_amount",
+        "amortization_period_months",
+        "amortization_start_date"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 40
+    },
+    {
+      "line_number": "44",
+      "description": "Total amortization \u2014 current year and prior",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": "Other deductions or Page 1 deduction line",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 42
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "\u00a7179 exceeds limitation",
+      "severity": "error",
+      "condition": "section_179_elected_cost > allowed_after_phaseout OR section_179_elected_cost > taxable_income",
+      "message": "\u00a7179 deduction exceeds the allowable limitation. Check the phaseout ($4M threshold) and business income limitation.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Bonus depreciation on wrong acquisition date",
+      "severity": "warning",
+      "condition": "bonus_percentage == 100 AND acquisition_date <= 2025-01-19",
+      "message": "100% bonus depreciation applies only to property acquired AFTER January 19, 2025. Property acquired before 1/20/2025 qualifies for 40% bonus (OBBBA binding contract rule). Verify acquisition date.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Listed property >50% business use not documented",
+      "severity": "warning",
+      "condition": "listed_property == true AND business_use_percentage not documented",
+      "message": "Listed property (vehicles, computers, etc.) must be used more than 50% for business to qualify for \u00a7179 and MACRS accelerated rates. If business use \u226450%, must use ADS straight-line.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D004",
+      "title": "\u00a7179 deducted on Page 1 instead of K",
+      "severity": "error",
+      "condition": "entity_type in [\"1120S\", \"1065\"] AND section_179 reduces page 1 ordinary income",
+      "message": "For S-Corps and partnerships, \u00a7179 is a SEPARATELY STATED item. It must flow to Schedule K Line 11 (1120-S) or K Line 12 (1065), NOT reduce ordinary income on Page 1.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D010",
+      "title": "Section 179 exceeds dollar limit",
+      "severity": "error",
+      "condition": "elected_179 > 2500000",
+      "message": "Section 179 election exceeds $2,500,000 OBBBA limit.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D011",
+      "title": "Section 179 limited by income",
+      "severity": "warning",
+      "condition": "elected_179 > taxable_income_limitation",
+      "message": "Section 179 limited by business income. Excess carries forward to next year.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D012",
+      "title": "Bonus rate mismatch",
+      "severity": "warning",
+      "condition": "bonus_percentage != expected_rate_for_acquisition_date",
+      "message": "Bonus depreciation rate does not match OBBBA rules for the acquisition date. Post-1/19/2025 = 100%, pre-1/20/2025 = 40%.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D013",
+      "title": "No depreciation destination",
+      "severity": "error",
+      "condition": "depreciation > 0 AND no destination specified",
+      "message": "Depreciation claimed but not allocated to any destination (Page 1/8825/Schedule F).",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic MACRS \u2014 5-year asset, 200DB, HY, $100K",
+      "scenario_type": "normal",
+      "inputs": {
+        "convention": "HY",
+        "recovery_period": "5",
+        "year_in_service": 1,
+        "depreciable_basis": 100000,
+        "depreciation_method": "200DB"
+      },
+      "expected_outputs": {
+        "current_year_depreciation": 20000
+      },
+      "notes": "5yr 200DB HY year 1 = 20% \u00d7 $100K = $20,000 (from Pub 946 tables).",
+      "sort_order": 1
+    },
+    {
+      "scenario_name": "\u00a7179 + bonus \u2014 $200K asset",
+      "scenario_type": "normal",
+      "inputs": {
+        "entity_type": "1120S",
+        "acquisition_date": "2025-03-15",
+        "bonus_percentage": "100",
+        "bonus_eligible_basis": 100000,
+        "section_179_elected_cost": 100000,
+        "taxable_income_limitation": 500000,
+        "total_section_179_placed_in_service": 200000
+      },
+      "expected_outputs": {
+        "allowed_179_deduction": 100000,
+        "bonus_depreciation_amount": 100000
+      },
+      "notes": "\u00a7179 = $100K (within limits). Remaining $100K \u00d7 100% bonus = $100K. \u00a7179\u2192K Line 11, bonus\u2192Page 1.",
+      "sort_order": 2
+    },
+    {
+      "scenario_name": "\u00a7179 phaseout \u2014 total placed in service = $4,200,000",
+      "scenario_type": "edge",
+      "inputs": {
+        "section_179_elected_cost": 2500000,
+        "taxable_income_limitation": 5000000,
+        "total_section_179_placed_in_service": 4200000
+      },
+      "expected_outputs": {
+        "allowed_179_deduction": 2300000
+      },
+      "notes": "Phaseout: $4.2M - $4M = $200K excess. $2.5M - $200K = $2.3M allowed.",
+      "sort_order": 3
+    },
+    {
+      "scenario_name": "Georgia nonconformity note",
+      "scenario_type": "edge",
+      "inputs": {
+        "section_179_elected_cost": 2500000,
+        "taxable_income_limitation": 5000000,
+        "total_section_179_placed_in_service": 2500000
+      },
+      "expected_outputs": {
+        "allowed_179_deduction": 2500000
+      },
+      "notes": "Federal \u00a7179 = $2.5M. Georgia limit is $1,050,000/$2,620,000 \u2014 GA has NOT adopted OBBBA. State computation would differ. This spec covers federal only.",
+      "sort_order": 4
+    },
+    {
+      "scenario_name": "MACRS 5-year property \u2014 annual deduction",
+      "scenario_type": "normal",
+      "inputs": {
+        "method": "200DB",
+        "convention": "HY",
+        "cost_basis": 50000,
+        "recovery_period": 5,
+        "year_in_service": 1
+      },
+      "expected_outputs": {
+        "current_year_depreciation": 10000
+      },
+      "notes": "Year 1 rate = 20% (Pub 946 Table A-1). $50,000 x 20% = $10,000.",
+      "sort_order": 10
+    },
+    {
+      "scenario_name": "Section 179 within limit \u2014 flows to K Line 11",
+      "scenario_type": "normal",
+      "inputs": {
+        "elected_cost": 100000,
+        "total_placed": 500000,
+        "taxable_income_limitation": 200000
+      },
+      "expected_outputs": {
+        "destination": "K_Line_11",
+        "allowed_179_deduction": 100000,
+        "section_179_dollar_limit": 100000
+      },
+      "notes": "Under $2.5M limit, under $4M threshold, under income limit. Full amount to K Line 11.",
+      "sort_order": 11
+    },
+    {
+      "scenario_name": "Section 179 exceeds income limit \u2014 carryover",
+      "scenario_type": "edge",
+      "inputs": {
+        "elected_cost": 150000,
+        "total_placed": 500000,
+        "taxable_income_limitation": 80000
+      },
+      "expected_outputs": {
+        "carryover": 70000,
+        "allowed_179_deduction": 80000,
+        "section_179_dollar_limit": 150000
+      },
+      "notes": "$150K elected, income limit $80K. Deduct $80K this year, carry $70K forward.",
+      "sort_order": 12
+    },
+    {
+      "scenario_name": "Bonus depreciation \u2014 OBBBA 100% post-1/19/2025",
+      "scenario_type": "normal",
+      "inputs": {
+        "cost_basis": 200000,
+        "recovery_period": 7,
+        "acquisition_date": "2025-06-15"
+      },
+      "expected_outputs": {
+        "bonus_amount": 200000,
+        "bonus_percentage": 100
+      },
+      "notes": "Post-1/19/2025 acquisition: 100% bonus (permanent under OBBBA).",
+      "sort_order": 13
+    },
+    {
+      "scenario_name": "Mixed assets \u2014 split by destination",
+      "scenario_type": "normal",
+      "inputs": {
+        "rental_depr": 8000,
+        "section_179": 25000,
+        "trade_business_depr": 15000
+      },
+      "expected_outputs": {
+        "k_line11": 25000,
+        "page1_line14": 15000,
+        "form_8825_line14": 8000
+      },
+      "notes": "Trade/business depr -> Page 1 L14, rental depr -> 8825 L14, S179 -> K L11.",
+      "sort_order": 14
+    }
+  ]
+}

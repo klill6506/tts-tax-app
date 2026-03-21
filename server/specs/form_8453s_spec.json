@@ -1,0 +1,47 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "8453S",
+    "form_title": "Form 8453-S \u2014 U.S. S Corporation Income Tax Declaration for an IRS e-file Return",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S"
+    ],
+    "tax_year": 2025,
+    "version": 1,
+    "status": "draft"
+  },
+  "facts": [],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "E-file declaration",
+      "description": "Lists all forms/schedules being transmitted electronically.",
+      "rule_type": "validation",
+      "conditions": {},
+      "formula": "lists_all_attached_schedules_and_forms",
+      "inputs": [
+        "attached_forms"
+      ],
+      "outputs": [],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 1,
+      "authorities": [
+        {
+          "support_level": "primary",
+          "relevance_note": "E-file declaration requirements",
+          "source_code": "IRS_2025_1120S_INSTR",
+          "title": "Instructions for Form 1120-S \u2014 U.S. Income Tax Return for an S Corporation",
+          "citation": "Form 1120-S Instructions (2025)",
+          "source_type": "official_instruction",
+          "source_rank": "primary_official"
+        }
+      ]
+    }
+  ],
+  "line_map": [],
+  "diagnostics": [],
+  "tests": []
+}

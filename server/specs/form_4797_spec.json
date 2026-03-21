@@ -1,0 +1,878 @@
+{
+  "export_version": "1.0",
+  "metadata": {
+    "form_number": "4797",
+    "form_title": "Sales of Business Property",
+    "jurisdiction": "FED",
+    "entity_types": [
+      "1120S",
+      "1065",
+      "1120",
+      "1040"
+    ],
+    "tax_year": 2025,
+    "version": 2,
+    "status": "draft"
+  },
+  "facts": [
+    {
+      "fact_key": "property_description",
+      "label": "Description of Property",
+      "data_type": "string",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 1,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_acquired",
+      "label": "Date Acquired",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 2,
+      "notes": ""
+    },
+    {
+      "fact_key": "date_sold",
+      "label": "Date Sold or Disposed Of",
+      "data_type": "date",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 3,
+      "notes": ""
+    },
+    {
+      "fact_key": "sale_price",
+      "label": "Gross Sales Price",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": "must be >= 0",
+      "choices": null,
+      "sort_order": 4,
+      "notes": ""
+    },
+    {
+      "fact_key": "cost_or_basis",
+      "label": "Cost or Other Basis Plus Improvements",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 5,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciation_allowed",
+      "label": "Depreciation Allowed or Allowable",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": "must be >= 0",
+      "choices": null,
+      "sort_order": 6,
+      "notes": ""
+    },
+    {
+      "fact_key": "adjusted_basis",
+      "label": "Adjusted Basis (cost minus depreciation)",
+      "data_type": "decimal",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 7,
+      "notes": ""
+    },
+    {
+      "fact_key": "property_type",
+      "label": "Property Type for Recapture",
+      "data_type": "choice",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "1245",
+        "1250",
+        "1231",
+        "other"
+      ],
+      "sort_order": 8,
+      "notes": ""
+    },
+    {
+      "fact_key": "holding_period_months",
+      "label": "Holding Period (months)",
+      "data_type": "integer",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 9,
+      "notes": ""
+    },
+    {
+      "fact_key": "is_section_179_property",
+      "label": "Section 179 Property?",
+      "data_type": "boolean",
+      "required": false,
+      "default_value": "false",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 10,
+      "notes": ""
+    },
+    {
+      "fact_key": "section_179_claimed",
+      "label": "Section 179 Deduction Claimed",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": "0",
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 11,
+      "notes": ""
+    },
+    {
+      "fact_key": "depreciation_method",
+      "label": "Depreciation Method",
+      "data_type": "choice",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "MACRS_200DB",
+        "MACRS_150DB",
+        "SL",
+        "other"
+      ],
+      "sort_order": 12,
+      "notes": ""
+    },
+    {
+      "fact_key": "entity_type",
+      "label": "Entity Type",
+      "data_type": "choice",
+      "required": true,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": [
+        "1120S",
+        "1065",
+        "1120",
+        "1040"
+      ],
+      "sort_order": 13,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_1231_gains",
+      "label": "Total \u00a71231 Gains",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 20,
+      "notes": "Aggregated across all properties"
+    },
+    {
+      "fact_key": "total_1231_losses",
+      "label": "Total \u00a71231 Losses",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 21,
+      "notes": ""
+    },
+    {
+      "fact_key": "net_1231_gain_loss",
+      "label": "Net \u00a71231 Gain or Loss",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 22,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_ordinary_gain_1245",
+      "label": "Total \u00a71245 Ordinary Income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 23,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_ordinary_gain_1250",
+      "label": "Total \u00a71250 Ordinary Income",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 24,
+      "notes": ""
+    },
+    {
+      "fact_key": "total_unrecaptured_1250",
+      "label": "Total Unrecaptured \u00a71250 Gain",
+      "data_type": "decimal",
+      "required": false,
+      "default_value": null,
+      "validation_rule": null,
+      "choices": null,
+      "sort_order": 25,
+      "notes": ""
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "R001",
+      "title": "Determine holding period classification",
+      "description": "Classify as long-term (>12 months) or short-term (<=12 months). This determines routing between Part I/III vs Part II.",
+      "rule_type": "classification",
+      "conditions": {},
+      "formula": "if holding_period_months > 12 then \"long_term\" else \"short_term\"",
+      "inputs": [
+        "holding_period_months"
+      ],
+      "outputs": [
+        "holding_period_class"
+      ],
+      "precedence": 1,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R002",
+      "title": "Route to correct Part based on property type and holding period",
+      "description": "Core routing logic for Form 4797:\n- Short-term \u2192 Part II (ordinary)\n- Long-term + \u00a71245/\u00a71250 + gain \u2192 Part III first (recapture), excess to Part I\n- Long-term + gain + no recapture items \u2192 Part I (\u00a71231)\n- Long-term + loss \u2192 Part I (\u00a71231 loss)",
+      "rule_type": "routing",
+      "conditions": {},
+      "formula": "if holding_period_class == \"short_term\" then \"Part II\" else \"Part I\"",
+      "inputs": [
+        "holding_period_class",
+        "property_type",
+        "gain_or_loss"
+      ],
+      "outputs": [
+        "form_part_destination"
+      ],
+      "precedence": 5,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW \u2014 simplified routing. Full routing requires checking if property has recapture potential (\u00a71245/\u00a71250 with gain) which triggers Part III first. The formula here captures the basic long/short split but not the Part III \u2192 Part I overflow.",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R003",
+      "title": "Calculate gain or loss",
+      "description": "Basic gain/loss calculation: sale price minus adjusted basis.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "sale_price - adjusted_basis",
+      "inputs": [
+        "sale_price",
+        "adjusted_basis"
+      ],
+      "outputs": [
+        "gain_or_loss"
+      ],
+      "precedence": 2,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R004",
+      "title": "Calculate adjusted basis",
+      "description": "Adjusted basis = original cost minus all depreciation allowed or allowable.",
+      "rule_type": "calculation",
+      "conditions": {},
+      "formula": "cost_or_basis - depreciation_allowed",
+      "inputs": [
+        "cost_or_basis",
+        "depreciation_allowed"
+      ],
+      "outputs": [
+        "adjusted_basis"
+      ],
+      "precedence": 0,
+      "exceptions": "",
+      "notes": "This runs first (precedence 0) since other rules depend on adjusted_basis.",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R005",
+      "title": "Section 1245 recapture \u2014 ordinary income portion",
+      "description": "For \u00a71245 property, ALL gain up to total depreciation allowed is recaptured as ordinary income. This is the full recapture rule \u2014 \u00a71245 does not distinguish between straight-line and accelerated.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "property_type == \"1245\" and gain_or_loss > 0"
+      },
+      "formula": "min(gain_or_loss, depreciation_allowed)",
+      "inputs": [
+        "gain_or_loss",
+        "depreciation_allowed",
+        "property_type"
+      ],
+      "outputs": [
+        "ordinary_income_1245"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R006",
+      "title": "Section 1245 excess gain \u2192 \u00a71231 gain",
+      "description": "If gain exceeds total depreciation on \u00a71245 property, the excess is \u00a71231 gain that flows to Part I.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "property_type == \"1245\" and gain_or_loss > 0"
+      },
+      "formula": "max(0, gain_or_loss - depreciation_allowed)",
+      "inputs": [
+        "gain_or_loss",
+        "depreciation_allowed",
+        "property_type"
+      ],
+      "outputs": [
+        "section_1231_gain_excess"
+      ],
+      "precedence": 11,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R007",
+      "title": "Section 1250 recapture \u2014 ordinary income (additional depreciation)",
+      "description": "For \u00a71250 property, only ADDITIONAL depreciation (excess over straight-line) is recaptured as ordinary income. For post-1986 MACRS real property using SL, additional depreciation is zero, so \u00a71250 ordinary recapture is usually zero.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "property_type == \"1250\" and gain_or_loss > 0"
+      },
+      "formula": "0",
+      "inputs": [
+        "gain_or_loss",
+        "depreciation_allowed",
+        "property_type"
+      ],
+      "outputs": [
+        "ordinary_income_1250"
+      ],
+      "precedence": 10,
+      "exceptions": "",
+      "notes": "NEEDS REVIEW \u2014 Formula hardcoded to 0 because post-1986 MACRS real property uses straight-line, so additional depreciation is zero. For pre-1987 property or property using accelerated methods, this would need the actual additional depreciation calculation.",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R008",
+      "title": "Unrecaptured \u00a71250 gain (25% rate bucket)",
+      "description": "For \u00a71250 property, gain attributable to depreciation that is NOT ordinary under \u00a71250 is 'unrecaptured \u00a71250 gain' taxed at a maximum 25% rate. This equals the lesser of the gain or total depreciation, minus any \u00a71250 ordinary recapture.",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "property_type == \"1250\" and gain_or_loss > 0"
+      },
+      "formula": "min(gain_or_loss, depreciation_allowed) - ordinary_income_1250",
+      "inputs": [
+        "gain_or_loss",
+        "depreciation_allowed",
+        "ordinary_income_1250",
+        "property_type"
+      ],
+      "outputs": [
+        "unrecaptured_1250_gain"
+      ],
+      "precedence": 12,
+      "exceptions": "",
+      "notes": "",
+      "sort_order": 0,
+      "authorities": []
+    },
+    {
+      "rule_id": "R010",
+      "title": "Net \u00a71231 gain/loss netting",
+      "description": "All \u00a71231 gains and losses are netted. If net gain \u2192 long-term capital gain. If net loss \u2192 ordinary loss. Subject to 5-year lookback rule under \u00a71231(c).",
+      "rule_type": "calculation",
+      "conditions": {
+        "when": "total_1231_gains >= 0"
+      },
+      "formula": "total_1231_gains - total_1231_losses",
+      "inputs": [
+        "total_1231_gains",
+        "total_1231_losses"
+      ],
+      "outputs": [
+        "net_1231_gain_loss"
+      ],
+      "precedence": 50,
+      "exceptions": "",
+      "notes": "Only runs when aggregation inputs are provided (not per-property).",
+      "sort_order": 0,
+      "authorities": []
+    }
+  ],
+  "line_map": [
+    {
+      "line_number": "10",
+      "description": "Ordinary gains and losses not included in other lines \u2014 property held 1 year or less",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "Short-term property entries",
+      "sort_order": 0
+    },
+    {
+      "line_number": "13",
+      "description": "Gain from Part III, line 31",
+      "calculation": "From Part III line 31",
+      "source_facts": [],
+      "source_rules": [
+        "R005",
+        "R007"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "17",
+      "description": "Combine lines 10 through 16",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "18a",
+      "description": "For all except individual returns, enter on return",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": "Ordinary income line of entity return",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "19",
+      "description": "Description of \u00a71245, \u00a71250, etc. property",
+      "calculation": "",
+      "source_facts": [
+        "property_description"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "2",
+      "description": "Property description, dates, sales price, depreciation, cost, gain/loss (long-term)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "Individual property entries, lines 2-6",
+      "sort_order": 0
+    },
+    {
+      "line_number": "20",
+      "description": "Date acquired",
+      "calculation": "",
+      "source_facts": [
+        "date_acquired"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "21",
+      "description": "Date sold",
+      "calculation": "",
+      "source_facts": [
+        "date_sold"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "22",
+      "description": "Cost or other basis, plus improvements and expense of sale",
+      "calculation": "",
+      "source_facts": [
+        "cost_or_basis"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "23",
+      "description": "Depreciation allowed or allowable",
+      "calculation": "",
+      "source_facts": [
+        "depreciation_allowed"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "24",
+      "description": "Adjusted basis (line 22 minus line 23)",
+      "calculation": "Line 22 - Line 23",
+      "source_facts": [
+        "adjusted_basis"
+      ],
+      "source_rules": [
+        "R004"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "25a",
+      "description": "Applicable percentage (for \u00a71250 property)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "Usually 100% for property held >1 year",
+      "sort_order": 0
+    },
+    {
+      "line_number": "25b",
+      "description": "Additional depreciation after 1975 (\u00a71250)",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R007"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "26",
+      "description": "Section 1245 property \u2014 depreciation allowed or allowable",
+      "calculation": "",
+      "source_facts": [
+        "depreciation_allowed"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "27",
+      "description": "Enter the smaller of line 24g or 25b or 26",
+      "calculation": "Recapture amount",
+      "source_facts": [],
+      "source_rules": [
+        "R005",
+        "R007"
+      ],
+      "destination_form": null,
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "31",
+      "description": "Total ordinary gain \u2014 add lines 27 through 30",
+      "calculation": "Sum of recapture amounts",
+      "source_facts": [],
+      "source_rules": [
+        "R005",
+        "R007"
+      ],
+      "destination_form": "Part II line 13",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "32",
+      "description": "Excess gain over recapture \u2014 to Part I line 2",
+      "calculation": "Gain minus recapture",
+      "source_facts": [],
+      "source_rules": [
+        "R006"
+      ],
+      "destination_form": "Part I line 2",
+      "line_type": "calculated",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "33",
+      "description": "Section 179 expense deduction or depreciation allowable in prior years",
+      "calculation": "",
+      "source_facts": [
+        "section_179_claimed"
+      ],
+      "source_rules": [],
+      "destination_form": null,
+      "line_type": "input",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "35",
+      "description": "Recapture amount",
+      "calculation": "",
+      "source_facts": [],
+      "source_rules": [
+        "R009"
+      ],
+      "destination_form": "Other income line of entity return",
+      "line_type": "calculated",
+      "notes": "NEEDS REVIEW \u2014 \u00a7179 recapture when business use drops below 50%",
+      "sort_order": 0
+    },
+    {
+      "line_number": "7",
+      "description": "Combine lines 2 through 6",
+      "calculation": "Sum of lines 2-6 gain/loss amounts",
+      "source_facts": [],
+      "source_rules": [
+        "R003"
+      ],
+      "destination_form": null,
+      "line_type": "subtotal",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "8",
+      "description": "Section 1231 gain \u2014 net gain from Part I",
+      "calculation": "If line 7 is greater than zero",
+      "source_facts": [],
+      "source_rules": [
+        "R010"
+      ],
+      "destination_form": "Schedule D (1040) or Schedule K (1120S/1065)",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "line_number": "9",
+      "description": "Section 1231 loss \u2014 net loss from Part I",
+      "calculation": "If line 7 is zero or less",
+      "source_facts": [],
+      "source_rules": [
+        "R010"
+      ],
+      "destination_form": "Ordinary income line of entity return",
+      "line_type": "total",
+      "notes": "",
+      "sort_order": 0
+    }
+  ],
+  "diagnostics": [
+    {
+      "diagnostic_id": "D001",
+      "title": "Missing holding period",
+      "severity": "error",
+      "condition": "holding_period_months is null or 0",
+      "message": "Holding period is required to determine correct Part routing.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D002",
+      "title": "Depreciation not entered for depreciable property",
+      "severity": "warning",
+      "condition": "property_type in [\"1245\", \"1250\"] AND depreciation_allowed == 0",
+      "message": "Depreciation is zero for depreciable property. Verify this is correct \u2014 if depreciation was allowed, it must be reported even if not claimed (depreciation 'allowable').",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D003",
+      "title": "Gain on \u00a71245 property with no recapture",
+      "severity": "warning",
+      "condition": "property_type == \"1245\" AND gain_or_loss > 0 AND depreciation_allowed == 0",
+      "message": "Gain on \u00a71245 property but no depreciation to recapture. Verify basis and depreciation.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D004",
+      "title": "Sale price is zero",
+      "severity": "warning",
+      "condition": "sale_price == 0",
+      "message": "Sale price is zero. If this was a disposal (abandonment, casualty), verify the correct reporting method.",
+      "notes": ""
+    },
+    {
+      "diagnostic_id": "D005",
+      "title": "Long-term \u00a71231 loss \u2014 check 5-year lookback",
+      "severity": "info",
+      "condition": "holding_period_class == \"long_term\" AND gain_or_loss < 0",
+      "message": "Net \u00a71231 loss is ordinary. Note: if there were net \u00a71231 gains in the prior 5 years treated as capital gains, the lookback rule under \u00a71231(c) may require recharacterization. Review IRC \u00a71231(c).",
+      "notes": ""
+    }
+  ],
+  "tests": [
+    {
+      "scenario_name": "\u00a71231 loss \u2014 no recapture",
+      "scenario_type": "normal",
+      "inputs": {
+        "sale_price": 30000,
+        "cost_or_basis": 100000,
+        "property_type": "1245",
+        "adjusted_basis": 50000,
+        "depreciation_allowed": 50000,
+        "holding_period_months": 48
+      },
+      "expected_outputs": {
+        "gain_or_loss": -20000
+      },
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "scenario_name": "\u00a71245 gain exceeding depreciation \u2014 partial recapture + \u00a71231",
+      "scenario_type": "normal",
+      "inputs": {
+        "sale_price": 120000,
+        "cost_or_basis": 100000,
+        "property_type": "1245",
+        "adjusted_basis": 70000,
+        "depreciation_allowed": 30000,
+        "holding_period_months": 60
+      },
+      "expected_outputs": {
+        "gain_or_loss": 50000,
+        "ordinary_income_1245": 30000,
+        "section_1231_gain_excess": 20000
+      },
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "scenario_name": "\u00a71250 property \u2014 unrecaptured gain (25% rate)",
+      "scenario_type": "edge",
+      "inputs": {
+        "sale_price": 500000,
+        "cost_or_basis": 400000,
+        "property_type": "1250",
+        "adjusted_basis": 300000,
+        "depreciation_method": "SL",
+        "depreciation_allowed": 100000,
+        "holding_period_months": 120
+      },
+      "expected_outputs": {
+        "gain_or_loss": 200000,
+        "ordinary_income_1250": 0,
+        "unrecaptured_1250_gain": 100000
+      },
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "scenario_name": "Basic \u00a71245 gain \u2014 all recapture",
+      "scenario_type": "normal",
+      "inputs": {
+        "sale_price": 50000,
+        "cost_or_basis": 100000,
+        "property_type": "1245",
+        "adjusted_basis": 40000,
+        "depreciation_allowed": 60000,
+        "holding_period_months": 36
+      },
+      "expected_outputs": {
+        "gain_or_loss": 10000,
+        "ordinary_income_1245": 10000,
+        "section_1231_gain_excess": 0
+      },
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "scenario_name": "Short-term gain \u2014 all ordinary (Part II)",
+      "scenario_type": "normal",
+      "inputs": {
+        "sale_price": 60000,
+        "cost_or_basis": 80000,
+        "property_type": "1245",
+        "adjusted_basis": 40000,
+        "depreciation_allowed": 40000,
+        "holding_period_months": 6
+      },
+      "expected_outputs": {
+        "gain_or_loss": 20000,
+        "holding_period_class": "short_term",
+        "form_part_destination": "Part II"
+      },
+      "notes": "",
+      "sort_order": 0
+    },
+    {
+      "scenario_name": "Zero gain \u2014 no reporting",
+      "scenario_type": "edge",
+      "inputs": {
+        "sale_price": 40000,
+        "cost_or_basis": 60000,
+        "property_type": "1245",
+        "adjusted_basis": 40000,
+        "depreciation_allowed": 20000,
+        "holding_period_months": 24
+      },
+      "expected_outputs": {
+        "gain_or_loss": 0
+      },
+      "notes": "",
+      "sort_order": 0
+    }
+  ]
+}

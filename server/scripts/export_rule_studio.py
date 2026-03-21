@@ -127,7 +127,7 @@ def export_form(conn, form_id: str, form_number: str) -> dict:
 
 # Mapping from form_number in Rule Studio -> output filename
 FORM_FILE_MAP = {
-    # Exact matches for actual Rule Studio form_number codes
+    # Core 1120-S forms
     "1120S_PAGE1": "1120s_page1_spec.json",
     "SCH_K_1120S": "1120s_sched_k_spec.json",
     "K1_1120S": "1120s_k1_spec.json",
@@ -135,7 +135,19 @@ FORM_FILE_MAP = {
     "1120S_M2": "1120s_m2_spec.json",
     "SCHD_1120S": "sched_d_1120s_spec.json",
     "8949": "form_8949_spec.json",
-    # Skip 4797 (already exported separately) and 4562
+    "4797": "form_4797_spec.json",
+    # Supporting forms
+    "4562": "form_4562_spec.json",
+    "1125A": "form_1125a_spec.json",
+    "1125E": "form_1125e_spec.json",
+    "8825": "form_8825_spec.json",
+    "7203": "form_7203_spec.json",
+    # State
+    "GA600S": "ga600s_spec.json",
+    # Procedural
+    "7004": "form_7004_spec.json",
+    "8879S": "form_8879s_spec.json",
+    "8453S": "form_8453s_spec.json",
 }
 
 
@@ -150,16 +162,21 @@ def main():
 
     SPECS_DIR.mkdir(parents=True, exist_ok=True)
 
-    exported = 0
+    # Deduplicate: if multiple versions, keep highest version
+    best: dict[str, dict] = {}
     for f in forms:
         fn = f["form_number"]
-        # Try exact match, then partial matches
+        if fn not in best or f["version"] > best[fn]["version"]:
+            best[fn] = f
+
+    exported = 0
+    for fn, f in best.items():
         outfile = FORM_FILE_MAP.get(fn)
         if not outfile:
             print(f"  SKIP: No output mapping for '{fn}'")
             continue
 
-        print(f"\n  Exporting '{fn}' -> {outfile}...")
+        print(f"\n  Exporting '{fn}' v{f['version']} -> {outfile}...")
         spec = export_form(conn, str(f["id"]), fn)
         outpath = SPECS_DIR / outfile
         with open(outpath, "w") as fp:

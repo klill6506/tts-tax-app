@@ -607,6 +607,92 @@ def _is_1250_property(group_label: str) -> bool:
     return group_label in ("Buildings", "Improvements")
 
 
+def aggregate_schedule_d(tax_return) -> None:
+    """
+    Aggregate Schedule D dispositions (capital asset sales) and flow to K lines.
+
+    Data source: Disposition instances where is_4797=False.
+    Per Schedule D spec (SCHD_1120S):
+    - R001: Short-term = held 1 year or less; long-term = held more than 1 year
+    - R002: Sum all short-term gains/losses → K7
+    - R003: Sum all long-term gains/losses → K8a
+    - R004: K7 = Schedule D Part I Line 5; K8a = Schedule D Part II Line 12
+    - R010: Section 1231 gains do NOT flow through Schedule D on 1120-S
+    """
+    from .models import Disposition
+
+    dispositions = Disposition.objects.filter(
+        tax_return=tax_return,
+        is_4797=False,
+    )
+
+    if not dispositions.exists():
+        return
+
+    st_total = ZERO
+    lt_total = ZERO
+
+    for d in dispositions:
+        gain_loss = d.sales_price - d.cost_basis - d.expenses_of_sale
+        if d.term == "short":
+            st_total += gain_loss
+        else:
+            lt_total += gain_loss
+
+    # Flow to Schedule K
+    if st_total != 0:
+        _set_field_value(tax_return, "K7", str(st_total.quantize(Decimal("1"))))
+    if lt_total != 0:
+        _set_field_value(tax_return, "K8a", str(lt_total.quantize(Decimal("1"))))
+
+
+def aggregate_rental_income(tax_return) -> None:
+    """
+    Aggregate rental property net income/loss and flow to Schedule K Line 2.
+
+    Data source: RentalProperty instances.
+    Per Form 8825 spec R003: K2 = sum(all net_rent).
+    """
+    from .models import RentalProperty
+
+    rentals = RentalProperty.objects.filter(tax_return=tax_return)
+    if not rentals.exists():
+        return
+
+    total_net_rent = sum(
+        (r.net_rent for r in rentals),
+        ZERO,
+    )
+
+    if total_net_rent != 0:
+        _set_field_value(
+            tax_return, "K2", str(total_net_rent.quantize(Decimal("1")))
+        )
+
+
+def aggregate_officer_compensation(tax_return) -> None:
+    """
+    Aggregate officer compensation and flow to Page 1 Line 7.
+
+    Per Form 1125-E spec R002: Page1_Line7 = total_compensation.
+    """
+    from .models import Officer
+
+    officers = Officer.objects.filter(tax_return=tax_return)
+    if not officers.exists():
+        return
+
+    total_comp = sum(
+        (o.compensation for o in officers),
+        ZERO,
+    )
+
+    if total_comp != 0:
+        _set_field_value(
+            tax_return, "7", str(total_comp.quantize(Decimal("1")))
+        )
+
+
 def aggregate_dispositions(tax_return) -> None:
     """
     Compute Form 4797 disposition totals and flow to return lines.
@@ -720,6 +806,15 @@ def compute_return(tax_return) -> int:
 
     # Compute 4797 disposition flows (K9, Page 1 Line 4)
     aggregate_dispositions(tax_return)
+
+    # Compute Schedule D flows (K7, K8a) from capital asset dispositions
+    aggregate_schedule_d(tax_return)
+
+    # Compute rental income flows (K2) from Form 8825 rental properties
+    aggregate_rental_income(tax_return)
+
+    # Compute officer compensation flow (Line 7) from Form 1125-E
+    aggregate_officer_compensation(tax_return)
 
     form_code = tax_return.form_definition.code
     formulas = FORMULA_REGISTRY.get(form_code)
