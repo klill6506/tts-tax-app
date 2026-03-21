@@ -573,12 +573,14 @@ class TestScheduleF:
 class TestScheduleL:
     """Schedule L total assets and retained earnings"""
 
-    def test_retained_earnings_from_m2(self):
+    def test_retained_earnings_beginning_is_manual(self):
+        """L24a (beginning retained earnings) is manual entry, not computed."""
         values = _run_formulas({
             "1a": 100000, "1b": 0,
+            "L24a": 60000,  # User enters beginning retained earnings
             "M2_1a": 50000, "M2_1b": 10000, "M2_1c": 0, "M2_1d": 0,
         })
-        # L24a = sum of all M2 beginning balances
+        # L24a keeps the user-entered value (not overwritten by formulas)
         assert values["L24a"] == 60000
 
     def test_l27_total(self):

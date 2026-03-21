@@ -368,7 +368,7 @@ SECTIONS = [
             ("L22d", "Capital stock — end", C, "1120S_L22d_eoy", False, 240, CR),
             ("L23a", "Additional paid-in capital — beginning", C, "1120S_L23a_boy", False, 245, CR),
             ("L23d", "Additional paid-in capital — end", C, "1120S_L23d_eoy", False, 246, CR),
-            ("L24a", "Retained earnings — beginning", C, "", True, 250, CR),
+            ("L24a", "Retained earnings — beginning", C, "1120S_L24a_boy", False, 250, CR),
             ("L24d", "Retained earnings — end", C, "", True, 260, CR),
             ("L25a", "Adjustments to shareholders' equity — beginning", C, "1120S_L25a_boy", False, 265, CR),
             ("L25d", "Adjustments to shareholders' equity — end", C, "1120S_L25d_eoy", False, 266, CR),

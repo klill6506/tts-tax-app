@@ -190,8 +190,8 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("M2_8d", lambda v: _d(v, "M2_6d") - _d(v, "M2_7d")),
 
     # Schedule L — Retained earnings & total (depend on M-2 results)
-    # L24 = sum of all M-2 column ending balances (AAA + OAA + STPI + E&P)
-    ("L24a", lambda v: _sum(v, "M2_1a", "M2_1b", "M2_1c", "M2_1d")),
+    # L24a = beginning retained earnings — manual entry (user types prior year ending balance)
+    # L24d = ending retained earnings — computed from M-2 ending balances
     ("L24d", lambda v: _sum(v, "M2_8a", "M2_8b", "M2_8c", "M2_8d")),
     # L27 = Total liabilities and shareholders' equity
     ("L27a", lambda v: _sum(
