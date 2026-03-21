@@ -10,6 +10,7 @@
  * --------------------------------------------------------------------------- */
 @theme {
   --font-sans: "Inter", "Arial", "Tahoma", "Segoe UI", system-ui, sans-serif;
+  --font-headline: var(--font-sans);
 }
 
 /* ---------------------------------------------------------------------------
@@ -192,11 +193,21 @@
  * Global defaults
  * --------------------------------------------------------------------------- */
 body {
-  font-family: "Inter", "Arial", "Tahoma", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--surface);
   color: var(--tx);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------------------------
+ * Editorial theme — serif headlines
+ * Activated by adding .theme-editorial class to <html>
+ * --------------------------------------------------------------------------- */
+.theme-editorial h1,
+.theme-editorial h2,
+.theme-editorial h3 {
+  font-family: var(--font-headline);
 }
 
 /* ---------------------------------------------------------------------------

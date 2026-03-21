@@ -236,7 +236,124 @@ function DropdownMenu({
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Background palette swatches (temporary dev tool for Ken to pick)
+// Theme presets — complete theme in one click
+// ---------------------------------------------------------------------------
+
+interface ThemePreset {
+  name: string;
+  id: string;
+  swatch: string;
+  tokens: Record<string, string>;
+  fontSans: string | null;      // null = keep default (Inter)
+  fontHeadline: string | null;   // null = no separate headline font
+  themeClass: string | null;     // CSS class added to <html>
+}
+
+const THEME_PRESETS: ThemePreset[] = [
+  {
+    name: "Default",
+    id: "default",
+    swatch: "#2563eb",
+    tokens: {},   // empty = use CSS defaults
+    fontSans: null,
+    fontHeadline: null,
+    themeClass: null,
+  },
+  {
+    name: "Editorial Gold",
+    id: "editorial-gold",
+    swatch: "#745b00",
+    tokens: {
+      "--surface": "#f1eee5",
+      "--surface-alt": "#e6e2d9",
+      "--card": "#fdf9f0",
+      "--card-hover": "#f7f3ea",
+      "--zebra": "#f7f3ea",
+      "--nav": "#493800",
+      "--nav-active": "#745b00",
+      "--nav-border": "#584400",
+      "--border": "#d0c5af",
+      "--border-subtle": "#e6e2d9",
+      "--input": "#fdf9f0",
+      "--input-border": "#7f7663",
+      "--tx": "#1c1c17",
+      "--tx-secondary": "#4d4635",
+      "--tx-muted": "#7f7663",
+      "--tx-on-dark": "#fdf9f0",
+      "--primary": "#745b00",
+      "--primary-hover": "#584400",
+      "--primary-subtle": "#ffe08b",
+      "--primary-text": "#584400",
+      "--accent": "#4259a9",
+      "--accent-hover": "#284190",
+      "--focus-ring": "#745b0040",
+    },
+    fontSans: '"Work Sans", "Inter", sans-serif',
+    fontHeadline: '"Newsreader", Georgia, serif',
+    themeClass: "theme-editorial",
+  },
+];
+
+// All CSS custom properties that a theme preset can set
+const ALL_THEME_TOKENS = [
+  "--surface", "--surface-alt", "--card", "--card-hover", "--zebra",
+  "--nav", "--nav-active", "--nav-border",
+  "--border", "--border-subtle",
+  "--input", "--input-border",
+  "--tx", "--tx-secondary", "--tx-muted", "--tx-on-dark",
+  "--primary", "--primary-hover", "--primary-subtle", "--primary-text",
+  "--accent", "--accent-hover",
+  "--focus-ring",
+];
+
+function applyThemePreset(preset: ThemePreset) {
+  const root = document.documentElement;
+
+  // Apply color tokens
+  for (const key of ALL_THEME_TOKENS) {
+    if (preset.tokens[key]) {
+      root.style.setProperty(key, preset.tokens[key]);
+    } else {
+      root.style.removeProperty(key);
+    }
+  }
+
+  // Apply fonts
+  if (preset.fontSans) {
+    root.style.setProperty("--font-sans", preset.fontSans);
+  } else {
+    root.style.removeProperty("--font-sans");
+  }
+  if (preset.fontHeadline) {
+    root.style.setProperty("--font-headline", preset.fontHeadline);
+  } else {
+    root.style.removeProperty("--font-headline");
+  }
+
+  // Apply theme class
+  // Remove all possible theme classes first
+  for (const p of THEME_PRESETS) {
+    if (p.themeClass) root.classList.remove(p.themeClass);
+  }
+  if (preset.themeClass) {
+    root.classList.add(preset.themeClass);
+  }
+}
+
+function clearThemePreset() {
+  const root = document.documentElement;
+  for (const key of ALL_THEME_TOKENS) {
+    root.style.removeProperty(key);
+  }
+  root.style.removeProperty("--font-sans");
+  root.style.removeProperty("--font-headline");
+  for (const p of THEME_PRESETS) {
+    if (p.themeClass) root.classList.remove(p.themeClass);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Background palette swatches (fine-tuning within default theme)
 // ---------------------------------------------------------------------------
 
 interface BgPalette {
@@ -314,6 +431,10 @@ export default function AppShell() {
   const [showAbout, setShowAbout] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [showPalettes, setShowPalettes] = useState(false);
+  const [activePreset, setActivePreset] = useState(() => {
+    const saved = localStorage.getItem("sherpa-theme-preset");
+    return saved ?? "default";
+  });
   const [activeBg, setActiveBg] = useState(() => {
     const saved = localStorage.getItem("sherpa-bg-palette");
     return saved !== null ? parseInt(saved, 10) : 0;
@@ -327,6 +448,8 @@ export default function AppShell() {
   const firmName = user?.memberships?.[0]?.firm_name ?? "—";
   const [editorBreadcrumb, setEditorBreadcrumb] = useState<ReactNode>(null);
 
+  const isPresetActive = activePreset !== "default";
+
   // Fetch server version when About dialog opens
   useEffect(() => {
     if (!showAbout) return;
@@ -336,8 +459,17 @@ export default function AppShell() {
     });
   }, [showAbout]);
 
-  // Restore saved palettes on mount
+  // Restore saved theme on mount — preset takes precedence over bg/accent
   useEffect(() => {
+    const savedPreset = localStorage.getItem("sherpa-theme-preset");
+    if (savedPreset && savedPreset !== "default") {
+      const preset = THEME_PRESETS.find(p => p.id === savedPreset);
+      if (preset) {
+        applyThemePreset(preset);
+        return;  // skip bg/accent restore when a preset is active
+      }
+    }
+    // No preset — restore individual palettes
     if (activeBg > 0 && activeBg < BG_PALETTES.length) applyBgPalette(BG_PALETTES[activeBg]);
     if (activeAccent > 0 && activeAccent < ACCENT_PALETTES.length) applyAccentPalette(ACCENT_PALETTES[activeAccent]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -462,7 +594,7 @@ export default function AppShell() {
                       `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
                         isActive
                           ? "bg-nav-active text-white"
-                          : "text-blue-200 hover:bg-nav-active hover:text-white"
+                          : "text-tx-on-dark/70 hover:bg-nav-active hover:text-white"
                       }`
                     }
                   >
@@ -495,16 +627,18 @@ export default function AppShell() {
 
         {/* Right: Theme + Tax Year + Firm + User + Actions */}
         <div className="flex items-center gap-3">
-          {/* Theme toggle */}
-          <button
-            onClick={cycle}
-            title={`Theme: ${themeLabel}`}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-tx-on-dark transition hover:bg-nav-active hover:text-white"
-          >
-            {mode === "light" && <SunIcon />}
-            {mode === "dark" && <MoonIcon />}
-            {mode === "system" && <MonitorIcon />}
-          </button>
+          {/* Theme toggle — hidden when a theme preset overrides colors */}
+          {!isPresetActive && (
+            <button
+              onClick={cycle}
+              title={`Theme: ${themeLabel}`}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-tx-on-dark transition hover:bg-nav-active hover:text-white"
+            >
+              {mode === "light" && <SunIcon />}
+              {mode === "dark" && <MoonIcon />}
+              {mode === "system" && <MonitorIcon />}
+            </button>
+          )}
 
           {/* Palette picker */}
           <div className="relative" ref={paletteRef}>
@@ -520,55 +654,99 @@ export default function AppShell() {
 
             {showPalettes && (
               <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-card p-3 shadow-2xl z-50">
-                {/* Background section */}
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Background</p>
-                <div className="flex gap-1.5 mb-3">
-                  {BG_PALETTES.map((p, i) => (
+                {/* Theme presets section */}
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Theme</p>
+                <div className="flex gap-1.5 mb-2">
+                  {THEME_PRESETS.map((preset) => (
                     <button
-                      key={p.name}
+                      key={preset.id}
                       onClick={() => {
-                        setActiveBg(i);
-                        localStorage.setItem("sherpa-bg-palette", String(i));
-                        if (i === 0) clearBgPalette();
-                        else applyBgPalette(p);
+                        setActivePreset(preset.id);
+                        localStorage.setItem("sherpa-theme-preset", preset.id);
+                        if (preset.id === "default") {
+                          clearThemePreset();
+                          // Re-apply saved bg/accent palettes
+                          if (activeBg > 0 && activeBg < BG_PALETTES.length) applyBgPalette(BG_PALETTES[activeBg]);
+                          if (activeAccent > 0 && activeAccent < ACCENT_PALETTES.length) applyAccentPalette(ACCENT_PALETTES[activeAccent]);
+                        } else {
+                          applyThemePreset(preset);
+                        }
                       }}
-                      title={p.name}
-                      className={`h-8 w-8 shrink-0 rounded-lg border-2 shadow-sm transition ${
-                        activeBg === i ? "border-white ring-2 ring-primary scale-110" : "border-transparent hover:scale-105"
+                      className={`flex items-center gap-1.5 rounded-lg border-2 px-2.5 py-1.5 text-xs font-medium transition ${
+                        activePreset === preset.id
+                          ? "border-white ring-2 ring-primary scale-105 bg-primary-subtle text-tx"
+                          : "border-border-subtle bg-card hover:scale-105 text-tx-secondary"
                       }`}
-                      style={{ background: `linear-gradient(135deg, ${p.surface} 50%, ${p.surfaceAlt} 50%)` }}
-                    />
+                    >
+                      <span
+                        className="h-4 w-4 shrink-0 rounded-full"
+                        style={{ backgroundColor: preset.swatch }}
+                      />
+                      {preset.name}
+                    </button>
                   ))}
                 </div>
                 <p className="text-[10px] text-tx-muted mb-0.5">
-                  Active: <span className="font-medium text-tx-secondary">{BG_PALETTES[activeBg]?.name}</span>
+                  Active: <span className="font-medium text-tx-secondary">
+                    {THEME_PRESETS.find(p => p.id === activePreset)?.name ?? "Default"}
+                  </span>
                 </p>
 
                 <div className="my-2 border-t border-border-subtle" />
 
-                {/* Accent section */}
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Accent</p>
-                <div className="flex gap-1.5 mb-3">
-                  {ACCENT_PALETTES.map((p, i) => (
-                    <button
-                      key={p.name}
-                      onClick={() => {
-                        setActiveAccent(i);
-                        localStorage.setItem("sherpa-accent-palette", String(i));
-                        if (i === 0) clearAccentPalette();
-                        else applyAccentPalette(p);
-                      }}
-                      title={p.name}
-                      className={`h-8 w-8 shrink-0 rounded-full border-2 shadow-sm transition ${
-                        activeAccent === i ? "border-white ring-2 ring-offset-1 ring-offset-card scale-110" : "border-transparent hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: p.swatch }}
-                    />
-                  ))}
+                {/* Background section — dimmed when a theme preset overrides */}
+                <div className={isPresetActive ? "opacity-40 pointer-events-none" : ""}>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Background</p>
+                  <div className="flex gap-1.5 mb-3">
+                    {BG_PALETTES.map((p, i) => (
+                      <button
+                        key={p.name}
+                        onClick={() => {
+                          setActiveBg(i);
+                          localStorage.setItem("sherpa-bg-palette", String(i));
+                          if (i === 0) clearBgPalette();
+                          else applyBgPalette(p);
+                        }}
+                        title={p.name}
+                        className={`h-8 w-8 shrink-0 rounded-lg border-2 shadow-sm transition ${
+                          activeBg === i ? "border-white ring-2 ring-primary scale-110" : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ background: `linear-gradient(135deg, ${p.surface} 50%, ${p.surfaceAlt} 50%)` }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-tx-muted mb-0.5">
+                    Active: <span className="font-medium text-tx-secondary">{BG_PALETTES[activeBg]?.name}</span>
+                  </p>
                 </div>
-                <p className="text-[10px] text-tx-muted">
-                  Active: <span className="font-medium text-tx-secondary">{ACCENT_PALETTES[activeAccent]?.name}</span>
-                </p>
+
+                <div className="my-2 border-t border-border-subtle" />
+
+                {/* Accent section — dimmed when a theme preset overrides */}
+                <div className={isPresetActive ? "opacity-40 pointer-events-none" : ""}>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tx-muted">Accent</p>
+                  <div className="flex gap-1.5 mb-3">
+                    {ACCENT_PALETTES.map((p, i) => (
+                      <button
+                        key={p.name}
+                        onClick={() => {
+                          setActiveAccent(i);
+                          localStorage.setItem("sherpa-accent-palette", String(i));
+                          if (i === 0) clearAccentPalette();
+                          else applyAccentPalette(p);
+                        }}
+                        title={p.name}
+                        className={`h-8 w-8 shrink-0 rounded-full border-2 shadow-sm transition ${
+                          activeAccent === i ? "border-white ring-2 ring-offset-1 ring-offset-card scale-110" : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: p.swatch }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-tx-muted">
+                    Active: <span className="font-medium text-tx-secondary">{ACCENT_PALETTES[activeAccent]?.name}</span>
+                  </p>
+                </div>
               </div>
             )}
           </div>

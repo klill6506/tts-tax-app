@@ -524,19 +524,19 @@ export default function FormEditor() {
     }
     setEditorBreadcrumb(
       <div className="flex items-center text-sm">
-        <Link to="/" className="text-blue-200 hover:text-white hover:underline">
+        <Link to="/" className="text-tx-on-dark/70 hover:text-white hover:underline">
           Return Manager
         </Link>
-        <span className="mx-1.5 text-blue-300/60">/</span>
-        <span className="text-blue-100">{returnData.client_name}</span>
-        <span className="mx-1.5 text-blue-300/60">/</span>
-        <span className="text-blue-100">{returnData.entity_name}</span>
-        <span className="mx-1.5 text-blue-300/60">/</span>
+        <span className="mx-1.5 text-tx-on-dark/40">/</span>
+        <span className="text-tx-on-dark/90">{returnData.client_name}</span>
+        <span className="mx-1.5 text-tx-on-dark/40">/</span>
+        <span className="text-tx-on-dark/90">{returnData.entity_name}</span>
+        <span className="mx-1.5 text-tx-on-dark/40">/</span>
         {returnData.federal_return_id ? (
           <>
             <Link
               to={`/tax-returns/${returnData.federal_return_id}/editor`}
-              className="text-blue-200 hover:text-white hover:underline"
+              className="text-tx-on-dark/70 hover:text-white hover:underline"
             >
               Federal Return
             </Link>
