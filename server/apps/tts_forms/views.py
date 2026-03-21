@@ -47,7 +47,7 @@ from .renderer import (
     render_k1,
     render_tax_return,
 )
-from .ga600s_native import render_ga600s_native
+from .renderer import render_ga600s_overlay
 from .invoice import render_invoice
 from .letter import render_letter
 
@@ -643,7 +643,7 @@ class PDFRenderMixin:
         compute_return(state_return)
 
         try:
-            pdf_bytes = render_ga600s_native(state_return)
+            pdf_bytes = render_ga600s_overlay(state_return)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

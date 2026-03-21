@@ -50,16 +50,17 @@ from .coordinates.f8825 import (
     HEADER_FIELDS as F8825_HEADER_FIELDS,
     PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
 )
-# GA-600S now uses native rendering (ga600s_native.py) — coordinate overlay retired
-# from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
-# from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
+# GA-600S coordinate overlay (reinstated — replaces unreliable native generation)
+from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
+from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
 
 # AcroForm-based rendering (new, preferred)
 from .acroform_filler import fill_form as _acroform_fill
 from .field_maps import get_field_maps as _get_field_maps
 from .formatting import expand_yes_no, format_currency, format_value
 
-from .ga600s_native import render_ga600s_native
+# Native generation retired — kept for reference but no longer called
+# from .ga600s_native import render_ga600s_native
 from .invoice import render_invoice
 from .letter import render_letter
 from .statements import render_statement_pages
@@ -345,9 +346,9 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
 
     form_code = tax_return.form_definition.code
 
-    # GA-600S uses native rendering (not coordinate overlay)
+    # GA-600S uses coordinate overlay on official GA DOR template
     if form_code == "GA-600S":
-        return render_ga600s_native(tax_return)
+        return render_ga600s_overlay(tax_return)
 
     # Map form_code to form_id
     form_code_to_id = {
@@ -1974,6 +1975,119 @@ def render_8949(tax_return) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# GA-600S coordinate overlay rendering
+# ---------------------------------------------------------------------------
+
+_GA600S_TEMPLATE = Path(__file__).resolve().parent.parent.parent / "pdf_templates" / "ga600s_2025.pdf"
+
+
+def render_ga600s_overlay(tax_return) -> bytes:
+    """
+    Render Georgia Form 600S using coordinate overlay on the official GA DOR template.
+
+    Uses the same proven approach as federal coordinate overlay forms (f1065, f1120):
+    load template → create ReportLab overlay → merge.
+
+    Args:
+        tax_return: The STATE TaxReturn instance (form_code="GA-600S").
+
+    Returns:
+        PDF bytes for the complete GA-600S.
+    """
+    from apps.returns.models import FormFieldValue, Shareholder
+
+    entity = tax_return.tax_year.entity
+    year = tax_return.tax_year.year
+
+    # --- Build header data ---
+    header_data: dict[str, str] = {
+        "ein": entity.ein or "",
+        "entity_name": entity.legal_name or entity.name or "",
+        "address_street": entity.address_line1 or "",
+        "address_city": entity.city or "",
+        "address_state": entity.state or "GA",
+        "address_zip": entity.zip_code or "",
+        "phone": entity.phone or "",
+        "naics_code": entity.naics_code or "",
+        "type_of_business": entity.business_activity or "",
+        "state_incorporated": entity.state_incorporated or "",
+        # Tax period dates
+        "income_tax_begin": f"01/01/{year}",
+        "income_tax_end": f"12/31/{year}",
+        "nw_tax_begin": f"01/01/{year + 1}",
+        "nw_tax_end": f"12/31/{year + 1}",
+    }
+    if entity.date_incorporated:
+        header_data["date_incorporated"] = entity.date_incorporated.strftime("%m/%d/%Y")
+
+    # Continuation headers on pages 2 and 3
+    header_data["p2_name"] = header_data["entity_name"]
+    header_data["p2_fein"] = header_data["ein"]
+    header_data["p3_name"] = header_data["entity_name"]
+    header_data["p3_fein"] = header_data["ein"]
+
+    # Shareholder count from federal return
+    federal = tax_return.federal_return
+    if federal:
+        sh_count = Shareholder.objects.filter(
+            tax_return=federal, is_active=True
+        ).count()
+        if sh_count:
+            header_data["total_shareholders"] = str(sh_count)
+
+    # PTET election checkbox
+    fvs = FormFieldValue.objects.filter(
+        tax_return=tax_return,
+    ).select_related("form_line")
+
+    field_values: dict[str, tuple[str, str]] = {}
+    for fv in fvs:
+        ln = fv.form_line.line_number
+        field_values[ln] = (fv.value or "", fv.form_line.field_type)
+
+    # PTET checkbox
+    ptet_val = field_values.get("GA_PTET", ("", ""))[0]
+    if ptet_val and ptet_val.lower() in ("true", "1", "yes"):
+        header_data["ptet_election"] = "X"
+
+    # Extension checkbox
+    if tax_return.federal_return and tax_return.federal_return.extension_filed:
+        header_data["extension_checkbox"] = "X"
+
+    # --- Load template and create overlay ---
+    if not _GA600S_TEMPLATE.exists():
+        raise FileNotFoundError(
+            f"GA-600S template not found at {_GA600S_TEMPLATE}. "
+            f"Place the fillable GA-600S PDF at server/pdf_templates/ga600s_2025.pdf"
+        )
+
+    template_reader = PdfReader(str(_GA600S_TEMPLATE))
+    page_count = len(template_reader.pages)
+
+    overlay_buf = _create_overlay(
+        field_values=field_values,
+        field_map=FGA600S_FIELD_MAP,
+        header_data=header_data,
+        header_map=FGA600S_HEADER_FIELDS,
+        page_count=page_count,
+    )
+    overlay_reader = PdfReader(overlay_buf)
+
+    # Merge overlay onto template
+    writer = PdfWriter()
+    for i in range(page_count):
+        template_page = template_reader.pages[i]
+        if i < len(overlay_reader.pages):
+            overlay_page = overlay_reader.pages[i]
+            template_page.merge_page(overlay_page)
+        writer.add_page(template_page)
+
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
 # Depreciation Schedule rendering (standalone report)
 # ---------------------------------------------------------------------------
 
@@ -2455,7 +2569,7 @@ def render_complete_return(
     if package == "state":
         for sr in tax_return.state_returns.all():
             if sr.form_definition.code == "GA-600S":
-                _append(render_ga600s_native(sr), "GA Form 600S")
+                _append(render_ga600s_overlay(sr), "GA Form 600S")
             else:
                 _append(render_tax_return(sr), sr.form_definition.code)
         output = io.BytesIO()
@@ -2622,7 +2736,7 @@ def render_complete_return(
     for sr in tax_return.state_returns.all():
         try:
             if sr.form_definition.code == "GA-600S":
-                _append(render_ga600s_native(sr), "GA Form 600S")
+                _append(render_ga600s_overlay(sr), "GA Form 600S")
             else:
                 _append(render_tax_return(sr), sr.form_definition.code)
         except Exception as e:
