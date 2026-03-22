@@ -80,6 +80,7 @@ def seed_builtin_rules():
                 "name": rule_data["name"],
                 "description": rule_data["description"],
                 "severity": rule_data["severity"],
+                "category": rule_data.get("category", "preparer"),
                 "rule_function": rule_data["rule_function"],
                 "is_active": True,
             },

@@ -10,6 +10,11 @@ class Severity(models.TextChoices):
     INFO = "info", "Info"
 
 
+class Category(models.TextChoices):
+    PREPARER = "preparer", "Preparer"
+    INTERNAL = "internal", "Internal"
+
+
 class RunStatus(models.TextChoices):
     RUNNING = "running", "Running"
     COMPLETED = "completed", "Completed"
@@ -33,6 +38,11 @@ class DiagnosticRule(models.Model):
         max_length=10,
         choices=Severity.choices,
         default=Severity.WARNING,
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=Category.choices,
+        default=Category.PREPARER,
     )
     rule_function = models.CharField(
         max_length=255,

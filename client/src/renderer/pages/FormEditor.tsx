@@ -889,6 +889,7 @@ export default function FormEditor() {
             <ScheduleFSection
               fieldsBySection={fieldsBySection}
               onChange={handleFieldChange}
+              pyLookup={pyLookup}
             />
           ) : activeTab === "balance_sheets" ? (
             <BalanceSheetsSection
@@ -3724,9 +3725,11 @@ const SCHED_F_HEADER_LINES = ["FH_CROP","FH_CODE","FH_METHOD","FH_EIN","FH_PARTI
 function ScheduleFSection({
   fieldsBySection,
   onChange,
+  pyLookup,
 }: {
   fieldsBySection: Record<string, FieldValue[]>;
   onChange: (formLineId: string, value: string) => void;
+  pyLookup?: Record<string, number>;
 }) {
   const allFields = fieldsBySection["sched_f"] || [];
 
@@ -3747,6 +3750,7 @@ function ScheduleFSection({
   const midpoint = Math.ceil(expenseFields.length / 2);
   const leftExpenses = expenseFields.slice(0, midpoint);
   const rightExpenses = expenseFields.slice(midpoint);
+  const hasPY = pyLookup && Object.keys(pyLookup).length > 0;
 
   return (
     <div className="space-y-4">
@@ -3794,10 +3798,11 @@ function ScheduleFSection({
           <div className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Line</div>
           <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-tx-secondary">Description</div>
           <div className="w-36 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Amount</div>
+          {hasPY && <div className="w-28 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-tx-muted">PY</div>}
         </div>
         <div className="divide-y divide-border-subtle">
           {incomeFields.map((fv) => (
-            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLookup?.[fv.line_number]} showPY={!!hasPY} />
           ))}
         </div>
       </div>
@@ -3831,7 +3836,7 @@ function ScheduleFSection({
         {/* Summary lines: F33 Total + F34 Net profit/loss */}
         <div className="border-t border-border divide-y divide-border-subtle bg-surface-alt/30">
           {summaryFields.map((fv) => (
-            <FieldRow key={fv.id} field={fv} onChange={onChange} />
+            <FieldRow key={fv.id} field={fv} onChange={onChange} pyValue={pyLookup?.[fv.line_number]} showPY={!!hasPY} />
           ))}
         </div>
       </div>
@@ -6378,6 +6383,8 @@ interface DiagnosticFinding {
   details: Record<string, unknown> | null;
   is_resolved: boolean;
   rule_name: string;
+  rule_code: string;
+  rule_category: "preparer" | "internal";
 }
 
 interface DiagnosticRunData {
@@ -6389,11 +6396,17 @@ interface DiagnosticRunData {
   findings: DiagnosticFinding[];
 }
 
+type SeverityFilter = "all" | "error" | "warning" | "info";
+
 function DiagnosticsTab({ taxYearId }: { taxYearId: string }) {
   const [runs, setRuns] = useState<DiagnosticRunData[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [showInternal, setShowInternal] = useState(() => {
+    try { return localStorage.getItem("diag_show_internal") === "true"; } catch { return false; }
+  });
 
   async function fetchRuns() {
     const res = await get(`/diagnostic-runs/?tax_year=${taxYearId}`);
@@ -6420,11 +6433,36 @@ function DiagnosticsTab({ taxYearId }: { taxYearId: string }) {
     }
   }
 
+  function toggleInternal() {
+    const next = !showInternal;
+    setShowInternal(next);
+    try { localStorage.setItem("diag_show_internal", String(next)); } catch { /* noop */ }
+  }
+
   const latestRun = runs.length > 0 ? runs[0] : null;
-  const findings = latestRun?.findings || [];
-  const errors = findings.filter((f) => f.severity === "error");
-  const warnings = findings.filter((f) => f.severity === "warning");
-  const infos = findings.filter((f) => f.severity === "info");
+  const allFindings = latestRun?.findings || [];
+
+  // Filter by category (hide internal unless toggled)
+  const visibleFindings = allFindings.filter(
+    (f) => showInternal || f.rule_category !== "internal"
+  );
+
+  // Filter by severity
+  const filtered = severityFilter === "all"
+    ? visibleFindings
+    : visibleFindings.filter((f) => f.severity === severityFilter);
+
+  // Counts for summary (based on visible findings, not severity-filtered)
+  const errorCount = visibleFindings.filter((f) => f.severity === "error").length;
+  const warnCount = visibleFindings.filter((f) => f.severity === "warning").length;
+  const infoCount = visibleFindings.filter((f) => f.severity === "info").length;
+  const internalCount = allFindings.filter((f) => f.rule_category === "internal").length;
+
+  // Sort: errors first, then warnings, then info
+  const SEVERITY_ORDER: Record<string, number> = { error: 0, warning: 1, info: 2 };
+  const sorted = [...filtered].sort((a, b) =>
+    (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
+  );
 
   const SEVERITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     error: { bg: "bg-danger/10", text: "text-danger", label: "Error" },
@@ -6468,55 +6506,90 @@ function DiagnosticsTab({ taxYearId }: { taxYearId: string }) {
         </div>
       )}
 
-      {/* Summary pills */}
-      {latestRun && findings.length > 0 && (
-        <div className="flex gap-3">
-          {errors.length > 0 && (
+      {/* Summary bar + filters */}
+      {latestRun && (
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Summary count pills */}
+          {errorCount > 0 && (
             <span className="rounded-full bg-danger/10 px-3 py-1 text-sm font-semibold text-danger">
-              {errors.length} Error{errors.length !== 1 ? "s" : ""}
+              {errorCount} Error{errorCount !== 1 ? "s" : ""}
             </span>
           )}
-          {warnings.length > 0 && (
+          {warnCount > 0 && (
             <span className="rounded-full bg-warning/10 px-3 py-1 text-sm font-semibold text-warning-dark">
-              {warnings.length} Warning{warnings.length !== 1 ? "s" : ""}
+              {warnCount} Warning{warnCount !== 1 ? "s" : ""}
             </span>
           )}
-          {infos.length > 0 && (
+          {infoCount > 0 && (
             <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary-text">
-              {infos.length} Info
+              {infoCount} Info
             </span>
+          )}
+
+          <div className="flex-1" />
+
+          {/* Severity filter buttons */}
+          {visibleFindings.length > 0 && (
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+              {(["all", "error", "warning", "info"] as const).map((sev) => (
+                <button
+                  key={sev}
+                  onClick={() => setSeverityFilter(sev)}
+                  className={`px-3 py-1 font-medium capitalize transition ${
+                    severityFilter === sev
+                      ? "bg-primary text-white"
+                      : "bg-card text-tx-secondary hover:bg-surface-alt"
+                  }`}
+                >
+                  {sev}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Internal toggle */}
+          {internalCount > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-tx-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showInternal}
+                onChange={toggleInternal}
+                className="rounded border-border"
+              />
+              Internal ({internalCount})
+            </label>
           )}
         </div>
       )}
 
-      {latestRun && findings.length === 0 && (
+      {latestRun && visibleFindings.length === 0 && (
         <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center shadow-sm">
           <svg className="mx-auto mb-2 h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-sm font-semibold text-success">No issues found</p>
+          <p className="text-sm font-semibold text-success">No issues found. Return looks good!</p>
         </div>
       )}
 
       {/* Findings list */}
-      {findings.length > 0 && (
+      {sorted.length > 0 && (
         <div className="rounded-xl border border-border bg-card shadow-sm divide-y divide-border-subtle">
-          {[...errors, ...warnings, ...infos].map((f) => {
+          {sorted.map((f) => {
             const style = SEVERITY_STYLES[f.severity] || SEVERITY_STYLES.info;
             return (
-              <div key={f.id} className="flex items-start gap-3 px-5 py-3">
+              <div key={f.id} className={`flex items-start gap-3 px-5 py-3 ${f.rule_category === "internal" ? "opacity-75" : ""}`}>
                 <span className={`mt-0.5 shrink-0 rounded px-2 py-0.5 text-xs font-bold uppercase ${style.bg} ${style.text}`}>
                   {style.label}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-tx">{f.message}</p>
-                  {f.details && Object.keys(f.details).length > 0 && (
-                    <p className="mt-1 text-xs text-tx-secondary">
-                      {JSON.stringify(f.details)}
-                    </p>
+                  {f.rule_category === "internal" && (
+                    <span className="inline-block mt-0.5 rounded bg-surface-alt px-1.5 py-0.5 text-[10px] font-medium uppercase text-tx-muted">
+                      internal
+                    </span>
                   )}
                 </div>
-                <span className="text-xs text-tx-muted">{f.rule_name}</span>
+                <span className="shrink-0 text-xs text-tx-muted font-mono">{f.rule_code}</span>
               </div>
             );
           })}

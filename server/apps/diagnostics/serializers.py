@@ -6,12 +6,13 @@ from .models import DiagnosticFinding, DiagnosticRule, DiagnosticRun
 class DiagnosticRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiagnosticRule
-        fields = ("id", "code", "name", "description", "severity", "is_active")
+        fields = ("id", "code", "name", "description", "severity", "category", "is_active")
 
 
 class DiagnosticFindingSerializer(serializers.ModelSerializer):
     rule_code = serializers.CharField(source="rule.code", read_only=True)
     rule_name = serializers.CharField(source="rule.name", read_only=True)
+    rule_category = serializers.CharField(source="rule.category", read_only=True)
 
     class Meta:
         model = DiagnosticFinding
@@ -19,6 +20,7 @@ class DiagnosticFindingSerializer(serializers.ModelSerializer):
             "id",
             "rule_code",
             "rule_name",
+            "rule_category",
             "severity",
             "message",
             "details",

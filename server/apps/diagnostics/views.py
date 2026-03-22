@@ -44,7 +44,11 @@ class DiagnosticRunViewSet(
 
     @action(detail=False, methods=["post"], url_path="run")
     def run(self, request):
-        """Run all active diagnostic rules against a tax year."""
+        """Run all active diagnostic rules against a tax year.
+
+        First computes the return (to ensure values are current),
+        then runs all diagnostic checks.
+        """
         ser = RunDiagnosticsSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
 
@@ -58,6 +62,16 @@ class DiagnosticRunViewSet(
                 {"error": "Tax year not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # Compute return first to ensure all values are current
+        from apps.returns.compute import compute_return
+        from apps.returns.models import TaxReturn
+
+        federal = TaxReturn.objects.filter(
+            tax_year=tax_year, federal_return__isnull=True
+        ).first()
+        if federal:
+            compute_return(federal)
 
         diagnostic_run = run_diagnostics(tax_year, run_by=request.user)
 
