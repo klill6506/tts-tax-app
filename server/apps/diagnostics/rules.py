@@ -157,7 +157,7 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
         # BOY: L14a (assets) vs L27a (liabilities + equity)
         assets_boy = _d(values, "L14a")
         liab_boy = _d(values, "L27a")
-        if assets_boy and liab_boy and assets_boy != liab_boy:
+        if (assets_boy or liab_boy) and assets_boy != liab_boy:
             diff = assets_boy - liab_boy
             findings.append({
                 "severity": "error",
@@ -172,7 +172,7 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
         # EOY: L14d (assets) vs L27d (liabilities + equity)
         assets_eoy = _d(values, "L14d")
         liab_eoy = _d(values, "L27d")
-        if assets_eoy and liab_eoy and assets_eoy != liab_eoy:
+        if (assets_eoy or liab_eoy) and assets_eoy != liab_eoy:
             diff = assets_eoy - liab_eoy
             findings.append({
                 "severity": "error",
@@ -193,7 +193,7 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
             else:  # 1120
                 assets = _d(values, f"L15{suffix}")
                 liab = _d(values, f"L28{suffix}")
-            if assets and liab and assets != liab:
+            if (assets or liab) and assets != liab:
                 diff = assets - liab
                 findings.append({
                     "severity": "error",
