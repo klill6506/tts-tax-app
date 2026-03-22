@@ -5,6 +5,7 @@ from decimal import Decimal
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.mixins import DestroyModelMixin, ListModelMixin, RetrieveModelMixin
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.audit.mixins import AuditViewSetMixin
@@ -689,6 +690,12 @@ def _auto_calculate_asset(asset, tax_return):
     return asset
 
 
+class TaxReturnPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class TaxReturnViewSet(
     PDFRenderMixin,
     AuditViewSetMixin,
@@ -700,6 +707,7 @@ class TaxReturnViewSet(
     """List, retrieve, create, and edit tax returns."""
 
     permission_classes = [IsFirmMember]
+    pagination_class = TaxReturnPagination
 
     def get_serializer_class(self):
         if self.action == "retrieve":
