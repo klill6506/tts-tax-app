@@ -4,10 +4,15 @@ Lacerte Depreciation Schedule TXT parser.
 Parses the Lacerte fixed-width depreciation schedule export and returns
 structured asset dicts ready for DepreciationAsset creation.
 
+Handles TWO formats:
+1. Multi-line: one asset per line, all columns on the same row (proper TXT export)
+2. Single-line: PDF text dump where left columns and right columns (method/life/current)
+   are in separate blocks, often all on 1-2 lines
+
 The Lacerte format has columns:
   No. | Description | Acquired | Sold | Cost/Basis | Bus.Pct | 179/SDA | Prior Depr | Method Life | Current Depr
 
-Group headers appear as standalone lines (e.g., "Auto / Transport Equipment").
+Group headers appear as standalone text (e.g., "Auto / Transport Equipment").
 Total and Grand Total lines are skipped.
 
 Usage:
@@ -40,9 +45,6 @@ _METHOD_ZERO_RE = re.compile(
     r"(\d+)\s+"
     r"([\d,]+|0)\s*$"
 )
-
-# Date pattern for sold date (appears between acquired date and cost)
-_SOLD_DATE_RE = re.compile(r"(\d{1,2}/\d{2}/\d{2})")
 
 # Lines to skip
 _SKIP_PATTERNS = [
@@ -87,6 +89,20 @@ GROUP_MAP: dict[str, str] = {
     "other depreciation": "machinery_equipment",
     "other": "machinery_equipment",
 }
+
+# Known group header patterns for detecting in single-line format
+_GROUP_PATTERNS = [
+    (re.compile(r"Auto\s*/?\s*Transport\s+Equipment", re.IGNORECASE), "vehicles"),
+    (re.compile(r"Machinery\s+(?:and|&)\s+Equipment", re.IGNORECASE), "machinery_equipment"),
+    (re.compile(r"Furniture\s+(?:and|&)\s+Fixtures", re.IGNORECASE), "furniture_fixtures"),
+    (re.compile(r"Land\s+Improvements?", re.IGNORECASE), "improvements"),
+    (re.compile(r"Leasehold\s+Improvements?", re.IGNORECASE), "improvements"),
+    (re.compile(r"Intangible\s+Assets?", re.IGNORECASE), "intangibles"),
+    (re.compile(r"Intangibles?(?:\s*/\s*Amortization)?", re.IGNORECASE), "intangibles"),
+    (re.compile(r"Buildings?", re.IGNORECASE), "buildings"),
+    (re.compile(r"(?<!\w)Land(?!\s+Imp)", re.IGNORECASE), "land"),
+    (re.compile(r"Other\s+Depreciation", re.IGNORECASE), "machinery_equipment"),
+]
 
 
 def _parse_date(date_str: str) -> str | None:
@@ -197,10 +213,6 @@ def _parse_asset_line(line: str, current_group: str) -> dict | None:
         remainder = remainder[sold_match.end():]
 
     # Parse remaining numeric fields from the remainder
-    # Fields in order: Cost/Basis, Bus.Pct, 179/SDA, Prior Depr, [Method Life CurrDepr]
-    # Extract all numbers from remainder
-    tokens = remainder.split()
-
     cost_basis = 0
     business_pct = 100.0
     section_179 = 0
@@ -220,6 +232,8 @@ def _parse_asset_line(line: str, current_group: str) -> dict | None:
         # Get the part before method for numeric parsing
         before_method = remainder[:method_match.start()]
         tokens = before_method.split()
+    else:
+        tokens = remainder.split()
 
     # Parse numeric tokens left-to-right
     numeric_values = []
@@ -271,9 +285,205 @@ def _parse_asset_line(line: str, current_group: str) -> dict | None:
     }
 
 
+# ---------------------------------------------------------------------------
+# Single-line (PDF text dump) format parser
+# ---------------------------------------------------------------------------
+
+
+def _is_single_line_format(content: str) -> bool:
+    """Detect if the content is a single-line PDF text dump rather than
+    a properly formatted multi-line file."""
+    meaningful = [ln for ln in content.splitlines() if ln.strip()]
+    if len(meaningful) <= 4:
+        return True
+    # Also check if most content is on one very long line
+    if meaningful and max(len(ln) for ln in meaningful) > 500:
+        return True
+    return False
+
+
+def _parse_single_line_format(text: str) -> list[dict]:
+    """Parse the single-line PDF text dump format from Lacerte.
+
+    In this format, left-side columns (No, Desc, Date, Cost, Prior) and
+    right-side columns (Method, Life, Current) are in separate blocks —
+    the method block appears at the end after all asset data.
+    """
+    # --- Step 1: Split left block (asset data) from right block (method data) ---
+    # The method block is signaled by "Method Life Depr" or "Current Method Life Depr"
+    method_marker = re.search(
+        r"(?:\d{2}:\d{2}[AP]M\s+)?(?:Current\s+)?Method\s+Life\s+Depr",
+        text, re.IGNORECASE,
+    )
+    if method_marker:
+        left = text[:method_marker.start()]
+        right = text[method_marker.end():]
+    else:
+        left = text
+        right = ""
+
+    # --- Step 2: Extract method/convention/life/current from right block ---
+    # In the PDF text dump, entries are often concatenated without spaces:
+    #   "288200DB MQ 5 2,266" = current_depr=288 then method=200DB...
+    # Insert a space before each method code to separate them.
+    right = re.sub(r"(\d)(200DB|150DB|SL|AMT)", r"\1 \2", right)
+    method_entries = re.findall(
+        r"(200DB|150DB|SL|AMT)\s+(HY|MQ|MM|S/L)\s+(\d+)\s+([\d,]+)",
+        right,
+    )
+
+    # --- Step 3: Clean up left block by stripping noise inline ---
+    # Strip everything before first group header (header/metadata)
+    first_group_pos = None
+    for pattern, _ in _GROUP_PATTERNS:
+        m = pattern.search(left)
+        if m and (first_group_pos is None or m.start() < first_group_pos):
+            first_group_pos = m.start()
+    if first_group_pos is not None:
+        left = left[first_group_pos:]
+
+    # Strip total lines: "Total <group> <amounts>" and "Grand Total..."
+    left = re.sub(r"Total\s+Depreciation[\d,.\s]*", " ", left, flags=re.IGNORECASE)
+    left = re.sub(r"Grand\s+Total[\d,.\s]*", " ", left, flags=re.IGNORECASE)
+    left = re.sub(r"Total\s+[\w\s&/]+?[\d,]+[\d,.\s]*", " ", left, flags=re.IGNORECASE)
+
+    # Replace underscore runs with spaces (they're just visual separators)
+    left = re.sub(r"_{3,}", " ", left)
+
+    # Collapse whitespace
+    left = re.sub(r"\s+", " ", left)
+
+    # --- Step 4: Find group header positions in cleaned left block ---
+    group_positions: list[tuple[int, str]] = []
+    for pattern, group in _GROUP_PATTERNS:
+        for m in pattern.finditer(left):
+            group_positions.append((m.start(), group))
+    group_positions.sort()
+
+    # --- Step 5: Find all asset entries in cleaned left block ---
+    asset_re = re.compile(
+        r"(?<![,.\d])"          # not preceded by comma, dot, or digit
+        r"(\d{1,3})"            # asset number
+        r"\s+"
+        r"(.*?)"                # description (non-greedy)
+        r"\s+"
+        r"(\d{1,2}/\d{2}/\d{2})"  # date acquired
+    )
+
+    raw_assets: list[dict] = []
+    matches = list(asset_re.finditer(left))
+
+    for idx, m in enumerate(matches):
+        asset_num = int(m.group(1))
+        desc = m.group(2).strip()
+
+        # Skip asset number 0
+        if asset_num == 0:
+            continue
+
+        # Skip if description looks like noise
+        if re.search(r"Federal|Summary|Schedule|Client\s+\w|Page\s+\d", desc, re.IGNORECASE):
+            continue
+
+        date_acq_raw = m.group(3)
+
+        # Determine which group this asset belongs to
+        asset_pos = m.start()
+        current_group = "machinery_equipment"
+        for gpos, group in group_positions:
+            if gpos < asset_pos:
+                current_group = group
+
+        # Get the amount text between this date and the next match
+        after_date_start = m.end()
+        if idx + 1 < len(matches):
+            after_date_end = matches[idx + 1].start()
+        else:
+            after_date_end = len(left)
+
+        amount_text = left[after_date_start:after_date_end]
+
+        # Check for sold date right after acquired date
+        date_sold_raw = None
+        sold_match = re.match(r"\s*(\d{1,2}/\d{2}/\d{2})", amount_text)
+        if sold_match:
+            date_sold_raw = sold_match.group(1)
+            amount_text = amount_text[sold_match.end():]
+
+        # Parse numeric tokens
+        numeric_values = []
+        for tok in amount_text.split():
+            clean = tok.replace(",", "").strip()
+            if not clean:
+                continue
+            try:
+                val = float(clean)
+                numeric_values.append((val, tok))
+            except ValueError:
+                continue
+
+        cost_basis = 0
+        business_pct = 100.0
+        section_179 = 0
+        prior_depreciation = 0
+
+        if len(numeric_values) >= 1:
+            cost_basis = _parse_amount(numeric_values[0][1])
+        if len(numeric_values) >= 2:
+            val, tok = numeric_values[1]
+            if 0 < val <= 100 and "." in tok:
+                business_pct = val
+                remaining = numeric_values[2:]
+            else:
+                remaining = numeric_values[1:]
+
+            if len(remaining) == 1:
+                prior_depreciation = _parse_amount(remaining[0][1])
+            elif len(remaining) >= 2:
+                section_179 = _parse_amount(remaining[0][1])
+                prior_depreciation = _parse_amount(remaining[1][1])
+
+        raw_assets.append({
+            "asset_number": asset_num,
+            "description": desc,
+            "date_acquired": _parse_date(date_acq_raw),
+            "date_sold": _parse_date(date_sold_raw) if date_sold_raw else None,
+            "cost_basis": cost_basis,
+            "business_pct": business_pct,
+            "section_179": section_179,
+            "prior_depreciation": prior_depreciation,
+            "current_depreciation": 0,
+            "method": "",
+            "convention": "",
+            "life": 0,
+            "asset_group": current_group,
+            "raw_line": "",
+        })
+
+    # --- Step 5: Merge method data (right block) into assets by position ---
+    method_idx = 0
+    for asset in raw_assets:
+        if method_idx < len(method_entries):
+            meth, conv, life_str, curr = method_entries[method_idx]
+            asset["method"] = meth
+            asset["convention"] = conv
+            asset["life"] = int(life_str)
+            asset["current_depreciation"] = _parse_amount(curr)
+            method_idx += 1
+
+    return raw_assets
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
 def parse_lacerte_txt(file_content: str) -> list[dict]:
     """
     Parse Lacerte depreciation schedule TXT export.
+
+    Auto-detects format: multi-line (proper TXT) or single-line (PDF text dump).
 
     Returns list of dicts, each representing one asset:
     {
@@ -293,6 +503,14 @@ def parse_lacerte_txt(file_content: str) -> list[dict]:
         "raw_line": "...",
     }
     """
+    if not file_content or not file_content.strip():
+        return []
+
+    # Auto-detect format
+    if _is_single_line_format(file_content):
+        return _parse_single_line_format(file_content)
+
+    # Multi-line format: parse line by line
     lines = file_content.splitlines()
     assets: list[dict] = []
     current_group = "machinery_equipment"  # default

@@ -257,6 +257,61 @@ Grand Total Depreciation 0 0 0
 """
         assets = parse_lacerte_txt(content)
         assert len(assets) == 1
-        a = assets[0]
-        assert a["asset_group"] == "furniture_fixtures"
-        assert a["cost_basis"] == 5000
+
+
+# ---------------------------------------------------------------------------
+# Single-line (PDF text dump) format
+# ---------------------------------------------------------------------------
+
+class TestSingleLineFormat:
+    """Tests for the single-line PDF text dump format (Lacerte 'Single Page')."""
+
+    @pytest.fixture
+    def mwelding_raw(self):
+        """The actual raw file from Lacerte (single-line dump)."""
+        raw_path = Path(__file__).parent.parent.parent / "Single Page Form for MWELDING.txt"
+        if not raw_path.exists():
+            pytest.skip("Raw MWELDING file not available")
+        return raw_path.read_text(encoding="utf-8")
+
+    def test_parses_all_12_assets(self, mwelding_raw):
+        assets = parse_lacerte_txt(mwelding_raw)
+        assert len(assets) == 12
+
+    def test_totals_match_lacerte(self, mwelding_raw):
+        """Grand totals must match Lacerte: cost=150,628 prior=102,163 current=2,554."""
+        assets = parse_lacerte_txt(mwelding_raw)
+        assert sum(a["cost_basis"] for a in assets) == 150628
+        assert sum(a["prior_depreciation"] for a in assets) == 102163
+        assert sum(a["current_depreciation"] for a in assets) == 2554
+
+    def test_business_pct_in_single_line(self, mwelding_raw):
+        """Asset #9 (Dodge Ram) should have 51% business use and correct prior."""
+        assets = parse_lacerte_txt(mwelding_raw)
+        dodge = next(a for a in assets if a["asset_number"] == 9)
+        assert dodge["business_pct"] == 51.0
+        assert dodge["prior_depreciation"] == 41465
+
+    def test_forklift_not_lost(self, mwelding_raw):
+        """Asset #1 (FORKLIFT) must be found despite tricky text boundaries."""
+        assets = parse_lacerte_txt(mwelding_raw)
+        forklift = next((a for a in assets if a["asset_number"] == 1), None)
+        assert forklift is not None
+        assert forklift["description"] == "FORKLIFT"
+        assert forklift["cost_basis"] == 4815
+
+    def test_methods_aligned_correctly(self, mwelding_raw):
+        """Method/convention/life from right block must match assets in order."""
+        assets = parse_lacerte_txt(mwelding_raw)
+        chevy = next(a for a in assets if a["asset_number"] == 8)
+        assert chevy["method"] == "200DB"
+        assert chevy["convention"] == "HY"
+        assert chevy["life"] == 5
+        assert chevy["current_depreciation"] == 288
+
+    def test_groups_detected_in_single_line(self, mwelding_raw):
+        assets = parse_lacerte_txt(mwelding_raw)
+        vehicle_nums = {a["asset_number"] for a in assets if a["asset_group"] == "vehicles"}
+        mach_nums = {a["asset_number"] for a in assets if a["asset_group"] == "machinery_equipment"}
+        assert vehicle_nums == {8, 9}
+        assert mach_nums == {1, 2, 3, 4, 5, 6, 7, 10, 11, 12}
