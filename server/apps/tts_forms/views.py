@@ -463,6 +463,7 @@ class PDFRenderMixin:
 
         tax_return = self.get_object()
         package = request.query_params.get("package")
+        screen_mode = request.query_params.get("screen", "").lower() == "true"
 
         # Ensure all computed fields (M-2, totals, etc.) are up-to-date
         compute_return(tax_return)
@@ -474,7 +475,9 @@ class PDFRenderMixin:
             )
 
         try:
-            pdf_bytes = render_complete_return(tax_return, package=package)
+            pdf_bytes = render_complete_return(
+                tax_return, package=package, screen_mode=screen_mode,
+            )
         except Exception as e:
             return Response(
                 {"error": str(e)},

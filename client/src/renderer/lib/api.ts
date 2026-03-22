@@ -196,9 +196,13 @@ export async function render7004(taxReturnId: string): Promise<PdfResponse> {
 
 export async function renderComplete(
   taxReturnId: string,
-  packageName?: string
+  packageName?: string,
+  screenMode?: boolean,
 ): Promise<PdfResponse> {
-  const qs = packageName ? `?package=${packageName}` : "";
+  const params: string[] = [];
+  if (packageName) params.push(`package=${packageName}`);
+  if (screenMode) params.push("screen=true");
+  const qs = params.length ? `?${params.join("&")}` : "";
   return fetchPdf(`/tax-returns/${taxReturnId}/render-complete/${qs}`);
 }
 

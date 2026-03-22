@@ -10,6 +10,7 @@ import {
 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
+import PdfViewer from "../components/PdfViewer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -546,6 +547,8 @@ export default function FormEditor() {
         <span className="font-semibold text-white">
           {returnData.form_code} &mdash; {returnData.year}
         </span>
+        <ReturnStatusPill status={returnData.status} />
+        <SaveStatusIndicator status={saveStatus} />
       </div>,
     );
     return () => setEditorBreadcrumb(null);
@@ -770,38 +773,13 @@ export default function FormEditor() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-tx">
-            Form {returnData.form_code}
-          </h1>
-          <p className="text-sm text-tx-secondary">
-            {returnData.entity_name} &mdash; Tax Year {returnData.year}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ReturnStatusPill status={returnData.status} />
-          {importResult && (
-            <span className="text-sm font-medium text-success">
-              {importResult}
-            </span>
-          )}
-          <SaveStatusIndicator status={saveStatus} />
-          {!isStateReturn && (
-            <button
-              onClick={handleImportTB}
-              disabled={importing}
-              className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
-            >
-              {importing ? "Importing..." : "Import Trial Balance"}
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Compact utility bar — Import TB moves here (status + save are in toolbar breadcrumb) */}
+      {importResult && (
+        <div className="mb-2 text-sm font-medium text-success">{importResult}</div>
+      )}
 
       {/* Primary tab bar — Input / Forms / Diagnostics */}
-      <div className="sticky top-0 z-10 bg-surface -mx-6 px-6 mb-4 flex items-center gap-0 border-b-2 border-border">
+      <div className="sticky top-0 z-10 bg-surface -mx-4 px-4 mb-2 flex items-center gap-0 border-b-2 border-border">
         {(["input", "forms", "diagnostics"] as const).map((tab) => (
           <button
             key={tab}
@@ -821,7 +799,7 @@ export default function FormEditor() {
       {primaryTab === "input" && (
         <>
           {/* Section tab bar */}
-          <div className="sticky top-[42px] z-10 bg-surface -mx-6 px-6 mb-4 flex flex-wrap gap-1 border-b border-border">
+          <div className="sticky top-[42px] z-10 bg-surface -mx-4 px-4 mb-2 flex items-center gap-1 border-b border-border overflow-x-auto scrollbar-hide">
             {sectionTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -835,6 +813,15 @@ export default function FormEditor() {
                 {tab.label}
               </button>
             ))}
+            {!isStateReturn && (
+              <button
+                onClick={handleImportTB}
+                disabled={importing}
+                className="ml-auto shrink-0 whitespace-nowrap rounded px-2 py-1 text-xs font-medium text-success hover:bg-success/10 disabled:opacity-50"
+              >
+                {importing ? "Importing..." : "Import TB"}
+              </button>
+            )}
           </div>
 
           {/* Active section content */}
@@ -5808,12 +5795,13 @@ function FormsTab({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
   const pdfUrlRef = useRef<string | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [packages, setPackages] = useState(DEFAULT_PRINT_PACKAGES);
   const [pageMap, setPageMap] = useState<{ form: string; page: number }[]>([]);
   const [activePage, setActivePage] = useState(1);
+  const [goToPageNum, setGoToPageNum] = useState(0);
 
   const formCode = returnData.form_code;
   const entityName = returnData.entity_name;
@@ -5844,7 +5832,7 @@ function FormsTab({
 
     // Fetch PDF and page map in parallel
     const [pdfRes, mapRes] = await Promise.all([
-      renderComplete(taxReturnId, pkgName || undefined),
+      renderComplete(taxReturnId, pkgName || undefined, true),
       getPageMap(taxReturnId, pkgName || undefined),
     ]);
     setLoading(false);
@@ -5853,6 +5841,8 @@ function FormsTab({
       const binary = atob(pdfRes.pdfBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      setPdfData(bytes);
+      // Also keep blob URL for download fallback
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       pdfUrlRef.current = url;
@@ -5893,61 +5883,48 @@ function FormsTab({
 
   function goToPage(page: number) {
     setActivePage(page);
-    const iframe = iframeRef.current;
-    if (!pdfUrlRef.current || !iframe) return;
-    // Navigate to about:blank first to force Chrome PDF viewer to re-navigate
-    iframe.src = "about:blank";
-    setTimeout(() => {
-      if (iframeRef.current && pdfUrlRef.current) {
-        iframeRef.current.src = `${pdfUrlRef.current}#page=${page}`;
-      }
-    }, 50);
+    setGoToPageNum(page);
   }
 
   return (
-    <div className="flex flex-col -mx-6 -mb-6" style={{ height: "calc(100vh - 8rem)" }}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-1.5">
-        <span className="text-sm font-semibold text-tx">
-          {formCode} &mdash; {entityName} &mdash; {year}
-        </span>
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedPackage}
-            onChange={handlePackageChange}
-            disabled={loading}
-            className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-tx focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-          >
-            {packages.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => loadComplete()}
-            disabled={loading}
-            className="rounded-lg border border-border px-3 py-1 text-sm font-medium text-tx hover:bg-surface-alt disabled:opacity-50"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={handleDownload}
-            disabled={!pdfUrl}
-            className="rounded-lg bg-primary px-3 py-1 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-          >
-            Download
-          </button>
-        </div>
-      </div>
-
+    <div className="flex flex-col -mx-4 -mb-3" style={{ height: "calc(100vh - 6.5rem)" }}>
       {/* Main content: sidebar + PDF viewer */}
       <div className="flex flex-1 min-h-0">
         {/* Form name sidebar */}
         {pageMap.length > 0 && !loading && (
-          <div className="w-52 shrink-0 overflow-y-auto border-r border-border bg-surface-alt">
-            <div className="px-2 py-2 text-xs font-semibold uppercase tracking-wider text-tx-secondary">
-              Forms
+          <div className="w-48 shrink-0 overflow-y-auto border-r border-border bg-surface-alt">
+            {/* Sidebar header with controls */}
+            <div className="sticky top-0 z-10 bg-surface-alt border-b border-border px-2 py-1.5 space-y-1">
+              <div className="flex items-center gap-1">
+                <select
+                  value={selectedPackage}
+                  onChange={handlePackageChange}
+                  disabled={loading}
+                  className="flex-1 min-w-0 rounded border border-border bg-card px-1.5 py-0.5 text-xs text-tx focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  {packages.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => loadComplete()}
+                  disabled={loading}
+                  className="shrink-0 rounded border border-border px-1.5 py-0.5 text-xs text-tx hover:bg-surface-alt-hover disabled:opacity-50"
+                  title="Refresh"
+                >
+                  &#x21BB;
+                </button>
+                <button
+                  onClick={handleDownload}
+                  disabled={!pdfUrl}
+                  className="shrink-0 rounded bg-primary px-1.5 py-0.5 text-xs text-white hover:bg-primary-hover disabled:opacity-50"
+                  title="Download"
+                >
+                  &#x2193;
+                </button>
+              </div>
             </div>
             {pageMap.map((entry) => (
               <button
@@ -5981,12 +5958,11 @@ function FormsTab({
               <p className="text-sm text-danger">{error}</p>
             </div>
           )}
-          {pdfUrl && !loading && (
-            <iframe
-              ref={iframeRef}
-              src={`${pdfUrl}#zoom=page-width`}
-              className="flex-1 border-0"
-              title="Complete Return PDF"
+          {!loading && pdfData && (
+            <PdfViewer
+              data={pdfData}
+              goToPage={goToPageNum}
+              onPageChange={(page) => setActivePage(page)}
             />
           )}
         </div>

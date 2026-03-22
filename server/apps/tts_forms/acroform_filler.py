@@ -92,6 +92,7 @@ def fill_form(
     header_data: dict[str, str] | None = None,
     header_map: FieldMap | None = None,
     flatten: bool = True,
+    screen_mode: bool = False,
 ) -> bytes:
     """
     Fill an IRS PDF by overlaying text at AcroForm field positions.
@@ -147,9 +148,12 @@ def fill_form(
     flat_reader = PdfReader(flat_buf)
 
     # --- 4. Create ReportLab text overlay at widget positions ---
+    # Import data color helper — reads screen_mode from context variable
+    from .renderer import _data_color
+
     overlay_buf = io.BytesIO()
     c = canvas.Canvas(overlay_buf)
-    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
+    c.setFillColorRGB(*_data_color())
     filled_count = 0
 
     for page_idx in range(page_count):

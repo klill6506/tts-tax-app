@@ -117,6 +117,26 @@ EXTENSION_FORM_CODES: dict[str, str] = {
 DEFAULT_FONT = "Courier-Bold"
 DEFAULT_FONT_SIZE = 10
 
+# Data text color for on-screen vs print
+DATA_COLOR_BLACK = (0, 0, 0)
+DATA_COLOR_BLUE = (0.0, 0.0, 0.75)
+
+import contextvars
+_screen_mode_ctx: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "screen_mode", default=False,
+)
+
+
+def _data_color(screen_mode: bool | None = None) -> tuple[float, float, float]:
+    """Return RGB tuple for data text — blue on screen, black for print.
+
+    If screen_mode is not explicitly passed, reads from the context variable
+    (set by render_complete_return or render).
+    """
+    if screen_mode is None:
+        screen_mode = _screen_mode_ctx.get(False)
+    return DATA_COLOR_BLUE if screen_mode else DATA_COLOR_BLACK
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -160,6 +180,7 @@ def _create_overlay(
     header_data: dict[str, str] | None,
     header_map: dict[str, FieldCoord] | None,
     page_count: int,
+    screen_mode: bool = False,
 ) -> io.BytesIO:
     """
     Create a multi-page transparent overlay PDF using ReportLab.
@@ -172,7 +193,7 @@ def _create_overlay(
     """
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
-    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
+    c.setFillColorRGB(*_data_color(screen_mode))
 
     for page_idx in range(page_count):
         # Draw header fields on the appropriate page
@@ -233,6 +254,7 @@ def render(
     field_values: dict[str, tuple[str, str]],
     header_data: dict[str, str] | None = None,
     statement_pages: list[dict] | None = None,
+    screen_mode: bool = False,
 ) -> bytes:
     """
     Render a completed IRS form PDF.
@@ -252,6 +274,7 @@ def render(
     Returns:
         PDF file content as bytes.
     """
+    _screen_mode_ctx.set(screen_mode)
     template_path = _get_template_path(form_id, tax_year)
     if not template_path.exists():
         raise FileNotFoundError(
@@ -270,6 +293,7 @@ def render(
                 field_map=acro_field_map,
                 header_data=header_data,
                 header_map=acro_header_map or None,
+                screen_mode=screen_mode,
             )
         except ValueError:
             pass  # Fall through to coordinate overlay
@@ -295,6 +319,7 @@ def render(
             header_data=header_data,
             header_map=header_map,
             page_count=page_count,
+            screen_mode=screen_mode,
         )
         overlay_reader = PdfReader(overlay_buf)
 
@@ -1982,7 +2007,7 @@ def render_8949(tax_return) -> bytes:
 _GA600S_TEMPLATE = Path(__file__).resolve().parent.parent.parent / "pdf_templates" / "ga600s_2025.pdf"
 
 
-def render_ga600s_overlay(tax_return) -> bytes:
+def render_ga600s_overlay(tax_return, screen_mode: bool = False) -> bytes:
     """
     Render Georgia Form 600S using coordinate overlay on the official GA DOR template.
 
@@ -2071,6 +2096,7 @@ def render_ga600s_overlay(tax_return) -> bytes:
         header_data=header_data,
         header_map=FGA600S_HEADER_FIELDS,
         page_count=page_count,
+        screen_mode=screen_mode,
     )
     overlay_reader = PdfReader(overlay_buf)
 
@@ -2093,7 +2119,7 @@ def render_ga600s_overlay(tax_return) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def render_depreciation_schedule(tax_return) -> bytes:
+def render_depreciation_schedule(tax_return, screen_mode: bool = False) -> bytes:
     """
     Render a printable depreciation schedule report in landscape orientation.
 
@@ -2161,7 +2187,7 @@ def render_depreciation_schedule(tax_return) -> bytes:
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
-    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
+    c.setFillColorRGB(*_data_color(screen_mode))
 
     def _fmt(val, is_currency=True):
         """Format a Decimal as whole dollars with commas."""
@@ -2382,6 +2408,7 @@ def _render_me_statement(
     meals_50_fv,
     meals_dot_fv,
     entertainment_fv,
+    screen_mode: bool = False,
 ) -> bytes | None:
     """Render a custom Meals & Entertainment statement page.
 
@@ -2392,7 +2419,7 @@ def _render_me_statement(
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
-    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
+    c.setFillColorRGB(*_data_color(screen_mode))
     PAGE_W, PAGE_H = letter
     LM = 1.0 * 72  # 1 inch
     RM = PAGE_W - 1.0 * 72
@@ -2512,6 +2539,7 @@ def render_complete_return(
     tax_return,
     package: str | None = None,
     return_page_map: bool = False,
+    screen_mode: bool = False,
 ) -> bytes | tuple[bytes, list[dict]]:
     """
     Render forms for a return as one continuous PDF.
@@ -2528,17 +2556,30 @@ def render_complete_return(
     import logging
     from apps.returns.models import FormFieldValue, RentalProperty, Shareholder
 
+    _screen_mode_ctx.set(screen_mode)
     logger = logging.getLogger(__name__)
     writer = PdfWriter()
     page_map: list[dict] = []  # tracks form name for each page
 
+    # Pages to skip: {form_name_prefix: set of page indices (0-based)}
+    # Page index 1 = second page of the source PDF (instructions-only pages)
+    SKIP_PAGES: dict[str, set[int]] = {
+        "Form 8879-S": {1},  # page 2 is IRS instructions only
+    }
+
     def _append(pdf_bytes: bytes, form_name: str = "Unknown") -> None:
         reader = PdfReader(io.BytesIO(pdf_bytes))
         num_pages = len(reader.pages)
+        skip = SKIP_PAGES.get(form_name, set())
         for p, page in enumerate(reader.pages):
+            if p in skip:
+                continue
             writer.add_page(page)
-            if num_pages > 1:
-                page_map.append({"form": f"{form_name} (p.{p + 1})", "page": len(page_map) + 1})
+            actual_pages = num_pages - len(skip)
+            if actual_pages > 1:
+                # Renumber pages after skipping
+                visible_idx = sum(1 for i in range(p) if i not in skip) + 1
+                page_map.append({"form": f"{form_name} (p.{visible_idx})", "page": len(page_map) + 1})
             else:
                 page_map.append({"form": form_name, "page": len(page_map) + 1})
 
