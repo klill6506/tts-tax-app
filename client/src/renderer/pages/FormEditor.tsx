@@ -779,7 +779,7 @@ export default function FormEditor() {
       )}
 
       {/* Primary tab bar — Input / Forms / Diagnostics */}
-      <div className="sticky top-0 z-10 bg-surface -mx-4 px-4 mb-2 flex items-center gap-0 border-b-2 border-border">
+      <div className="sticky top-0 z-10 bg-surface -mx-5 px-5 mb-2 flex items-center gap-0 border-b-2 border-border">
         {(["input", "forms", "diagnostics"] as const).map((tab) => (
           <button
             key={tab}
@@ -799,7 +799,7 @@ export default function FormEditor() {
       {primaryTab === "input" && (
         <>
           {/* Section tab bar */}
-          <div className="sticky top-[42px] z-10 bg-surface -mx-4 px-4 mb-2 flex items-center gap-1 border-b border-border overflow-x-auto scrollbar-hide">
+          <div className="sticky top-[42px] z-10 bg-surface -mx-5 px-5 mb-2 flex items-center gap-1 border-b border-border overflow-x-auto scrollbar-hide">
             {sectionTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -5887,7 +5887,7 @@ function FormsTab({
   }
 
   return (
-    <div className="flex flex-col -mx-4 -mb-3" style={{ height: "calc(100vh - 6.5rem)" }}>
+    <div className="flex flex-col -mx-5 -mb-4" style={{ height: "calc(100vh - 7rem)" }}>
       {/* Main content: sidebar + PDF viewer */}
       <div className="flex flex-1 min-h-0">
         {/* Form name sidebar */}

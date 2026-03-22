@@ -274,7 +274,9 @@ def render(
     Returns:
         PDF file content as bytes.
     """
-    _screen_mode_ctx.set(screen_mode)
+    # Only set context var if explicitly passed (don't overwrite parent's setting)
+    if screen_mode:
+        _screen_mode_ctx.set(screen_mode)
     template_path = _get_template_path(form_id, tax_year)
     if not template_path.exists():
         raise FileNotFoundError(
