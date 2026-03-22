@@ -10,7 +10,7 @@ import {
 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
-import PdfViewer from "../components/PdfViewer";
+// PdfViewer removed — browser native PDF embed is more reliable for print/zoom
 
 // ---------------------------------------------------------------------------
 // Types
@@ -5795,13 +5795,12 @@ function FormsTab({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
   const pdfUrlRef = useRef<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [packages, setPackages] = useState(DEFAULT_PRINT_PACKAGES);
   const [pageMap, setPageMap] = useState<{ form: string; page: number }[]>([]);
   const [activePage, setActivePage] = useState(1);
-  const [goToPageNum, setGoToPageNum] = useState(0);
 
   const formCode = returnData.form_code;
   const entityName = returnData.entity_name;
@@ -5841,8 +5840,6 @@ function FormsTab({
       const binary = atob(pdfRes.pdfBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      setPdfData(bytes);
-      // Also keep blob URL for download fallback
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       pdfUrlRef.current = url;
@@ -5883,7 +5880,14 @@ function FormsTab({
 
   function goToPage(page: number) {
     setActivePage(page);
-    setGoToPageNum(page);
+    const iframe = iframeRef.current;
+    if (!pdfUrlRef.current || !iframe) return;
+    iframe.src = "about:blank";
+    setTimeout(() => {
+      if (iframeRef.current && pdfUrlRef.current) {
+        iframeRef.current.src = `${pdfUrlRef.current}#page=${page}&zoom=138`;
+      }
+    }, 50);
   }
 
   return (
@@ -5958,11 +5962,12 @@ function FormsTab({
               <p className="text-sm text-danger">{error}</p>
             </div>
           )}
-          {!loading && pdfData && (
-            <PdfViewer
-              data={pdfData}
-              goToPage={goToPageNum}
-              onPageChange={(page) => setActivePage(page)}
+          {pdfUrl && !loading && (
+            <iframe
+              ref={iframeRef}
+              src={`${pdfUrl}#zoom=138`}
+              className="flex-1 border-0"
+              title="Complete Return PDF"
             />
           )}
         </div>
