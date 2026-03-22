@@ -1,12 +1,12 @@
 /**
- * PDF.js-based PDF viewer with continuous scroll, custom toolbar,
- * and sidebar page navigation integration.
+ * PDF.js-based PDF viewer with continuous scroll and custom toolbar.
  *
- * Renders PDF pages to canvas elements with virtual rendering
- * (only visible pages + buffer are rendered at full quality).
+ * Renders all pages to canvas elements with proper dimensions.
+ * Simpler and more reliable than virtual rendering for typical
+ * tax return PDFs (20-40 pages).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Configure PDF.js worker
@@ -27,35 +27,31 @@ interface PdfViewerProps {
 const SCALE_STEP = 0.15;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3.0;
-const BUFFER_PAGES = 2; // render this many pages above/below viewport
-const PAGE_GAP = 8; // px between pages
+const PAGE_GAP = 8;
 
 export default function PdfViewer({ data, onPageChange, goToPage }: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [pdf, setPdf] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(0); // 0 = fit-to-width (computed)
-  const [fitScale, setFitScale] = useState(1);
+  const [scale, setScale] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Track which pages are rendered to avoid re-rendering
-  const renderedPages = useRef<Map<number, number>>(new Map()); // page -> scale
-  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
-  const pageHeights = useRef<number[]>([]);
+  const [rendered, setRendered] = useState(false);
 
   // Load PDF document
   useEffect(() => {
     if (!data) {
       setPdf(null);
       setNumPages(0);
+      setRendered(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    renderedPages.current.clear();
+    setRendered(false);
 
     const loadingTask = pdfjsLib.getDocument({ data });
     loadingTask.promise
@@ -75,158 +71,132 @@ export default function PdfViewer({ data, onPageChange, goToPage }: PdfViewerPro
     };
   }, [data]);
 
-  // Compute fit-to-width scale when PDF loads or container resizes
+  // Compute fit-to-width scale and render all pages
   useEffect(() => {
     if (!pdf || !containerRef.current) return;
+    let cancelled = false;
 
-    async function computeFitScale() {
-      const page = await pdf!.getPage(1);
-      const viewport = page.getViewport({ scale: 1 });
-      const containerWidth = containerRef.current!.clientWidth - 32; // 16px padding each side
-      const computed = containerWidth / viewport.width;
-      setFitScale(computed);
-      if (scale === 0) setScale(computed);
-    }
+    async function renderAll() {
+      const firstPage = await pdf!.getPage(1);
+      const baseViewport = firstPage.getViewport({ scale: 1 });
+      const containerWidth = containerRef.current!.clientWidth - 32;
+      const fitScale = containerWidth / baseViewport.width;
+      if (cancelled) return;
+      setScale(fitScale);
 
-    computeFitScale();
+      const dpr = window.devicePixelRatio || 1;
 
-    const observer = new ResizeObserver(() => {
-      computeFitScale();
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [pdf]);
+      for (let i = 1; i <= pdf!.numPages; i++) {
+        if (cancelled) return;
+        const page = await pdf!.getPage(i);
+        const viewport = page.getViewport({ scale: fitScale });
 
-  const effectiveScale = scale || fitScale;
+        const wrapper = pageRefs.current.get(i);
+        if (!wrapper) continue;
 
-  // Render visible pages
-  const renderVisiblePages = useCallback(async () => {
-    if (!pdf || !containerRef.current) return;
+        // Create canvas for this page
+        let canvas = wrapper.querySelector("canvas");
+        if (!canvas) {
+          canvas = document.createElement("canvas");
+          wrapper.appendChild(canvas);
+        }
 
-    const container = containerRef.current;
-    const scrollTop = container.scrollTop;
-    const viewHeight = container.clientHeight;
+        // Set canvas pixel dimensions (high-DPI)
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        // Set CSS display dimensions
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
 
-    // Determine which pages are visible
-    let accHeight = 0;
-    let firstVisible = 1;
-    let lastVisible = numPages;
-
-    for (let i = 0; i < numPages; i++) {
-      const h = pageHeights.current[i] || 0;
-      if (accHeight + h < scrollTop) {
-        firstVisible = i + 2; // next page is first visible
-      }
-      if (accHeight > scrollTop + viewHeight) {
-        lastVisible = i;
-        break;
-      }
-      accHeight += h + PAGE_GAP;
-    }
-
-    // Add buffer
-    const renderStart = Math.max(1, firstVisible - BUFFER_PAGES);
-    const renderEnd = Math.min(numPages, lastVisible + BUFFER_PAGES);
-
-    // Update current page (the one most visible)
-    if (firstVisible !== currentPage) {
-      setCurrentPage(Math.min(firstVisible, numPages));
-      onPageChange?.(Math.min(firstVisible, numPages));
-    }
-
-    // Render each page that needs it
-    for (let pageNum = renderStart; pageNum <= renderEnd; pageNum++) {
-      const prevScale = renderedPages.current.get(pageNum);
-      if (prevScale === effectiveScale) continue; // already rendered at this scale
-
-      const canvas = canvasRefs.current.get(pageNum);
-      if (!canvas) continue;
-
-      try {
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: effectiveScale });
-
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = viewport.width * dpr;
-        canvas.height = viewport.height * dpr;
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
+        // Set wrapper dimensions to match
+        wrapper.style.width = `${Math.floor(viewport.width)}px`;
+        wrapper.style.height = `${Math.floor(viewport.height)}px`;
 
         const ctx = canvas.getContext("2d")!;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         await page.render({ canvasContext: ctx, viewport }).promise;
-        renderedPages.current.set(pageNum, effectiveScale);
-      } catch {
-        // Page may have been cleaned up during navigation
       }
-    }
-  }, [pdf, numPages, effectiveScale, currentPage, onPageChange]);
 
-  // Set up page placeholders with correct heights
-  useEffect(() => {
-    if (!pdf) return;
-
-    async function setupPages() {
-      const heights: number[] = [];
-      for (let i = 1; i <= pdf!.numPages; i++) {
-        const page = await pdf!.getPage(i);
-        const viewport = page.getViewport({ scale: effectiveScale });
-        heights.push(viewport.height);
-      }
-      pageHeights.current = heights;
-      renderedPages.current.clear(); // re-render at new scale
-      renderVisiblePages();
+      if (!cancelled) setRendered(true);
     }
 
-    setupPages();
-  }, [pdf, effectiveScale]);
+    renderAll();
+    return () => { cancelled = true; };
+  }, [pdf]);
 
-  // Scroll listener
+  // Track scroll position to update current page
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !rendered) return;
 
     let ticking = false;
     function onScroll() {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          renderVisiblePages();
-          ticking = false;
-        });
-        ticking = true;
-      }
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const scrollCenter = container!.scrollTop + container!.clientHeight / 3;
+        let accHeight = 0;
+        let page = 1;
+        for (const [pageNum, wrapper] of pageRefs.current) {
+          const h = wrapper.offsetHeight + PAGE_GAP;
+          if (accHeight + h > scrollCenter) {
+            page = pageNum;
+            break;
+          }
+          accHeight += h;
+        }
+        if (page !== currentPage) {
+          setCurrentPage(page);
+          onPageChange?.(page);
+        }
+      });
     }
 
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => container.removeEventListener("scroll", onScroll);
-  }, [renderVisiblePages]);
+  }, [rendered, currentPage, onPageChange]);
 
-  // Handle goToPage prop changes
+  // Handle goToPage
   useEffect(() => {
-    if (!goToPage || !containerRef.current || !pdf) return;
-
-    let offset = 0;
-    for (let i = 0; i < goToPage - 1 && i < pageHeights.current.length; i++) {
-      offset += pageHeights.current[i] + PAGE_GAP;
+    if (!goToPage || !rendered) return;
+    const wrapper = pageRefs.current.get(goToPage);
+    if (wrapper) {
+      wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    containerRef.current.scrollTo({ top: offset, behavior: "smooth" });
-  }, [goToPage, pdf]);
+  }, [goToPage, rendered]);
 
-  // Zoom controls
-  function zoomIn() {
-    setScale((s) => Math.min((s || fitScale) + SCALE_STEP, MAX_SCALE));
-  }
-  function zoomOut() {
-    setScale((s) => Math.max((s || fitScale) - SCALE_STEP, MIN_SCALE));
-  }
-  function zoomFit() {
-    setScale(0); // reset to fit-to-width
+  // Zoom (re-render at new scale)
+  async function rerender(newScale: number) {
+    if (!pdf) return;
+    setScale(newScale);
+    const dpr = window.devicePixelRatio || 1;
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: newScale });
+      const wrapper = pageRefs.current.get(i);
+      if (!wrapper) continue;
+      const canvas = wrapper.querySelector("canvas");
+      if (!canvas) continue;
+
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      wrapper.style.width = `${Math.floor(viewport.width)}px`;
+      wrapper.style.height = `${Math.floor(viewport.height)}px`;
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    }
   }
 
-  const pctLabel = Math.round(effectiveScale * 100);
+  function zoomIn() { rerender(Math.min(scale + SCALE_STEP, MAX_SCALE)); }
+  function zoomOut() { rerender(Math.max(scale - SCALE_STEP, MIN_SCALE)); }
 
-  // Download the PDF
   function handleDownload() {
     if (!data) return;
     const blob = new Blob([data], { type: "application/pdf" });
@@ -238,17 +208,17 @@ export default function PdfViewer({ data, onPageChange, goToPage }: PdfViewerPro
     URL.revokeObjectURL(url);
   }
 
-  // Print
   function handlePrint() {
     if (!data) return;
     const blob = new Blob([data], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const w = window.open(url);
-    if (w) {
-      w.addEventListener("load", () => {
-        w.print();
-      });
-    }
+    if (w) w.addEventListener("load", () => w.print());
+  }
+
+  function scrollToPage(page: number) {
+    const wrapper = pageRefs.current.get(page);
+    if (wrapper) wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   if (loading) {
@@ -278,106 +248,45 @@ export default function PdfViewer({ data, onPageChange, goToPage }: PdfViewerPro
     );
   }
 
+  const pctLabel = Math.round(scale * 100);
+
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      {/* Custom toolbar */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-card px-3 py-1 shrink-0">
-        {/* Page navigation */}
         <div className="flex items-center gap-1 text-xs text-tx-secondary">
-          <button
-            onClick={() => {
-              const prev = Math.max(1, currentPage - 1);
-              containerRef.current?.scrollTo({
-                top: pageHeights.current.slice(0, prev - 1).reduce((a, b) => a + b + PAGE_GAP, 0),
-                behavior: "smooth",
-              });
-            }}
-            disabled={currentPage <= 1}
-            className="rounded px-1.5 py-0.5 hover:bg-surface-alt disabled:opacity-30"
-          >
-            &#9664;
-          </button>
-          <span className="tabular-nums">
-            Page {currentPage} of {numPages}
-          </span>
-          <button
-            onClick={() => {
-              const next = Math.min(numPages, currentPage + 1);
-              containerRef.current?.scrollTo({
-                top: pageHeights.current.slice(0, next - 1).reduce((a, b) => a + b + PAGE_GAP, 0),
-                behavior: "smooth",
-              });
-            }}
-            disabled={currentPage >= numPages}
-            className="rounded px-1.5 py-0.5 hover:bg-surface-alt disabled:opacity-30"
-          >
-            &#9654;
-          </button>
+          <button onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="rounded px-1.5 py-0.5 hover:bg-surface-alt disabled:opacity-30">&#9664;</button>
+          <span className="tabular-nums">Page {currentPage} of {numPages}</span>
+          <button onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))} disabled={currentPage >= numPages} className="rounded px-1.5 py-0.5 hover:bg-surface-alt disabled:opacity-30">&#9654;</button>
         </div>
-
-        {/* Zoom controls */}
         <div className="flex items-center gap-1 text-xs">
-          <button onClick={zoomOut} className="rounded px-1.5 py-0.5 text-tx-secondary hover:bg-surface-alt">
-            &minus;
-          </button>
-          <button
-            onClick={zoomFit}
-            className="rounded px-2 py-0.5 tabular-nums text-tx-secondary hover:bg-surface-alt"
-            title="Fit to width"
-          >
-            {pctLabel}%
-          </button>
-          <button onClick={zoomIn} className="rounded px-1.5 py-0.5 text-tx-secondary hover:bg-surface-alt">
-            +
-          </button>
+          <button onClick={zoomOut} className="rounded px-1.5 py-0.5 text-tx-secondary hover:bg-surface-alt">&minus;</button>
+          <span className="tabular-nums text-tx-secondary px-1">{pctLabel}%</span>
+          <button onClick={zoomIn} className="rounded px-1.5 py-0.5 text-tx-secondary hover:bg-surface-alt">+</button>
         </div>
-
-        {/* Actions */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={handlePrint}
-            className="rounded px-2 py-0.5 text-xs text-tx-secondary hover:bg-surface-alt"
-            title="Print"
-          >
-            Print
-          </button>
-          <button
-            onClick={handleDownload}
-            className="rounded bg-primary px-2 py-0.5 text-xs text-white hover:bg-primary-hover"
-            title="Download"
-          >
-            Download
-          </button>
+          <button onClick={handlePrint} className="rounded px-2 py-0.5 text-xs text-tx-secondary hover:bg-surface-alt">Print</button>
+          <button onClick={handleDownload} className="rounded bg-primary px-2 py-0.5 text-xs text-white hover:bg-primary-hover">Download</button>
         </div>
       </div>
 
-      {/* Scrollable page container */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-auto bg-neutral-200 dark:bg-neutral-800"
-        style={{ paddingTop: PAGE_GAP, paddingBottom: PAGE_GAP }}
-      >
+      {/* Pages */}
+      <div ref={containerRef} className="flex-1 overflow-auto bg-neutral-200 dark:bg-neutral-800 py-2">
         <div className="flex flex-col items-center" style={{ gap: PAGE_GAP }}>
-          {Array.from({ length: numPages }, (_, i) => {
-            const pageNum = i + 1;
-            const h = pageHeights.current[i] || 792; // fallback height
-            return (
-              <canvas
-                key={pageNum}
-                ref={(el) => {
-                  if (el) canvasRefs.current.set(pageNum, el);
-                  else canvasRefs.current.delete(pageNum);
-                }}
-                style={{
-                  width: "100%",
-                  maxWidth: `${612 * effectiveScale}px`,
-                  height: `${h}px`,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  backgroundColor: "white",
-                }}
-              />
-            );
-          })}
+          {Array.from({ length: numPages }, (_, i) => (
+            <div
+              key={i + 1}
+              ref={(el) => {
+                if (el) pageRefs.current.set(i + 1, el);
+                else pageRefs.current.delete(i + 1);
+              }}
+              style={{
+                backgroundColor: "white",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                // Dimensions set by renderAll / rerender
+              }}
+            />
+          ))}
         </div>
       </div>
     </div>
