@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useParams, Link, useNavigate, useOutletContext } from "react-router-dom";
 import type { AppShellContext } from "../components/AppShell";
 import {
-  get, patch, post, del,
+  get, patch, post, del, uploadFile,
   renderPdf, renderK1s, renderK1, render7206,
   render1125a, render8825, render7203, render7203s, render7004,
   renderComplete,
@@ -4215,22 +4215,22 @@ function DepreciationSection({
     setImporting(true);
     setImportMsg(null);
     setImportPreview(null);
-    const formData = new FormData();
-    formData.append("file", file);
     try {
-      const res = await fetch(`/api/v1/tax-returns/${taxReturnId}/import-depreciation/`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      const data = await res.json();
+      const res = await uploadFile(
+        `/tax-returns/${taxReturnId}/import-depreciation/`,
+        {},
+        file,
+      );
+      const data = res.data as Record<string, unknown>;
       if (!res.ok) {
-        setImportMsg(data.error || "Import failed");
+        const errMsg = (data?.error as string) || (data?.detail as string) || `Server error ${res.status}`;
+        const errors = (data?.errors as string[]) || [];
+        setImportMsg(errors.length ? `${errMsg}: ${errors.join("; ")}` : errMsg);
       } else {
-        setImportPreview(data as ImportPreviewResponse);
+        setImportPreview(data as unknown as ImportPreviewResponse);
       }
     } catch (err) {
-      setImportMsg("Network error during upload");
+      setImportMsg(`Network error: ${(err as Error).message}`);
     }
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -4240,17 +4240,16 @@ function DepreciationSection({
     if (!importPreview || !importFileRef.current) return;
     setImporting(true);
     setImportMsg(null);
-    const formData = new FormData();
-    formData.append("file", importFileRef.current);
     try {
-      const res = await fetch(`/api/v1/tax-returns/${taxReturnId}/import-depreciation/?commit=true`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      const data = await res.json();
+      const res = await uploadFile(
+        `/tax-returns/${taxReturnId}/import-depreciation/?commit=true`,
+        {},
+        importFileRef.current,
+      );
+      const data = res.data as Record<string, unknown>;
       if (!res.ok) {
-        setImportMsg(data.error || "Import failed");
+        const errMsg = (data?.error as string) || (data?.detail as string) || `Server error ${res.status}`;
+        setImportMsg(errMsg);
       } else {
         setImportMsg(`${data.imported_count} assets imported successfully`);
         setImportPreview(null);
@@ -4258,7 +4257,7 @@ function DepreciationSection({
         await onRefresh();
       }
     } catch (err) {
-      setImportMsg("Network error during commit");
+      setImportMsg(`Network error: ${(err as Error).message}`);
     }
     setImporting(false);
   }
