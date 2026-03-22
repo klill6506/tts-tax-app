@@ -154,8 +154,8 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
     findings = []
 
     if form_code == "1120-S":
-        # BOY: L14a (assets) vs L27a (liabilities + equity)
-        assets_boy = _d(values, "L14a")
+        # BOY: L15a (total assets) vs L27a (total liabilities + equity)
+        assets_boy = _d(values, "L15a")
         liab_boy = _d(values, "L27a")
         if (assets_boy or liab_boy) and assets_boy != liab_boy:
             diff = assets_boy - liab_boy
@@ -169,8 +169,8 @@ def math_balance_sheet_check(tax_year: TaxYear) -> list[dict]:
                 "details": {"period": "boy", "assets": str(assets_boy), "liab_equity": str(liab_boy)},
             })
 
-        # EOY: L14d (assets) vs L27d (liabilities + equity)
-        assets_eoy = _d(values, "L14d")
+        # EOY: L15d (total assets) vs L27d (total liabilities + equity)
+        assets_eoy = _d(values, "L15d")
         liab_eoy = _d(values, "L27d")
         if (assets_eoy or liab_eoy) and assets_eoy != liab_eoy:
             diff = assets_eoy - liab_eoy
