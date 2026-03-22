@@ -1243,6 +1243,7 @@ BUILTIN_RULES = [
         "description": "Checks that at least one parsed Trial Balance has been uploaded.",
         "severity": "error",
         "rule_function": "apps.diagnostics.rules.tb_exists_check",
+        "is_active": False,
     },
     {
         "code": "TB_BALANCE",
@@ -1421,6 +1422,7 @@ BUILTIN_RULES = [
         "severity": "warning",
         "category": "preparer",
         "rule_function": "apps.diagnostics.rules.extension_no_est_check",
+        "is_active": False,
     },
     {
         "code": "LATE_FILING",

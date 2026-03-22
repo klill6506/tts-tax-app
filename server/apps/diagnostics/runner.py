@@ -82,6 +82,6 @@ def seed_builtin_rules():
                 "severity": rule_data["severity"],
                 "category": rule_data.get("category", "preparer"),
                 "rule_function": rule_data["rule_function"],
-                "is_active": True,
+                "is_active": rule_data.get("is_active", True),
             },
         )
