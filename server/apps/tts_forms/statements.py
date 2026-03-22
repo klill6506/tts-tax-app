@@ -43,7 +43,7 @@ BOTTOM_MARGIN = 1.0 * inch
 USABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 
 HEADER_FONT = "Helvetica-Bold"
-BODY_FONT = "Courier"
+BODY_FONT = "Courier-Bold"
 HEADER_SIZE = 12
 SUBHEADER_SIZE = 10
 BODY_SIZE = 10
@@ -105,6 +105,7 @@ def _draw_statement_page(c: canvas.Canvas, page_def: dict) -> None:
     items = page_def.get("items", [])
 
     y = PAGE_HEIGHT - TOP_MARGIN
+    c.setFillColor(colors.black)  # Pure black for crisp, dark text
 
     # --- Header ---
     c.setFont(HEADER_FONT, HEADER_SIZE)

@@ -2342,3 +2342,173 @@ class TaxReturnViewSet(
         aggregate_depreciation(tax_return)
         qs = DepreciationAsset.objects.filter(tax_return=tax_return)
         return Response(DepreciationAssetSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=["post"], url_path="import-depreciation")
+    def import_depreciation(self, request, pk=None):
+        """Import depreciation assets from Lacerte TXT file.
+
+        POST with multipart file upload. Returns preview by default.
+        Add ?commit=true to create DepreciationAsset records.
+        """
+        import datetime as _dt
+
+        from apps.imports.importers.lacerte_depr_parser import parse_lacerte_txt
+        from apps.tts_forms.depreciation_engine import suggest_bonus_pct
+
+        tax_return = self.get_object()
+        commit = request.query_params.get("commit", "").lower() == "true"
+
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return Response(
+                {"error": "No file uploaded. Send a .txt file as 'file'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            content = uploaded.read().decode("utf-8", errors="replace")
+        except Exception as exc:
+            return Response(
+                {"error": f"Could not read file: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            parsed = parse_lacerte_txt(content)
+        except Exception as exc:
+            return Response(
+                {"error": f"Parse error: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not parsed:
+            return Response(
+                {"error": "No assets found in file."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        warnings: list[str] = []
+        errors: list[str] = []
+
+        # Validate parsed assets
+        for asset_data in parsed:
+            num = asset_data["asset_number"]
+            if not asset_data.get("date_acquired"):
+                errors.append(f"Asset {num}: missing acquisition date")
+            if not asset_data.get("cost_basis"):
+                warnings.append(f"Asset {num}: zero cost basis")
+            if asset_data.get("business_pct", 100) < 100:
+                warnings.append(
+                    f"Asset {num}: business use {asset_data['business_pct']}%"
+                )
+
+        # Check for possible duplicates
+        existing = DepreciationAsset.objects.filter(tax_return=tax_return)
+        for asset_data in parsed:
+            dup = existing.filter(
+                description=asset_data["description"],
+                date_acquired=asset_data.get("date_acquired"),
+            ).exists()
+            if dup:
+                warnings.append(
+                    f"Asset {asset_data['asset_number']}: possible duplicate "
+                    f"({asset_data['description']})"
+                )
+
+        # Preview mode — return parsed data without creating records
+        if not commit:
+            preview = []
+            for a in parsed:
+                preview.append({
+                    "asset_number": a["asset_number"],
+                    "description": a["description"],
+                    "date_acquired": a["date_acquired"],
+                    "date_sold": a["date_sold"],
+                    "cost_basis": a["cost_basis"],
+                    "business_pct": a["business_pct"],
+                    "section_179": a["section_179"],
+                    "prior_depreciation": a["prior_depreciation"],
+                    "current_depreciation": a["current_depreciation"],
+                    "method": a["method"],
+                    "convention": a["convention"],
+                    "life": a["life"],
+                    "asset_group": a["asset_group"],
+                })
+            return Response({
+                "parsed_count": len(parsed),
+                "errors": errors,
+                "warnings": warnings,
+                "preview": preview,
+            })
+
+        # Commit mode — create DepreciationAsset records
+        if errors:
+            return Response(
+                {
+                    "error": "Cannot import — fix errors first.",
+                    "errors": errors,
+                    "warnings": warnings,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        max_num = (
+            DepreciationAsset.objects.filter(tax_return=tax_return)
+            .order_by("-asset_number")
+            .values_list("asset_number", flat=True)
+            .first()
+        ) or 0
+
+        created_ids = []
+        for i, a in enumerate(parsed, start=1):
+            acq = (
+                _dt.date.fromisoformat(a["date_acquired"])
+                if a["date_acquired"] else None
+            )
+            sold = (
+                _dt.date.fromisoformat(a["date_sold"])
+                if a.get("date_sold") else None
+            )
+
+            # Auto-suggest bonus percentage
+            bonus_pct = Decimal("0")
+            if acq:
+                bonus_pct = suggest_bonus_pct(
+                    acq,
+                    group_label=a["asset_group"],
+                    is_amortization=False,
+                )
+
+            asset = DepreciationAsset.objects.create(
+                tax_return=tax_return,
+                asset_number=max_num + i,
+                description=a["description"],
+                group_label=a["asset_group"],
+                date_acquired=acq,
+                date_sold=sold,
+                cost_basis=Decimal(str(a["cost_basis"])),
+                business_pct=Decimal(str(a["business_pct"])),
+                sec_179_elected=Decimal(str(a["section_179"])),
+                prior_depreciation=Decimal(str(a["prior_depreciation"])),
+                method=a["method"],
+                convention=a["convention"],
+                life=Decimal(str(a["life"])) if a["life"] else None,
+                bonus_pct=bonus_pct,
+                imported_from_lacerte=True,
+                lacerte_asset_no=a["asset_number"],
+            )
+            _auto_calculate_asset(asset, tax_return)
+            created_ids.append(str(asset.id))
+
+        # Aggregate totals after all assets created
+        from .compute import aggregate_depreciation
+        aggregate_depreciation(tax_return)
+
+        return Response(
+            {
+                "imported_count": len(created_ids),
+                "asset_ids": created_ids,
+                "warnings": warnings,
+            },
+            status=status.HTTP_201_CREATED,
+        )

@@ -4161,6 +4161,29 @@ const GROUP_CHOICES = [
 
 const LIFE_CHOICES = ["3", "5", "7", "10", "15", "20", "27.5", "39"];
 
+interface ImportPreviewAsset {
+  asset_number: number;
+  description: string;
+  date_acquired: string | null;
+  date_sold: string | null;
+  cost_basis: number;
+  business_pct: number;
+  section_179: number;
+  prior_depreciation: number;
+  current_depreciation: number;
+  method: string;
+  convention: string;
+  life: number;
+  asset_group: string;
+}
+
+interface ImportPreviewResponse {
+  parsed_count: number;
+  errors: string[];
+  warnings: string[];
+  preview: ImportPreviewAsset[];
+}
+
 function DepreciationSection({
   taxReturnId,
   assets,
@@ -4174,9 +4197,71 @@ function DepreciationSection({
 }) {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
   const num = (s: string | null | undefined) => parseFloat(s || "0") || 0;
+
+  // Store file reference so we can re-send for commit
+  const importFileRef = useRef<File | null>(null);
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    importFileRef.current = file;
+    setImporting(true);
+    setImportMsg(null);
+    setImportPreview(null);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch(`/api/v1/tax-returns/${taxReturnId}/import-depreciation/`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportMsg(data.error || "Import failed");
+      } else {
+        setImportPreview(data as ImportPreviewResponse);
+      }
+    } catch (err) {
+      setImportMsg("Network error during upload");
+    }
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function commitImport() {
+    if (!importPreview || !importFileRef.current) return;
+    setImporting(true);
+    setImportMsg(null);
+    const formData = new FormData();
+    formData.append("file", importFileRef.current);
+    try {
+      const res = await fetch(`/api/v1/tax-returns/${taxReturnId}/import-depreciation/?commit=true`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportMsg(data.error || "Import failed");
+      } else {
+        setImportMsg(`${data.imported_count} assets imported successfully`);
+        setImportPreview(null);
+        importFileRef.current = null;
+        await onRefresh();
+      }
+    } catch (err) {
+      setImportMsg("Network error during commit");
+    }
+    setImporting(false);
+  }
 
   async function addAsset() {
     setSaving(true);
@@ -4265,6 +4350,20 @@ function DepreciationSection({
               Calculate All
             </button>
           )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".txt"
+            onChange={handleFileSelected}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 disabled:opacity-50"
+          >
+            {importing ? "Parsing..." : "Import"}
+          </button>
           <button
             onClick={addAsset}
             disabled={saving}
@@ -4275,7 +4374,85 @@ function DepreciationSection({
         </div>
       </div>
 
-      {assets.length === 0 && (
+      {/* Import status message */}
+      {importMsg && !importPreview && (
+        <div className={`rounded-lg border px-4 py-2 text-sm ${
+          importMsg.includes("successfully") ? "border-green-300 bg-green-50 text-green-800" : "border-red-300 bg-red-50 text-red-800"
+        }`}>
+          {importMsg}
+          <button onClick={() => setImportMsg(null)} className="ml-2 text-xs underline">dismiss</button>
+        </div>
+      )}
+
+      {/* Import preview panel */}
+      {importPreview && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-amber-900">
+              Import Preview — {importPreview.parsed_count} assets found
+            </h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setImportPreview(null); importFileRef.current = null; }}
+                className="rounded-lg border border-amber-400 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={commitImport}
+                disabled={importing || importPreview.errors.length > 0}
+                className="rounded-lg bg-green-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+              >
+                {importing ? "Importing..." : "Import All"}
+              </button>
+            </div>
+          </div>
+
+          {importPreview.errors.length > 0 && (
+            <div className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800">
+              <strong>Errors (must fix before import):</strong>
+              <ul className="list-disc ml-4 mt-1">{importPreview.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+            </div>
+          )}
+          {importPreview.warnings.length > 0 && (
+            <div className="rounded border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-800">
+              <strong>Warnings:</strong>
+              <ul className="list-disc ml-4 mt-1">{importPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-amber-300 text-left text-amber-900">
+                  <th className="px-2 py-1">#</th>
+                  <th className="px-2 py-1">Description</th>
+                  <th className="px-2 py-1">Acquired</th>
+                  <th className="px-2 py-1 text-right">Cost</th>
+                  <th className="px-2 py-1">Method/Life</th>
+                  <th className="px-2 py-1 text-right">Prior Depr</th>
+                  <th className="px-2 py-1">Group</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.preview.map((a, i) => (
+                  <tr key={i} className="border-b border-amber-200">
+                    <td className="px-2 py-1 tabular-nums">{a.asset_number}</td>
+                    <td className="px-2 py-1">{a.description}</td>
+                    <td className="px-2 py-1">{a.date_acquired || ""}</td>
+                    <td className="px-2 py-1 text-right tabular-nums">{a.cost_basis.toLocaleString()}</td>
+                    <td className="px-2 py-1">{a.method} {a.convention} {a.life}yr</td>
+                    <td className="px-2 py-1 text-right tabular-nums">{a.prior_depreciation.toLocaleString()}</td>
+                    <td className="px-2 py-1 text-tx-muted">{a.asset_group}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {assets.length === 0 && !importPreview && (
         <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
           No depreciation assets. Click "Add Asset" to enter an asset.
         </div>

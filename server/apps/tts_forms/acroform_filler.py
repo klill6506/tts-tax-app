@@ -33,7 +33,7 @@ from .formatting import format_value, is_truthy
 logger = logging.getLogger(__name__)
 
 # Font settings (matches coordinate overlay approach)
-DEFAULT_FONT = "Courier"
+DEFAULT_FONT = "Courier-Bold"
 DEFAULT_FONT_SIZE = 10
 
 # Small margin inside field edges (pts)
@@ -149,6 +149,7 @@ def fill_form(
     # --- 4. Create ReportLab text overlay at widget positions ---
     overlay_buf = io.BytesIO()
     c = canvas.Canvas(overlay_buf)
+    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
     filled_count = 0
 
     for page_idx in range(page_count):

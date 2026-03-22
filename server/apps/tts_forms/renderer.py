@@ -114,7 +114,7 @@ EXTENSION_FORM_CODES: dict[str, str] = {
 }
 
 # Font settings
-DEFAULT_FONT = "Courier"
+DEFAULT_FONT = "Courier-Bold"
 DEFAULT_FONT_SIZE = 10
 
 
@@ -172,6 +172,7 @@ def _create_overlay(
     """
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
+    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
 
     for page_idx in range(page_count):
         # Draw header fields on the appropriate page
@@ -2152,7 +2153,7 @@ def render_depreciation_schedule(tax_return) -> bytes:
         x += w
 
     HEADER_FONT = "Helvetica-Bold"
-    BODY_FONT = "Courier"
+    BODY_FONT = "Courier-Bold"
     TITLE_SIZE = 12
     COL_HEADER_SIZE = 7
     DATA_SIZE = 8
@@ -2160,6 +2161,7 @@ def render_depreciation_schedule(tax_return) -> bytes:
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
+    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
 
     def _fmt(val, is_currency=True):
         """Format a Decimal as whole dollars with commas."""
@@ -2390,6 +2392,7 @@ def _render_me_statement(
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
+    c.setFillColorRGB(0, 0, 0)  # Pure black for crisp, dark text
     PAGE_W, PAGE_H = letter
     LM = 1.0 * 72  # 1 inch
     RM = PAGE_W - 1.0 * 72
@@ -2426,7 +2429,7 @@ def _render_me_statement(
         c.setFont("Helvetica-Bold", 10)
         c.drawString(LM, y, "Meals (50% deductible):")
         y -= LH
-        c.setFont("Courier", 10)
+        c.setFont("Courier-Bold", 10)
         c.drawString(LM + 18, y, "Total meals expense:")
         c.drawRightString(RM, y, _fmt(amt))
         y -= LH
@@ -2448,7 +2451,7 @@ def _render_me_statement(
         c.setFont("Helvetica-Bold", 10)
         c.drawString(LM, y, "DOT Meals (80% deductible):")
         y -= LH
-        c.setFont("Courier", 10)
+        c.setFont("Courier-Bold", 10)
         c.drawString(LM + 18, y, "Total DOT meals expense:")
         c.drawRightString(RM, y, _fmt(amt))
         y -= LH
@@ -2467,7 +2470,7 @@ def _render_me_statement(
         c.setFont("Helvetica-Bold", 10)
         c.drawString(LM, y, "Entertainment (0% deductible):")
         y -= LH
-        c.setFont("Courier", 10)
+        c.setFont("Courier-Bold", 10)
         c.drawString(LM + 18, y, "Total entertainment expense:")
         c.drawRightString(RM, y, _fmt(amt))
         y -= LH
@@ -2484,7 +2487,7 @@ def _render_me_statement(
     c.drawString(LM, y, "SUMMARY")
     y -= LH * 1.2
 
-    c.setFont("Courier", 10)
+    c.setFont("Courier-Bold", 10)
     c.drawString(LM + 18, y, "Total deductible meals:")
     c.drawRightString(RM, y, _fmt(total_ded))
     y -= LH
@@ -2492,7 +2495,7 @@ def _render_me_statement(
     c.drawRightString(RM, y, _fmt(total_nonded))
     y -= LH * 1.2
 
-    c.setFont("Courier", 9)
+    c.setFont("Courier-Bold", 9)
     c.drawString(LM + 36, y, "Reported on Schedule K, Line 16c")
     y -= LH
     c.drawString(LM + 36, y, "Reported on Schedule M-1, Line 3")
