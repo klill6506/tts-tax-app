@@ -1107,6 +1107,29 @@ class TaxReturnViewSet(
         if updates:
             FormFieldValue.objects.bulk_update(updates, ["value"])
 
+    @action(detail=True, methods=["post"], url_path="refresh-from-federal")
+    def refresh_from_federal(self, request, pk=None):
+        """Re-pull federal values into an existing state return and recompute.
+
+        POST /api/v1/tax-returns/{state_return_id}/refresh-from-federal/
+        """
+        state_return = self.get_object()
+        federal = state_return.federal_return
+        if not federal:
+            return Response(
+                {"error": "This return has no linked federal return."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        self._populate_ga_from_federal(state_return, federal)
+        from apps.returns.compute import compute_return
+        compute_return(state_return)
+
+        return Response(
+            TaxReturnSerializer(state_return).data,
+            status=status.HTTP_200_OK,
+        )
+
     # ------------------------------------------------------------------
     # Update return info (accounting method, tax year dates)
     # ------------------------------------------------------------------

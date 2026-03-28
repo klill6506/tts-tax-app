@@ -5991,6 +5991,7 @@ function StateSection({
 }) {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const filingStates = returnData.filing_states || [];
@@ -6016,6 +6017,19 @@ function StateSection({
     } else {
       const data = res.data as { error?: string };
       setError(data?.error || "Failed to create state return.");
+    }
+  }
+
+  async function handleRefreshFromFederal(stateReturnId: string) {
+    setRefreshing(true);
+    setError(null);
+    const res = await post(`/tax-returns/${stateReturnId}/refresh-from-federal/`, {});
+    setRefreshing(false);
+    if (res.ok) {
+      await onRefresh();
+    } else {
+      const data = res.data as { error?: string };
+      setError(data?.error || "Failed to refresh from federal.");
     }
   }
 
@@ -6055,14 +6069,24 @@ function StateSection({
                       </span>
                     )}
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     {sr ? (
+                      <>
+                      <button
+                        onClick={() => handleRefreshFromFederal(sr.id)}
+                        disabled={refreshing}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold text-tx-secondary hover:bg-surface-alt disabled:opacity-50"
+                        title="Re-pull balance sheet, Schedule K, and other values from the federal return"
+                      >
+                        {refreshing ? "Refreshing..." : "Refresh from Federal"}
+                      </button>
                       <button
                         onClick={() => navigate(`/tax-returns/${sr.id}/editor`)}
                         className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
                       >
                         Open {sr.form_code}
                       </button>
+                      </>
                     ) : supported ? (
                       <button
                         onClick={() => handleCreateStateReturn(stateCode)}
