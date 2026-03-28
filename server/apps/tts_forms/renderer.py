@@ -50,9 +50,10 @@ from .coordinates.f8825 import (
     HEADER_FIELDS as F8825_HEADER_FIELDS,
     PROPERTY_FIELDS as F8825_PROPERTY_FIELDS,
 )
-# GA-600S coordinate overlay (reinstated — replaces unreliable native generation)
-from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
-from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
+# GA-600S AcroForm path (migrated from coordinate overlay via AcroForm Creator tool)
+# Legacy coordinate imports kept commented for reference during migration validation:
+# from .coordinates.fga600s import FIELD_MAP as FGA600S_FIELD_MAP
+# from .coordinates.fga600s import HEADER_FIELDS as FGA600S_HEADER_FIELDS
 
 # AcroForm-based rendering (new, preferred)
 from .acroform_filler import fill_form as _acroform_fill
@@ -2003,18 +2004,18 @@ def render_8949(tax_return) -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# GA-600S coordinate overlay rendering
+# GA-600S AcroForm rendering (migrated from coordinate overlay)
 # ---------------------------------------------------------------------------
 
-_GA600S_TEMPLATE = Path(__file__).resolve().parent.parent.parent / "pdf_templates" / "ga600s_2025.pdf"
+_GA600S_TEMPLATE = Path(__file__).resolve().parent.parent.parent / "pdf_templates" / "ga600s_2025_acroform.pdf"
 
 
 def render_ga600s_overlay(tax_return, screen_mode: bool = False) -> bytes:
     """
-    Render Georgia Form 600S using coordinate overlay on the official GA DOR template.
+    Render Georgia Form 600S using AcroForm text overlay.
 
-    Uses the same proven approach as federal coordinate overlay forms (f1065, f1120):
-    load template → create ReportLab overlay → merge.
+    Uses the same fill_form() pipeline as federal AcroForm forms.
+    The template PDF has AcroForm widgets injected by the AcroForm Creator tool.
 
     Args:
         tax_return: The STATE TaxReturn instance (form_code="GA-600S").
@@ -2082,38 +2083,24 @@ def render_ga600s_overlay(tax_return, screen_mode: bool = False) -> bytes:
     if tax_return.federal_return and tax_return.federal_return.extension_filed:
         header_data["extension_checkbox"] = "X"
 
-    # --- Load template and create overlay ---
+    # --- Load AcroForm field map ---
+    ga_field_map, ga_header_map = _get_field_maps("fga600s", 2025)
+
+    # --- Fill via AcroForm pipeline ---
     if not _GA600S_TEMPLATE.exists():
         raise FileNotFoundError(
             f"GA-600S template not found at {_GA600S_TEMPLATE}. "
-            f"Place the fillable GA-600S PDF at server/pdf_templates/ga600s_2025.pdf"
+            f"Place the AcroForm GA-600S PDF at server/pdf_templates/ga600s_2025_acroform.pdf"
         )
 
-    template_reader = PdfReader(str(_GA600S_TEMPLATE))
-    page_count = len(template_reader.pages)
-
-    overlay_buf = _create_overlay(
+    return _acroform_fill(
+        template_path=_GA600S_TEMPLATE,
         field_values=field_values,
-        field_map=FGA600S_FIELD_MAP,
+        field_map=ga_field_map,
         header_data=header_data,
-        header_map=FGA600S_HEADER_FIELDS,
-        page_count=page_count,
+        header_map=ga_header_map,
         screen_mode=screen_mode,
     )
-    overlay_reader = PdfReader(overlay_buf)
-
-    # Merge overlay onto template
-    writer = PdfWriter()
-    for i in range(page_count):
-        template_page = template_reader.pages[i]
-        if i < len(overlay_reader.pages):
-            overlay_page = overlay_reader.pages[i]
-            template_page.merge_page(overlay_page)
-        writer.add_page(template_page)
-
-    buf = io.BytesIO()
-    writer.write(buf)
-    return buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
