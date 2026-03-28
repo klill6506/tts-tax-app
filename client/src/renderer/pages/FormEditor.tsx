@@ -299,6 +299,23 @@ function sumLines(values: Record<string, number>, ...lines: string[]): number {
   return lines.reduce((acc, ln) => acc + val(values, ln), 0);
 }
 
+/** GA net worth tax — tiered bracket table (matches compute.py). */
+const GA_NET_WORTH_TAX_TABLE: [number, number][] = [
+  [100_000, 0], [150_000, 125], [200_000, 150], [300_000, 200],
+  [500_000, 250], [750_000, 300], [1_000_000, 500], [2_000_000, 750],
+  [4_000_000, 1_000], [6_000_000, 1_250], [8_000_000, 1_500],
+  [10_000_000, 1_750], [12_000_000, 2_000], [14_000_000, 2_500],
+  [16_000_000, 3_000], [18_000_000, 3_500], [20_000_000, 4_000],
+  [22_000_000, 4_500],
+];
+function gaNetWorthTax(netWorth: number): number {
+  if (netWorth <= 0) return 0;
+  for (const [threshold, tax] of GA_NET_WORTH_TAX_TABLE) {
+    if (netWorth <= threshold) return tax;
+  }
+  return 5_000; // Over $22M
+}
+
 /** Ordered list of [line_number, formula].  Dependencies must come first. */
 const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Admin — Invoice
@@ -402,11 +419,17 @@ const FORMULAS_GA600S: [string, (v: Record<string, number>) => number][] = [
   ["S1_6", (v) => val(v, "S1_3") - val(v, "S1_4") - val(v, "S1_5")],
   // Income tax only applies when PTET is elected; most S-Corps owe $0
   ["S1_7", (v) => val(v, "GA_PTET") > 0 ? Math.max(0, val(v, "S1_6")) * 0.0539 : 0],
+  // Schedule 2 — PTET computation
+  ["S2_1", (v) => val(v, "S5_7")],
+  ["S2_3", (v) => val(v, "S2_1") - val(v, "S2_2")],
+  ["S2_4", (v) => val(v, "GA_PTET") > 0 ? Math.max(0, val(v, "S2_3")) * 0.0539 : 0],
   // Schedule 3
   ["S3_4", (v) => sumLines(v, "S3_1","S3_2","S3_3")],
   ["S3_6", (v) => val(v, "S3_4") * val(v, "S3_5")],
+  ["S3_7", (v) => gaNetWorthTax(val(v, "S3_6"))],
   // Schedule 4
   ["S4_1a", (v) => val(v, "S1_7")],
+  ["S4_1b", (v) => val(v, "S3_7")],
   ["S4_1c", (v) => val(v, "S4_1a") + val(v, "S4_1b")],
   ["S4_2c", (v) => val(v, "S4_2a") + val(v, "S4_2b")],
   ["S4_3c", (v) => val(v, "S4_3a") + val(v, "S4_3b")],
@@ -499,6 +522,7 @@ const GA_SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_5", label: "Sched 5 — Apportionment", sections: ["sched_5"] },
   { id: "sched_3", label: "Sched 3 — Net Worth", sections: ["sched_3"] },
   { id: "sched_1", label: "Sched 1 — Tax", sections: ["sched_1"] },
+  { id: "sched_2", label: "Sched 2 — PTET", sections: ["sched_2"] },
   { id: "sched_4", label: "Sched 4 — Tax Due", sections: ["sched_4"] },
 ];
 
