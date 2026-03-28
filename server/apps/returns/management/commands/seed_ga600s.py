@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand
 from apps.returns.models import (
     FieldType,
     FormDefinition,
+    FormFieldValue,
     FormLine,
     FormSection,
     NormalBalance,
@@ -225,15 +226,18 @@ class Command(BaseCommand):
                 )
                 line_count += 1
 
-            # Remove stale lines
+            # Remove stale lines (delete referencing field values first)
             stale = FormLine.objects.filter(section=section).exclude(
                 line_number__in=new_line_numbers
             )
             if stale.exists():
-                self.stdout.write(
-                    f"  Removing {stale.count()} stale lines from {sec_code}"
-                )
+                stale_count = stale.count()
+                fv_count = FormFieldValue.objects.filter(form_line__in=stale).delete()[0]
                 stale.delete()
+                self.stdout.write(
+                    f"  Removed {stale_count} stale lines from {sec_code}"
+                    + (f" ({fv_count} field values cleared)" if fv_count else "")
+                )
 
         self.stdout.write(
             self.style.SUCCESS(
