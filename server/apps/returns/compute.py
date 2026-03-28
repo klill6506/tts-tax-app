@@ -447,26 +447,18 @@ FORMULAS_GA600S: list[tuple[str, callable]] = [
     ("S4_2c", lambda v: _d(v, "S4_2a") + _d(v, "S4_2b")),
     ("S4_3c", lambda v: _d(v, "S4_3a") + _d(v, "S4_3b")),
     ("S4_4c", lambda v: _d(v, "S4_4a") + _d(v, "S4_4b")),
-    # Balance due = tax - payments - credits - withholding (if positive)
-    ("S4_5a", lambda v: max(ZERO, _d(v, "S4_1a") - _d(v, "S4_2a") - _d(v, "S4_3a") - _d(v, "S4_4a"))),
-    ("S4_5b", lambda v: max(ZERO, _d(v, "S4_1b") - _d(v, "S4_2b") - _d(v, "S4_3b") - _d(v, "S4_4b"))),
-    ("S4_5c", lambda v: _d(v, "S4_5a") + _d(v, "S4_5b")),
-    # Overpayment = payments + credits + withholding - tax (if positive)
-    ("S4_6a", lambda v: max(ZERO, _d(v, "S4_2a") + _d(v, "S4_3a") + _d(v, "S4_4a") - _d(v, "S4_1a"))),
-    ("S4_6b", lambda v: max(ZERO, _d(v, "S4_2b") + _d(v, "S4_3b") + _d(v, "S4_4b") - _d(v, "S4_1b"))),
-    ("S4_6c", lambda v: _d(v, "S4_6a") + _d(v, "S4_6b")),
+    # Balance due (C-only: combined income + net worth)
+    ("S4_5c", lambda v: max(ZERO, _d(v, "S4_1c") - _d(v, "S4_2c") - _d(v, "S4_3c") - _d(v, "S4_4c"))),
+    # Overpayment (C-only)
+    ("S4_6c", lambda v: max(ZERO, _d(v, "S4_2c") + _d(v, "S4_3c") + _d(v, "S4_4c") - _d(v, "S4_1c"))),
     # Interest & penalty totals
     ("S4_7c", lambda v: _d(v, "S4_7a") + _d(v, "S4_7b")),
     ("S4_8c", lambda v: _d(v, "S4_8a") + _d(v, "S4_8b")),
     ("S4_9c", lambda v: _d(v, "S4_9a") + _d(v, "S4_9b")),
-    # Amount Due = balance due + interest + penalties
-    ("S4_10a", lambda v: _d(v, "S4_5a") + _d(v, "S4_7a") + _d(v, "S4_8a") + _d(v, "S4_9a")),
-    ("S4_10b", lambda v: _d(v, "S4_5b") + _d(v, "S4_7b") + _d(v, "S4_8b") + _d(v, "S4_9b")),
-    ("S4_10c", lambda v: _d(v, "S4_10a") + _d(v, "S4_10b")),
-    # Credit to next year estimated tax (from overpayment)
-    ("S4_11a", lambda v: _d(v, "S4_6a")),
-    ("S4_11b", lambda v: _d(v, "S4_6b")),
-    ("S4_11c", lambda v: _d(v, "S4_11a") + _d(v, "S4_11b")),
+    # Amount Due (C-only)
+    ("S4_10c", lambda v: _d(v, "S4_5c") + _d(v, "S4_7c") + _d(v, "S4_8c") + _d(v, "S4_9c")),
+    # Credit to next year estimated tax (C-only)
+    ("S4_11c", lambda v: _d(v, "S4_6c")),
 ]
 
 

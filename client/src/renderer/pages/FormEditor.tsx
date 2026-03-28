@@ -434,21 +434,15 @@ const FORMULAS_GA600S: [string, (v: Record<string, number>) => number][] = [
   ["S4_2c", (v) => val(v, "S4_2a") + val(v, "S4_2b")],
   ["S4_3c", (v) => val(v, "S4_3a") + val(v, "S4_3b")],
   ["S4_4c", (v) => val(v, "S4_4a") + val(v, "S4_4b")],
-  ["S4_5a", (v) => Math.max(0, val(v,"S4_1a") - val(v,"S4_2a") - val(v,"S4_3a") - val(v,"S4_4a"))],
-  ["S4_5b", (v) => Math.max(0, val(v,"S4_1b") - val(v,"S4_2b") - val(v,"S4_3b") - val(v,"S4_4b"))],
-  ["S4_5c", (v) => val(v, "S4_5a") + val(v, "S4_5b")],
-  ["S4_6a", (v) => Math.max(0, val(v,"S4_2a") + val(v,"S4_3a") + val(v,"S4_4a") - val(v,"S4_1a"))],
-  ["S4_6b", (v) => Math.max(0, val(v,"S4_2b") + val(v,"S4_3b") + val(v,"S4_4b") - val(v,"S4_1b"))],
-  ["S4_6c", (v) => val(v, "S4_6a") + val(v, "S4_6b")],
+  // Lines 5/6: C-only (combined income + net worth)
+  ["S4_5c", (v) => Math.max(0, val(v,"S4_1c") - val(v,"S4_2c") - val(v,"S4_3c") - val(v,"S4_4c"))],
+  ["S4_6c", (v) => Math.max(0, val(v,"S4_2c") + val(v,"S4_3c") + val(v,"S4_4c") - val(v,"S4_1c"))],
   ["S4_7c", (v) => val(v, "S4_7a") + val(v, "S4_7b")],
   ["S4_8c", (v) => val(v, "S4_8a") + val(v, "S4_8b")],
   ["S4_9c", (v) => val(v, "S4_9a") + val(v, "S4_9b")],
-  ["S4_10a", (v) => val(v,"S4_5a") + val(v,"S4_7a") + val(v,"S4_8a") + val(v,"S4_9a")],
-  ["S4_10b", (v) => val(v,"S4_5b") + val(v,"S4_7b") + val(v,"S4_8b") + val(v,"S4_9b")],
-  ["S4_10c", (v) => val(v, "S4_10a") + val(v, "S4_10b")],
-  ["S4_11a", (v) => val(v, "S4_6a")],
-  ["S4_11b", (v) => val(v, "S4_6b")],
-  ["S4_11c", (v) => val(v, "S4_11a") + val(v, "S4_11b")],
+  // Lines 10/11: C-only (combined)
+  ["S4_10c", (v) => val(v,"S4_5c") + val(v,"S4_7c") + val(v,"S4_8c") + val(v,"S4_9c")],
+  ["S4_11c", (v) => val(v, "S4_6c")],
 ];
 
 /** Set of line numbers that are computed — used for quick lookup. */
@@ -468,8 +462,12 @@ function computeFields(fieldValues: FieldValue[], formCode?: string): FieldValue
   // Build line_number → numeric value map from all current values
   const numValues: Record<string, number> = {};
   for (const fv of fieldValues) {
-    const n = parseFloat(fv.value);
-    numValues[fv.line_number] = isNaN(n) ? 0 : n;
+    if (fv.field_type === "boolean") {
+      numValues[fv.line_number] = ["true", "1", "yes"].includes(fv.value?.toLowerCase?.() ?? "") ? 1 : 0;
+    } else {
+      const n = parseFloat(fv.value);
+      numValues[fv.line_number] = isNaN(n) ? 0 : n;
+    }
   }
 
   // Evaluate formulas in order

@@ -48,8 +48,8 @@ class TestSeedGA600S:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        # 89 lines across 8 sections (8+4+7+33+7+17+8+5)
-        assert lines.count() >= 89
+        # 81 lines across 8 sections (8+4+7+25+7+17+8+5)
+        assert lines.count() >= 81
 
     def test_seed_is_idempotent(self, seeded):
         cmd = SeedGA600SCommand()
@@ -57,15 +57,15 @@ class TestSeedGA600S:
         cmd.handle(year=2024)
         cmd.stdout.close()
         count = FormLine.objects.filter(section__form=seeded).count()
-        assert count >= 85
+        assert count >= 77
 
-    def test_schedule_4_has_three_columns(self, seeded):
-        """Schedule 4 rows have a/b/c sub-lines for 3-column layout."""
+    def test_schedule_4_line_count(self, seeded):
+        """Schedule 4: lines 1-4 have a/b/c, lines 5-6/10-11 C-only, lines 7-9 a/b/c."""
         sched4_lines = FormLine.objects.filter(
             section__form=seeded, section__code="sched_4"
         )
-        # 11 rows × 3 columns = 33 lines
-        assert sched4_lines.count() == 33
+        # 7 rows × 3 cols (1-4, 7-9) + 4 rows × 1 col (5, 6, 10, 11) = 25
+        assert sched4_lines.count() == 25
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +180,7 @@ class TestGA600SFormulas:
         assert vals["S4_1b"] == Decimal("250.00")
 
     def test_tax_due_with_payments(self):
-        """Schedule 4 computes balance due or overpayment."""
+        """Schedule 4 computes balance due or overpayment (C-only)."""
         vals = self._run_formulas({
             "S6_1": Decimal("100000"),
             "S5_4": Decimal("1.000000"),
@@ -189,13 +189,13 @@ class TestGA600SFormulas:
             "S4_2a": Decimal("4000"),  # estimated payment (income)
             "GA_PTET": Decimal("1"),   # PTET elected
         })
-        # Income tax = 5390, payment = 4000
+        # Income tax = 5390, payment = 4000 → S4_1c = 5390, S4_2c = 4000
         assert vals["S4_1a"] == Decimal("5390.00")
-        assert vals["S4_5a"] == Decimal("1390.00")  # balance due
-        assert vals["S4_6a"] == ZERO  # no overpayment
+        assert vals["S4_5c"] == Decimal("1390.00")  # balance due (combined)
+        assert vals["S4_6c"] == ZERO  # no overpayment
 
     def test_overpayment(self):
-        """Excess payments create overpayment."""
+        """Excess payments create overpayment (C-only)."""
         vals = self._run_formulas({
             "S6_1": Decimal("100000"),
             "S5_4": Decimal("1.000000"),
@@ -204,9 +204,9 @@ class TestGA600SFormulas:
             "S4_2a": Decimal("6000"),  # overpaid
             "GA_PTET": Decimal("1"),   # PTET elected
         })
-        assert vals["S4_5a"] == ZERO  # no balance due
-        assert vals["S4_6a"] == Decimal("610.00")  # 6000 - 5390
-        assert vals["S4_11a"] == Decimal("610.00")  # credited to next year
+        assert vals["S4_5c"] == ZERO  # no balance due
+        assert vals["S4_6c"] == Decimal("610.00")  # 6000 - 5390
+        assert vals["S4_11c"] == Decimal("610.00")  # credited to next year
 
     def test_loss_no_negative_tax(self):
         """Negative taxable income produces zero tax, not negative."""
