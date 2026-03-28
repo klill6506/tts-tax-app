@@ -19,6 +19,7 @@ cd ..
 echo "=== Installing Python dependencies ==="
 cd server
 pip install poetry
+pip install --upgrade attrs  # fix cached attrs version conflict
 poetry install --only main
 
 echo "=== Running migrations ==="
