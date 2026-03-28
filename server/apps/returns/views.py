@@ -302,8 +302,8 @@ STATE_FORM_MAP = {
     "GA": "GA-600S",
 }
 
-# Maps GA-600S Schedule 6 lines → federal 1120-S Schedule K line numbers.
-# Federal K line values are pulled to populate the GA Schedule 6 inputs.
+# Maps GA-600S lines → federal 1120-S line numbers.
+# Federal values are pulled to populate GA Schedule 6 and Schedule 3 inputs.
 GA_FEDERAL_PULL = {
     # GA S6 line → federal section_code, line_number
     "S6_1": ("page1_deductions", "21"), # Ordinary income (loss) — line 21 is in deductions section
@@ -316,6 +316,10 @@ GA_FEDERAL_PULL = {
     "S6_4e": ("sched_k", "K8a"),        # Net long-term capital gain
     "S6_5": ("sched_k", "K9"),          # Net section 1231 gain
     "S6_6": ("sched_k", "K10"),         # Other income (loss)
+    # GA S3 (Net Worth) ← federal balance sheet equity lines
+    "S3_1": ("sched_l", "L22d"),        # Capital stock — end of year
+    "S3_2": ("sched_l", "L23d"),        # Additional paid-in capital — end
+    "S3_3": ("sched_l", "L24d"),        # Retained earnings — end
 }
 
 # ── Standard deduction presets ──────────────────────────────────────────
