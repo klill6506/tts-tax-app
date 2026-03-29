@@ -166,6 +166,7 @@ interface DepreciationAssetRow {
   state_prior_depreciation: string;
   state_current_depreciation: string;
   state_bonus_disallowed: string;
+  recapture_type: string;
   flow_to: string;
   rental_property: string | null;
   is_listed_property: boolean;
@@ -4899,11 +4900,25 @@ function DepreciationEditForm({
             </button>
             {showDisposal && (
               <div className="mt-2 space-y-3">
-                {/* Date Sold input */}
+                {/* Date Sold + Recapture Type */}
                 <div className="grid grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
                     <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-tx-secondary mb-0.5">Recapture Type</label>
+                    <select defaultValue={asset.recapture_type || "auto"} onChange={(e) => save({ recapture_type: e.target.value })} className={inputClass}>
+                      <option value="auto">Auto-detect</option>
+                      <option value="1245">Section 1245 (personal property)</option>
+                      <option value="1250">Section 1250 (real property)</option>
+                    </select>
+                    {asset.recapture_type === "auto" && (
+                      <p className="text-[10px] text-tx-muted mt-0.5">
+                        {"\u2192"} {asset.group_label === "Buildings" ? "1250" :
+                          asset.group_label === "Improvements" && asset.life && parseFloat(asset.life) >= 27.5 ? "1250" : "1245"}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -4951,7 +4966,13 @@ function DepreciationEditForm({
                           <td className={yel}>{f(p(asset.amt_capital_gain))}</td>
                         </tr>
                         <tr>
-                          <td className="px-2 py-1 pl-6 text-tx-secondary">Depr Recapture (1245):</td>
+                          <td className="px-2 py-1 pl-6 text-tx-secondary">Depr Recapture ({(() => {
+                            const rt = asset.recapture_type || "auto";
+                            if (rt !== "auto") return `\u00a7${rt}`;
+                            if (asset.group_label === "Buildings") return "\u00a71250";
+                            if (asset.group_label === "Improvements" && asset.life && parseFloat(asset.life) >= 27.5) return "\u00a71250";
+                            return "\u00a71245";
+                          })()}):</td>
                           <td className={yel}>{f(p(asset.depreciation_recapture))}</td>
                           <td className={yel}>{f(p(asset.amt_depreciation_recapture))}</td>
                         </tr>

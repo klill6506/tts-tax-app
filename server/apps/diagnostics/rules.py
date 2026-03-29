@@ -1231,6 +1231,73 @@ def int_179_flow_check(tax_year: TaxYear) -> list[dict]:
     return []
 
 
+def sched_l_depr_tie_check(tax_year: TaxYear) -> list[dict]:
+    """Depreciation worksheet totals should tie to Schedule L EOY values."""
+    from apps.returns.models import DepreciationAsset, TaxReturn
+
+    tax_return = (
+        TaxReturn.objects.filter(tax_year=tax_year, federal_return__isnull=True)
+        .first()
+    )
+    if not tax_return:
+        return []
+
+    assets = DepreciationAsset.objects.filter(tax_return=tax_return)
+    if not assets.exists():
+        return []
+
+    _, values = _get_return_values(tax_year)
+
+    # Sum worksheet totals by category
+    depr_cost_total = Decimal("0")
+    depr_accum_total = Decimal("0")
+    amort_cost_total = Decimal("0")
+    amort_accum_total = Decimal("0")
+
+    for asset in assets:
+        is_amort = asset.is_amortization or asset.group_label == "Intangibles/Amortization"
+        if asset.group_label == "Land":
+            continue
+        cost = asset.cost_basis or Decimal("0")
+        prior = asset.prior_depreciation or Decimal("0")
+        current = asset.current_depreciation or Decimal("0")
+        # Disposed assets are removed from EOY balances
+        if asset.date_sold:
+            continue
+        if is_amort:
+            amort_cost_total += cost
+            amort_accum_total += prior + current
+        else:
+            depr_cost_total += cost
+            depr_accum_total += prior + current
+
+    findings = []
+    checks = [
+        ("L10d", "10a EOY (buildings & depreciable assets)", depr_cost_total),
+        ("L10e", "10b EOY (accumulated depreciation)", depr_accum_total),
+        ("L13d", "13a EOY (intangible assets)", amort_cost_total),
+        ("L13e", "13b EOY (accumulated amortization)", amort_accum_total),
+    ]
+    for line, label, worksheet_total in checks:
+        form_val = _d(values, line)
+        # Only check if either side has data
+        if (worksheet_total or form_val) and worksheet_total != form_val:
+            findings.append({
+                "severity": "error",
+                "message": (
+                    f"Schedule L Line {label} (${form_val:,.0f}) does not agree "
+                    f"with depreciation worksheet (${worksheet_total:,.0f}). "
+                    "Verify fixed asset additions and dispositions."
+                ),
+                "details": {
+                    "line": line,
+                    "form_value": str(form_val),
+                    "worksheet_value": str(worksheet_total),
+                },
+            })
+    return findings
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -1537,5 +1604,13 @@ BUILTIN_RULES = [
         "severity": "error",
         "category": "internal",
         "rule_function": "apps.diagnostics.rules.int_179_flow_check",
+    },
+    {
+        "code": "SCHED_L_DEPR_TIE",
+        "name": "Depreciation Ties to Schedule L",
+        "description": "Depreciation worksheet totals should match Schedule L EOY fixed asset and intangible balances.",
+        "severity": "error",
+        "category": "internal",
+        "rule_function": "apps.diagnostics.rules.sched_l_depr_tie_check",
     },
 ]

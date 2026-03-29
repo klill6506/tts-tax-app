@@ -228,6 +228,7 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
             "state_bonus_disallowed",
             "flow_to",
             "rental_property",
+            "recapture_type",
             "is_listed_property",
             "vehicle_miles_total",
             "vehicle_miles_business",

@@ -15,7 +15,7 @@ from apps.imports.models import TrialBalanceUpload
 from apps.mappings.engine import apply_template, resolve_template
 from apps.tts_forms.views import PDFRenderMixin
 
-from .compute import compute_return
+from .compute import compute_return, resolve_recapture_type
 from .models import (
     DepreciationAsset,
     Disposition,
@@ -655,7 +655,14 @@ def _auto_calculate_asset(asset, tax_return):
         )
         adj_basis = cb - total_depr
         total_gain = sp - exp - adj_basis
-        depr_recapture = max(ZERO, min(total_gain, total_depr)) if total_gain > ZERO else ZERO
+        # Recapture depends on §1245 vs §1250 classification
+        if resolve_recapture_type(asset) == "1250":
+            # §1250: ordinary recapture = 0 (post-1986 SL); gain flows as
+            # unrecaptured §1250 (25% rate) via K8c, not as ordinary income.
+            depr_recapture = ZERO
+        else:
+            # §1245: full recapture up to depreciation taken
+            depr_recapture = max(ZERO, min(total_gain, total_depr)) if total_gain > ZERO else ZERO
         asset.gain_loss_on_sale = total_gain
         asset.depreciation_recapture = depr_recapture
         asset.capital_gain = total_gain - depr_recapture

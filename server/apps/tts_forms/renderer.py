@@ -435,6 +435,28 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
     if m1_6_total:
         field_values["M1_6"] = (str(m1_6_total), "currency")
 
+    # Schedule L 4-column line translation.
+    # Seed FormLine line_numbers use L10a/L10b/L10d/L10e but the AcroForm
+    # field map uses L10a_a/L10b_b/L10a_c/L10b_d (line + IRS column letter).
+    # Re-key so the renderer finds the correct AcroForm widget.
+    SCHED_L_4COL = {
+        # Line 2: Trade notes / bad debts
+        "L2a": "L2a_a", "L2d": "L2a_c",      # gross: BOY→col a, EOY→col c
+        "L2b": "L2b_b", "L2e": "L2b_d",      # contra: BOY→col b, EOY→col d
+        # Line 10: Buildings & depreciable assets / accumulated depreciation
+        "L10a": "L10a_a", "L10d": "L10a_c",
+        "L10b": "L10b_b", "L10e": "L10b_d",
+        # Line 11: Depletable assets / accumulated depletion
+        "L11a": "L11a_a", "L11d": "L11a_c",
+        "L11b": "L11b_b", "L11e": "L11b_d",
+        # Line 13: Intangible assets / accumulated amortization
+        "L13a": "L13a_a", "L13d": "L13a_c",
+        "L13b": "L13b_b", "L13e": "L13b_d",
+    }
+    for old_key, new_key in SCHED_L_4COL.items():
+        if old_key in field_values:
+            field_values[new_key] = field_values.pop(old_key)
+
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)
 
@@ -596,7 +618,6 @@ def _build_header_data(tax_return) -> dict[str, str]:
 
 # Maps Schedule K line_number → K-1 Part III field key(s)
 # For simple lines, maps to a single amount field.
-# For coded lines (16), maps to code+amount pair.
 SCHED_K_TO_K1_MAP: dict[str, str] = {
     "K1": "1",
     "K2": "2",
@@ -607,18 +628,51 @@ SCHED_K_TO_K1_MAP: dict[str, str] = {
     "K6": "6",
     "K7": "7",
     "K8a": "8a",
+    "K8b": "8b",
+    "K8c": "8c",
     "K9": "9",
     "K10": "10",
     "K11": "11",
-    "K12a": "12",
 }
 
-# K16 sub-items: (Schedule K line, K-1 code letter, code_field, amount_field)
+# Coded-entry K-1 boxes: (Schedule K line, code letter, code_field, amount_field)
+# K-1 Boxes 12, 13, 15, 16, 17 use code+amount pairs on the IRS form.
+K12_ITEMS = [
+    ("K12a", "A", "12_code", "12"),             # Charitable contributions
+    ("K12b", "H", "12_code_2", "12_amt_2"),     # Investment interest expense
+    ("K12c", "I", "12_code_3", "12_amt_3"),     # Section 59(e)(2) expenditures
+    ("K12d", "L", "12_code_4", "12_amt_4"),     # Other deductions
+]
+
+K13_ITEMS = [
+    ("K13a", "A", "13_code", "13"),             # Low-income housing (42(j)(5))
+    ("K13b", "B", "13_code_2", "13_amt_2"),     # Low-income housing (other)
+    ("K13c", "C", "13_code_3", "13_amt_3"),     # Qualified rehab expenditures
+    ("K13d", "D", "13_code_4", "13_amt_4"),     # Other rental RE credits
+    ("K13f", "F", "13_code_5", "13_amt_5"),     # Biofuel producer credit
+]
+
+K15_ITEMS = [
+    ("K15a", "A", "15_code", "15"),             # Post-1986 depreciation adj
+    ("K15b", "B", "15_code_2", "15_amt_2"),     # Adjusted gain or loss
+    ("K15c", "C", "15_code_3", "15_amt_3"),     # Depletion
+    ("K15d", "D", "15_code_4", "15_amt_4"),     # O&G gross income
+    ("K15e", "E", "15_code_5", "15_amt_5"),     # O&G deductions
+    ("K15f", "F", "15_code_6", "15_amt_6"),     # Other AMT items
+]
+
 K16_ITEMS = [
-    ("K16a", "A", "16_code_1", "16_amt_1"),
-    ("K16b", "B", "16_code_2", "16_amt_2"),
-    ("K16c", "C", "16_code_3", "16_amt_3"),
-    ("K16d", "D", "16_code_4", "16_amt_4"),
+    ("K16a", "A", "16_code_1", "16_amt_1"),     # Tax-exempt interest
+    ("K16b", "B", "16_code_2", "16_amt_2"),     # Other tax-exempt income
+    ("K16c", "C", "16_code_3", "16_amt_3"),     # Nondeductible expenses
+    ("K16d", "D", "16_code_4", "16_amt_4"),     # Distributions
+]
+
+# K17: row 1 reserved for health insurance (Code AC), other items start at row 2
+K17_ITEMS = [
+    ("K17a", "A", "17_code_2", "17_amt_2"),     # Investment income
+    ("K17b", "B", "17_code_3", "17_amt_3"),     # Investment expenses
+    ("K17c", "C", "17_code_4", "17_amt_4"),     # Dividend equivalents
 ]
 
 
@@ -689,7 +743,7 @@ def render_k1(tax_return, shareholder) -> bytes:
     k_values: dict[str, str] = {}
     for fv in fvs:
         ln = fv.form_line.line_number
-        if ln.startswith("K"):
+        if ln.startswith("K") or ln.startswith("QBI_"):
             k_values[ln] = fv.value
 
     # ---- Part III: compute shareholder's share ----
@@ -709,35 +763,88 @@ def render_k1(tax_return, shareholder) -> bytes:
         share = (amount * ownership_pct).quantize(Decimal("1"))
         field_values[k1_line] = (str(share), "currency")
 
-    # K16 sub-items (code+amount pairs)
-    for k_line, code_letter, code_field, amt_field in K16_ITEMS:
-        if k_line == "K16d":
-            # Distributions: use per-shareholder amount, not pro rata
-            amount = shareholder.distributions
-        else:
-            raw = k_values.get(k_line, "")
-            if not raw:
+    # Coded-entry boxes (K12, K13, K15, K16, K17)
+    for items_list in (K12_ITEMS, K13_ITEMS, K15_ITEMS, K16_ITEMS, K17_ITEMS):
+        for k_line, code_letter, code_field, amt_field in items_list:
+            if k_line == "K16d":
+                # Distributions: use per-shareholder amount, not pro rata
+                amount = shareholder.distributions
+            else:
+                raw = k_values.get(k_line, "")
+                if not raw:
+                    continue
+                try:
+                    amount = (Decimal(raw) * ownership_pct).quantize(Decimal("1"))
+                except InvalidOperation:
+                    continue
+            if amount == 0:
                 continue
-            try:
-                amount = (Decimal(raw) * ownership_pct).quantize(Decimal("1"))
-            except InvalidOperation:
-                continue
-        if amount == 0:
-            continue
-        field_values[code_field] = (code_letter, "text")
-        field_values[amt_field] = (str(amount), "currency")
+            field_values[code_field] = (code_letter, "text")
+            field_values[amt_field] = (str(amount), "currency")
 
-    # Line 17 code AC: health insurance (if applicable)
+    # Line 17 code AC: health insurance (row 1, if applicable)
     if shareholder.health_insurance_premium and shareholder.health_insurance_premium > 0:
         field_values["17_code_1"] = ("AC", "text")
         field_values["17_amt_1"] = (str(shareholder.health_insurance_premium), "currency")
 
-    return render(
+    # ---- QBI (Section 199A) — K-1 Box 17 Code V ----
+    # Load entity-level QBI data and build supplemental statement
+    qbi_income_raw = k_values.get("K1", "")
+    qbi_w2_raw = k_values.get("QBI_W2_WAGES", "")
+    qbi_ubia_raw = k_values.get("QBI_UBIA", "")
+    qbi_sstb_raw = k_values.get("QBI_IS_SSTB", "")
+
+    qbi_income = ZERO
+    qbi_w2 = ZERO
+    qbi_ubia = ZERO
+    try:
+        if qbi_income_raw:
+            qbi_income = (Decimal(qbi_income_raw) * ownership_pct).quantize(Decimal("1"))
+    except InvalidOperation:
+        pass
+    try:
+        if qbi_w2_raw:
+            qbi_w2 = (Decimal(qbi_w2_raw) * ownership_pct).quantize(Decimal("1"))
+    except InvalidOperation:
+        pass
+    try:
+        if qbi_ubia_raw:
+            qbi_ubia = (Decimal(qbi_ubia_raw) * ownership_pct).quantize(Decimal("1"))
+    except InvalidOperation:
+        pass
+
+    qbi_statement_pages = None
+    # Only populate Code V if there's QBI income OR W-2 wages / UBIA entered
+    if qbi_income or qbi_w2 or qbi_ubia:
+        # Find next available Box 17 row (after AC and K17 items)
+        next_17_row = 5  # rows 1=AC, 2=K17a, 3=K17b, 4=K17c → 5 for QBI
+        field_values[f"17_code_{next_17_row}"] = ("V", "text")
+        field_values[f"17_amt_{next_17_row}"] = (str(qbi_income), "currency")
+
+        # Build QBI supplemental statement
+        is_sstb = qbi_sstb_raw.lower() in ("true", "1", "yes") if qbi_sstb_raw else False
+        entity_name = entity.legal_name or entity.name
+        qbi_statement_pages = [{
+            "title": f"Schedule K-1 ({year}) — Section 199A Statement",
+            "subtitle": f"Box 17, Code V — {shareholder.name}",
+            "form_code": "1120-S K-1",
+            "items": [
+                ("Ordinary business income (loss)", str(qbi_income)),
+                ("W-2 wages", str(qbi_w2)),
+                ("UBIA of qualified property", str(qbi_ubia)),
+                ("Specified service trade or business (SSTB)", "Yes" if is_sstb else "No"),
+                ("Entity name", entity_name),
+            ],
+        }]
+
+    k1_bytes = render(
         form_id="f1120sk1",
         tax_year=tax_year_applicable,
         field_values=field_values,
         header_data=header_data,
+        statement_pages=qbi_statement_pages,
     )
+    return k1_bytes
 
 
 def render_all_k1s(tax_return) -> bytes:

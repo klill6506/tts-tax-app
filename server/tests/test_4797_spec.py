@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from apps.returns.compute import _holding_period_months, _is_1250_property
+from apps.returns.compute import _holding_period_months, resolve_recapture_type
 
 ZERO = Decimal("0")
 
@@ -33,6 +33,8 @@ def _make_asset(**overrides):
         "gain_loss_on_sale": None,
         "asset_number": 1,
         "sort_order": 1,
+        "recapture_type": "auto",
+        "life": None,
     }
     defaults.update(overrides)
     asset = MagicMock()
@@ -71,7 +73,7 @@ def _compute_4797(asset):
         "total_depreciation": total_depr,
     }
 
-    is_1250 = _is_1250_property(asset.group_label)
+    is_1250 = (resolve_recapture_type(asset) == "1250")
 
     # Routing
     if not is_long_term:
@@ -417,19 +419,48 @@ class TestHoldingPeriod:
 # ===========================================================================
 class TestPropertyType:
     def test_buildings_is_1250(self):
-        assert _is_1250_property("Buildings") is True
+        asset = _make_asset(group_label="Buildings")
+        assert resolve_recapture_type(asset) == "1250"
 
-    def test_improvements_is_1250(self):
-        assert _is_1250_property("Improvements") is True
+    def test_improvements_39yr_is_1250(self):
+        asset = _make_asset(group_label="Improvements", life=Decimal("39"))
+        assert resolve_recapture_type(asset) == "1250"
+
+    def test_improvements_275yr_is_1250(self):
+        asset = _make_asset(group_label="Improvements", life=Decimal("27.5"))
+        assert resolve_recapture_type(asset) == "1250"
+
+    def test_improvements_15yr_is_1245(self):
+        # QIP, land improvements — short-life = 1245
+        asset = _make_asset(group_label="Improvements", life=Decimal("15"))
+        assert resolve_recapture_type(asset) == "1245"
+
+    def test_improvements_no_life_is_1245(self):
+        asset = _make_asset(group_label="Improvements", life=None)
+        assert resolve_recapture_type(asset) == "1245"
 
     def test_equipment_is_not_1250(self):
-        assert _is_1250_property("Machinery and Equipment") is False
+        asset = _make_asset(group_label="Machinery and Equipment")
+        assert resolve_recapture_type(asset) == "1245"
 
     def test_vehicles_is_not_1250(self):
-        assert _is_1250_property("Vehicles") is False
+        asset = _make_asset(group_label="Vehicles")
+        assert resolve_recapture_type(asset) == "1245"
 
     def test_furniture_is_not_1250(self):
-        assert _is_1250_property("Furniture and Fixtures") is False
+        asset = _make_asset(group_label="Furniture and Fixtures")
+        assert resolve_recapture_type(asset) == "1245"
 
     def test_land_is_not_1250(self):
-        assert _is_1250_property("Land") is False
+        asset = _make_asset(group_label="Land")
+        assert resolve_recapture_type(asset) == "1245"
+
+    def test_explicit_1245_override(self):
+        # Building with explicit 1245 override → full recapture
+        asset = _make_asset(group_label="Buildings", recapture_type="1245")
+        assert resolve_recapture_type(asset) == "1245"
+
+    def test_explicit_1250_override(self):
+        # Equipment with explicit 1250 override → zero ordinary recapture
+        asset = _make_asset(group_label="Machinery and Equipment", recapture_type="1250")
+        assert resolve_recapture_type(asset) == "1250"

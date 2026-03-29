@@ -1320,6 +1320,18 @@ class DepreciationAsset(models.Model):
         help_text="Only used when flow_to = '8825'.",
     )
 
+    # Recapture classification
+    RECAPTURE_CHOICES = [
+        ("auto", "Auto-detect"),
+        ("1245", "Section 1245 (personal property)"),
+        ("1250", "Section 1250 (real property)"),
+    ]
+    recapture_type = models.CharField(
+        max_length=4, choices=RECAPTURE_CHOICES, default="auto",
+        help_text="Controls recapture calculation on disposition. "
+                  "Auto-detect uses group_label and life to determine type.",
+    )
+
     # Vehicles / Listed Property
     is_listed_property = models.BooleanField(default=False)
     vehicle_miles_total = models.IntegerField(null=True, blank=True)

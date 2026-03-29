@@ -562,6 +562,15 @@ def aggregate_depreciation(tax_return) -> None:
         sec179_line = "K12" if form_code == "1065" else "K11"
         _set_field_value(tax_return, sec179_line, str(sec_179_total.quantize(Decimal("1"))))
 
+    # Write AMT depreciation adjustment to Schedule K Line 15a.
+    # Positive = regular depreciation > AMT depreciation (typical for bonus/200DB).
+    # Post-2017 TCJA assets usually have zero adjustment.
+    if amt_adjustment_total:
+        _set_field_value(
+            tax_return, "K15a",
+            str(amt_adjustment_total.quantize(Decimal("1"))),
+        )
+
     logger.debug(
         "Depreciation aggregated for return %s: page1=%s, 8825=%s props, "
         "schedF=%s, 179=%s, bonus=%s, amt_adj=%s, state_disallowed=%s",
@@ -594,9 +603,25 @@ def _holding_period_months(date_acquired, date_sold) -> int:
     return (date_sold.year - date_acquired.year) * 12 + (date_sold.month - date_acquired.month)
 
 
-def _is_1250_property(group_label: str) -> bool:
-    """§1250 property = depreciable real property (buildings, improvements)."""
-    return group_label in ("Buildings", "Improvements")
+def resolve_recapture_type(asset) -> str:
+    """Determine whether an asset is §1245 or §1250 for recapture purposes.
+
+    Returns "1245" or "1250".
+    - Explicit override (asset.recapture_type != "auto") takes priority.
+    - Auto-detect: Buildings = 1250; Improvements with life >= 27.5 = 1250;
+      everything else (Machinery, Furniture, Vehicles, Intangibles, short-life
+      improvements like QIP/land improvements) = 1245.
+    """
+    rt = getattr(asset, "recapture_type", "auto")
+    if rt and rt != "auto":
+        return rt
+    if asset.group_label == "Buildings":
+        return "1250"
+    if asset.group_label == "Improvements":
+        if asset.life and asset.life >= Decimal("27.5"):
+            return "1250"
+        return "1245"
+    return "1245"
 
 
 def aggregate_schedule_d(tax_return) -> None:
@@ -717,6 +742,7 @@ def aggregate_dispositions(tax_return) -> None:
     part2_ordinary = ZERO
     p3_total_gain = ZERO
     p3_total_recapture = ZERO
+    unrecaptured_1250_total = ZERO
 
     for a in disposed:
         # R001 — holding period classification (months)
@@ -747,10 +773,13 @@ def aggregate_dispositions(tax_return) -> None:
             part1_line2_total += gain
         elif total_depr > 0:
             # Long-term gain with depreciation → Part III
-            is_1250 = _is_1250_property(a.group_label)
+            is_1250 = (resolve_recapture_type(a) == "1250")
             if is_1250:
                 # R007 — §1250 ordinary recapture = 0 (post-1986 SL)
                 recapture = ZERO
+                # R008 — Unrecaptured §1250 = min(gain, depreciation) - ordinary
+                # Since ordinary = 0, unrecaptured = min(gain, depreciation)
+                unrecaptured_1250_total += min(gain, total_depr)
             else:
                 # R005 — §1245 recapture = min(gain, depreciation)
                 recapture = min(gain, total_depr)
@@ -786,6 +815,112 @@ def aggregate_dispositions(tax_return) -> None:
     if total_ordinary != 0:
         _set_field_value(tax_return, ordinary_line, str(total_ordinary.quantize(Decimal("1"))))
 
+    # Unrecaptured §1250 gain → K8c (taxed at 25% max rate for individuals)
+    if unrecaptured_1250_total != 0:
+        _set_field_value(
+            tax_return, "K8c",
+            str(unrecaptured_1250_total.quantize(Decimal("1"))),
+        )
+
+
+def compute_schedule_l(tax_return) -> None:
+    """
+    Compute Schedule L Lines 10/13 EOY values from the depreciation worksheet.
+
+    - L10d (EOY buildings & depreciable assets gross) = L10a BOY + additions − dispositions
+    - L10e (EOY accumulated depreciation) = L10b BOY + current year depr − disposed accum depr
+    - L13d (EOY intangible assets gross) = L13a BOY + additions − dispositions
+    - L13e (EOY accumulated amortization) = L13b BOY + current year amort − disposed accum amort
+    """
+    from datetime import date
+
+    assets = DepreciationAsset.objects.filter(tax_return=tax_return)
+    if not assets.exists():
+        return
+
+    tax_year = tax_return.tax_year.year
+    year_start = date(tax_year, 1, 1)
+    year_end = date(tax_year, 12, 31)
+
+    # Partition assets into depreciable (tangible) vs amortizable (intangible)
+    depr_additions_cost = ZERO
+    depr_dispositions_cost = ZERO
+    depr_current_year = ZERO
+    depr_disposed_accum = ZERO
+
+    amort_additions_cost = ZERO
+    amort_dispositions_cost = ZERO
+    amort_current_year = ZERO
+    amort_disposed_accum = ZERO
+
+    for asset in assets:
+        is_amort = asset.is_amortization or asset.group_label == "Intangibles/Amortization"
+        is_land = asset.group_label == "Land"
+
+        if is_land:
+            continue  # Land has no depreciation, manual entry for Schedule L
+
+        cost = asset.cost_basis or ZERO
+        current_depr = asset.current_depreciation or ZERO
+        prior_depr = asset.prior_depreciation or ZERO
+
+        acquired_this_year = (
+            asset.date_acquired
+            and year_start <= asset.date_acquired <= year_end
+        )
+        disposed_this_year = (
+            asset.date_sold
+            and year_start <= asset.date_sold <= year_end
+        )
+
+        if is_amort:
+            if acquired_this_year:
+                amort_additions_cost += cost
+            if disposed_this_year:
+                amort_dispositions_cost += cost
+                amort_disposed_accum += prior_depr + current_depr
+            amort_current_year += current_depr
+        else:
+            if acquired_this_year:
+                depr_additions_cost += cost
+            if disposed_this_year:
+                depr_dispositions_cost += cost
+                depr_disposed_accum += prior_depr + current_depr
+            depr_current_year += current_depr
+
+    # Read BOY values from FormFieldValue
+    def _get_boy(line_number: str) -> Decimal:
+        try:
+            fv = FormFieldValue.objects.get(
+                tax_return=tax_return,
+                form_line__line_number=line_number,
+            )
+            return Decimal(fv.value) if fv.value else ZERO
+        except (FormFieldValue.DoesNotExist, InvalidOperation):
+            return ZERO
+
+    boy_10a = _get_boy("L10a")  # BOY buildings & depreciable assets (gross)
+    boy_10b = _get_boy("L10b")  # BOY accumulated depreciation
+    boy_13a = _get_boy("L13a")  # BOY intangible assets (gross)
+    boy_13b = _get_boy("L13b")  # BOY accumulated amortization
+
+    # Compute EOY values
+    eoy_10d = (boy_10a + depr_additions_cost - depr_dispositions_cost).quantize(Decimal("1"))
+    eoy_10e = (boy_10b + depr_current_year - depr_disposed_accum).quantize(Decimal("1"))
+    eoy_13d = (boy_13a + amort_additions_cost - amort_dispositions_cost).quantize(Decimal("1"))
+    eoy_13e = (boy_13b + amort_current_year - amort_disposed_accum).quantize(Decimal("1"))
+
+    # Save computed EOY values
+    _set_field_value(tax_return, "L10d", str(eoy_10d))
+    _set_field_value(tax_return, "L10e", str(eoy_10e))
+    _set_field_value(tax_return, "L13d", str(eoy_13d))
+    _set_field_value(tax_return, "L13e", str(eoy_13e))
+
+    logger.debug(
+        "Schedule L computed for return %s: L10d=%s, L10e=%s, L13d=%s, L13e=%s",
+        tax_return.id, eoy_10d, eoy_10e, eoy_13d, eoy_13e,
+    )
+
 
 def compute_return(tax_return) -> int:
     """
@@ -795,6 +930,9 @@ def compute_return(tax_return) -> int:
     """
     # Aggregate depreciation first so totals are available to formulas
     aggregate_depreciation(tax_return)
+
+    # Compute Schedule L EOY values from depreciation worksheet
+    compute_schedule_l(tax_return)
 
     # Compute 4797 disposition flows (K9, Page 1 Line 4)
     aggregate_dispositions(tax_return)
