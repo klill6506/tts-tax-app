@@ -190,7 +190,7 @@ class EntityViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
         if client_id:
             qs = qs.filter(
                 Q(client_id=client_id)
-                | Q(tax_years__tax_return__shareholders__linked_client_id=client_id)
+                | Q(tax_years__tax_returns__shareholders__linked_client_id=client_id)
             ).distinct()
         return qs
 

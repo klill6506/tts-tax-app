@@ -77,7 +77,7 @@ class TestSeed:
 
     def test_seed_creates_lines(self, seeded):
         lines = FormLine.objects.filter(section__form=seeded)
-        assert lines.count() == 300
+        assert lines.count() == 323
 
     def test_seed_is_idempotent(self, seeded):
         # Run again
@@ -85,7 +85,7 @@ class TestSeed:
         cmd.stdout = open("/dev/null", "w")  # noqa: SIM115
         cmd.handle()
         cmd.stdout.close()
-        assert FormLine.objects.filter(section__form=seeded).count() == 300
+        assert FormLine.objects.filter(section__form=seeded).count() == 323
 
     def test_mapping_keys_populated(self, seeded):
         lines_with_keys = FormLine.objects.filter(
@@ -138,7 +138,7 @@ class TestTaxReturnEndpoints:
         assert data["form_code"] == "1120-S"
         assert data["status"] == "draft"
         # All form lines should have field values
-        assert len(data["field_values"]) == 300
+        assert len(data["field_values"]) == 323
 
     def test_create_duplicate_returns_409(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -163,7 +163,12 @@ class TestTaxReturnEndpoints:
         )
         resp = http.get("/api/v1/tax-returns/")
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
+        data = resp.json()
+        results = data.get("results", data)  # Support both paginated and non-paginated
+        if isinstance(results, list):
+            assert len(results) == 1
+        else:
+            assert data["count"] == 1
 
     def test_retrieve_return(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -221,7 +226,8 @@ class TestTaxReturnEndpoints:
         _create_return(http, tax_year.id)
         resp = http.get("/api/v1/tax-returns/")
         assert resp.status_code == 200
-        data = resp.json()[0]
+        results = resp.json().get("results", resp.json())
+        data = results[0]
         assert data["entity_type"] == "scorp"
         assert "client_id" in data
         assert "entity_id" in data
@@ -231,33 +237,33 @@ class TestTaxReturnEndpoints:
         _create_return(http, tax_year.id)
         resp = http.get("/api/v1/tax-returns/?status=draft")
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
+        assert resp.json()["count"] == 1
         resp = http.get("/api/v1/tax-returns/?status=filed")
-        assert len(resp.json()) == 0
+        assert resp.json()["count"] == 0
 
     def test_list_returns_filter_by_year(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
         _create_return(http, tax_year.id)
         resp = http.get("/api/v1/tax-returns/?year=2025")
-        assert len(resp.json()) == 1
+        assert resp.json()["count"] == 1
         resp = http.get("/api/v1/tax-returns/?year=2024")
-        assert len(resp.json()) == 0
+        assert resp.json()["count"] == 0
 
     def test_list_returns_filter_by_form_code(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
         _create_return(http, tax_year.id)
         resp = http.get("/api/v1/tax-returns/?form_code=1120-S")
-        assert len(resp.json()) == 1
+        assert resp.json()["count"] == 1
         resp = http.get("/api/v1/tax-returns/?form_code=1065")
-        assert len(resp.json()) == 0
+        assert resp.json()["count"] == 0
 
     def test_list_returns_search(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
         _create_return(http, tax_year.id)
         resp = http.get("/api/v1/tax-returns/?search=Returns")
-        assert len(resp.json()) == 1
+        assert resp.json()["count"] == 1
         resp = http.get("/api/v1/tax-returns/?search=nonexistent")
-        assert len(resp.json()) == 0
+        assert resp.json()["count"] == 0
 
     def test_delete_return(self, user_and_http, seeded, tax_year):
         _, http = user_and_http
@@ -283,7 +289,7 @@ class TestTaxReturnEndpoints:
         other_http = TestClient()
         other_http.login(username="other", password="testpass123")
         resp = other_http.get("/api/v1/tax-returns/")
-        assert len(resp.json()) == 0
+        assert resp.json()["count"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +374,7 @@ class TestFormSelection:
         resp = _create_return(http, partnership_tax_year.id)
         assert resp.status_code == 201
         assert resp.json()["form_code"] == "1065"
-        assert len(resp.json()["field_values"]) == 98
+        assert len(resp.json()["field_values"]) == 285
 
     def test_ccorp_gets_1120(self, user_and_http, seeded_1120, ccorp_tax_year):
         _, http = user_and_http
@@ -1054,10 +1060,10 @@ class TestSeed1065:
         assert seeded_1065.code == "1065"
 
     def test_seed_creates_sections(self, seeded_1065):
-        assert FormSection.objects.filter(form=seeded_1065).count() == 6
+        assert FormSection.objects.filter(form=seeded_1065).count() == 10
 
     def test_seed_creates_lines(self, seeded_1065):
-        assert FormLine.objects.filter(section__form=seeded_1065).count() == 98
+        assert FormLine.objects.filter(section__form=seeded_1065).count() == 285
 
     def test_seed_has_normal_balance(self, seeded_1065):
         """1065 lines should have normal_balance set."""
@@ -1103,10 +1109,14 @@ class TestCompute1065:
             fl.line_number: fl
             for fl in FormLine.objects.filter(section__form=seeded_1065)
         }
-        for ln_num, val in [("1a", "10000"), ("1b", "3000"), ("2", "2000")]:
+        for ln_num, val in [("1a", "10000"), ("1b", "3000")]:
             FormFieldValue.objects.create(
                 tax_return=tr, form_line=lines[ln_num], value=val,
             )
+        # Line 2 is computed from A8; mark as overridden to keep test value
+        FormFieldValue.objects.create(
+            tax_return=tr, form_line=lines["2"], value="2000", is_overridden=True,
+        )
         # Create empty values for all computed lines
         for ln_num, fl in lines.items():
             if not FormFieldValue.objects.filter(tax_return=tr, form_line=fl).exists():

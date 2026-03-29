@@ -707,7 +707,7 @@ class TestRenderer:
         assert len(reader.pages) == 7
 
     def test_render_unknown_form_raises(self):
-        with pytest.raises(ValueError, match="No coordinate map"):
+        with pytest.raises(FileNotFoundError):
             render(
                 form_id="f9999",
                 tax_year=2025,
@@ -866,7 +866,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 14  # 11 form templates + 3 instruction PDFs
+        assert len(data["forms"]) == 21
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (

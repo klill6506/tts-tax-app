@@ -192,7 +192,7 @@ class TestMathDiagnostics:
     def test_balance_sheet_passes_when_balanced(self, rules, tax_return_1120s, tax_year):
         from apps.diagnostics.rules import math_balance_sheet_check
 
-        _set_line(tax_return_1120s, "L14d", "100000")  # Total assets EOY
+        _set_line(tax_return_1120s, "L15d", "100000")  # Total assets EOY
         _set_line(tax_return_1120s, "L27d", "100000")  # Total L+E EOY
         findings = math_balance_sheet_check(tax_year)
         assert len(findings) == 0
@@ -386,8 +386,8 @@ class TestM1_3bCompute:
             for fl in FormLine.objects.filter(section__form=seeded_1120s)
         }
 
-        # Set K16c (non-deductible expenses) = 5000
-        FormFieldValue.objects.create(tax_return=tr, form_line=lines["K16c"], value="5000")
+        # Set K16c (non-deductible expenses) = 5000 — mark overridden so compute doesn't clear it
+        FormFieldValue.objects.create(tax_return=tr, form_line=lines["K16c"], value="5000", is_overridden=True)
 
         # Create M1_3b and other computed lines with empty values
         computed_lines = [
@@ -423,9 +423,9 @@ class TestM1_3bCompute:
             for fl in FormLine.objects.filter(section__form=seeded_1120s)
         }
 
-        # Set M1_1 (book income) = 100000, K16c = 3000
-        FormFieldValue.objects.create(tax_return=tr, form_line=lines["M1_1"], value="100000")
-        FormFieldValue.objects.create(tax_return=tr, form_line=lines["K16c"], value="3000")
+        # Set M1_1 (book income) = 100000, K16c = 3000 — mark overridden so compute doesn't clear
+        FormFieldValue.objects.create(tax_return=tr, form_line=lines["M1_1"], value="100000", is_overridden=True)
+        FormFieldValue.objects.create(tax_return=tr, form_line=lines["K16c"], value="3000", is_overridden=True)
 
         # Create all needed computed lines
         computed_lines = [

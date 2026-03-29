@@ -191,7 +191,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        year = options["year"]
+        year = options.get("year", 2024)
         form, created = FormDefinition.objects.update_or_create(
             code="GA-600S",
             tax_year_applicable=year,

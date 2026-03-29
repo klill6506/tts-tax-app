@@ -291,7 +291,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        year = options["year"]
+        year = options.get("year", 2025)
         form, created = FormDefinition.objects.update_or_create(
             code="1120",
             tax_year_applicable=year,

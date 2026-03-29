@@ -142,7 +142,7 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     # Line 5a: Tax-exempt interest (income on books not on K)
     ("M1_5a", lambda v: _d(v, "K16a")),
     # Line 3b: Meals/entertainment nondeductible (expenses on books not on K)
-    ("M1_3b", lambda v: _d(v, "D_MEALS_NONDED")),
+    ("M1_3b", lambda v: _d(v, "K16c")),
     # Line 6b: Charitable contributions + Section 179 (deductions on K not on books)
     ("M1_6b", lambda v: _sum(v, "K12a", "K11")),
     # Line 1 is back-computed from K18 so M-1 always reconciles:
@@ -334,7 +334,7 @@ FORMULAS_1120: list[tuple[str, callable]] = [
     ("C21", lambda v: _d(v, "C19")),
     # Schedule J
     ("J1", lambda v: _d(v, "30")),
-    ("J2", lambda v: (_d(v, "J1") * Decimal("0.21")).quantize(Decimal("1"))),
+    ("J2", lambda v: (_d(v, "J1") * Decimal("0.21")).quantize(Decimal("0.01"))),
     ("J4", lambda v: _d(v, "J2") + _d(v, "J3")),
     ("J5e", lambda v: _sum(v, "J5a", "J5b", "J5c", "J5d")),
     ("J6", lambda v: max(ZERO, _d(v, "J4") - _d(v, "J5e"))),
@@ -543,24 +543,24 @@ def aggregate_depreciation(tax_return) -> None:
     # Write page 1 depreciation — Line 14 for 1120-S/1120, Line 16 for 1065
     form_code = tax_return.form_definition.code
     depr_line = "16" if form_code == "1065" else "14"
-    _set_field_value(tax_return, depr_line, str(page1_total.quantize(Decimal("1"))))
+    _set_field_value(tax_return, depr_line, str(page1_total.quantize(Decimal("0.01"))))
 
     # Write Schedule F depreciation (F14 = "Depreciation and section 179 expense")
     if sched_f_total:
-        _set_field_value(tax_return, "F14", str(sched_f_total.quantize(Decimal("1"))))
+        _set_field_value(tax_return, "F14", str(sched_f_total.quantize(Decimal("0.01"))))
 
     # Write to rental properties (Form 8825)
     if rental_totals:
         from .models import RentalProperty
         for prop_id, amount in rental_totals.items():
             RentalProperty.objects.filter(id=prop_id).update(
-                depreciation=amount.quantize(Decimal("1"))
+                depreciation=amount.quantize(Decimal("0.01"))
             )
 
     # Write Section 179 — K11 for 1120-S, K12 for 1065
     if sec_179_total:
         sec179_line = "K12" if form_code == "1065" else "K11"
-        _set_field_value(tax_return, sec179_line, str(sec_179_total.quantize(Decimal("1"))))
+        _set_field_value(tax_return, sec179_line, str(sec_179_total.quantize(Decimal("0.01"))))
 
     # Write AMT depreciation adjustment to Schedule K Line 15a.
     # Positive = regular depreciation > AMT depreciation (typical for bonus/200DB).
@@ -568,7 +568,7 @@ def aggregate_depreciation(tax_return) -> None:
     if amt_adjustment_total:
         _set_field_value(
             tax_return, "K15a",
-            str(amt_adjustment_total.quantize(Decimal("1"))),
+            str(amt_adjustment_total.quantize(Decimal("0.01"))),
         )
 
     logger.debug(
@@ -638,6 +638,10 @@ def aggregate_schedule_d(tax_return) -> None:
     """
     from .models import Disposition
 
+    # Clear output lines before recomputing
+    _set_field_value(tax_return, "K7", "0.00")
+    _set_field_value(tax_return, "K8a", "0.00")
+
     dispositions = Disposition.objects.filter(
         tax_return=tax_return,
         is_4797=False,
@@ -658,9 +662,9 @@ def aggregate_schedule_d(tax_return) -> None:
 
     # Flow to Schedule K
     if st_total != 0:
-        _set_field_value(tax_return, "K7", str(st_total.quantize(Decimal("1"))))
+        _set_field_value(tax_return, "K7", str(st_total.quantize(Decimal("0.01"))))
     if lt_total != 0:
-        _set_field_value(tax_return, "K8a", str(lt_total.quantize(Decimal("1"))))
+        _set_field_value(tax_return, "K8a", str(lt_total.quantize(Decimal("0.01"))))
 
 
 def aggregate_rental_income(tax_return) -> None:
@@ -671,6 +675,9 @@ def aggregate_rental_income(tax_return) -> None:
     Per Form 8825 spec R003: K2 = sum(all net_rent).
     """
     from .models import RentalProperty
+
+    # Clear output line before recomputing
+    _set_field_value(tax_return, "K2", "0.00")
 
     rentals = RentalProperty.objects.filter(tax_return=tax_return)
     if not rentals.exists():
@@ -683,7 +690,7 @@ def aggregate_rental_income(tax_return) -> None:
 
     if total_net_rent != 0:
         _set_field_value(
-            tax_return, "K2", str(total_net_rent.quantize(Decimal("1")))
+            tax_return, "K2", str(total_net_rent.quantize(Decimal("0.01")))
         )
 
 
@@ -706,7 +713,7 @@ def aggregate_officer_compensation(tax_return) -> None:
 
     if total_comp != 0:
         _set_field_value(
-            tax_return, "7", str(total_comp.quantize(Decimal("1")))
+            tax_return, "7", str(total_comp.quantize(Decimal("0.01")))
         )
 
 
@@ -730,6 +737,15 @@ def aggregate_dispositions(tax_return) -> None:
     - 1120-S: K9 = Section 1231, Line 4 = ordinary 4797 gains
     - 1065:   K10 = Section 1231, Line 6 = ordinary 4797 gains
     """
+    # Clear all disposition output lines before recomputing
+    form_code = tax_return.form_definition.code
+    if form_code == "1065":
+        _output_lines = ["K10", "6", "K8c"]
+    else:
+        _output_lines = ["K9", "4", "K8c"]
+    for _ln in _output_lines:
+        _set_field_value(tax_return, _ln, "0.00")
+
     disposed = DepreciationAsset.objects.filter(
         tax_return=tax_return,
         date_sold__isnull=False,
@@ -809,17 +825,17 @@ def aggregate_dispositions(tax_return) -> None:
 
     # Section 1231 gain/loss (Part I Line 7)
     if part1_line7 != 0:
-        _set_field_value(tax_return, k_1231_line, str(part1_line7.quantize(Decimal("1"))))
+        _set_field_value(tax_return, k_1231_line, str(part1_line7.quantize(Decimal("0.01"))))
 
     # Ordinary gains from 4797 (Part II total)
     if total_ordinary != 0:
-        _set_field_value(tax_return, ordinary_line, str(total_ordinary.quantize(Decimal("1"))))
+        _set_field_value(tax_return, ordinary_line, str(total_ordinary.quantize(Decimal("0.01"))))
 
     # Unrecaptured §1250 gain → K8c (taxed at 25% max rate for individuals)
     if unrecaptured_1250_total != 0:
         _set_field_value(
             tax_return, "K8c",
-            str(unrecaptured_1250_total.quantize(Decimal("1"))),
+            str(unrecaptured_1250_total.quantize(Decimal("0.01"))),
         )
 
 
@@ -905,10 +921,10 @@ def compute_schedule_l(tax_return) -> None:
     boy_13b = _get_boy("L13b")  # BOY accumulated amortization
 
     # Compute EOY values
-    eoy_10d = (boy_10a + depr_additions_cost - depr_dispositions_cost).quantize(Decimal("1"))
-    eoy_10e = (boy_10b + depr_current_year - depr_disposed_accum).quantize(Decimal("1"))
-    eoy_13d = (boy_13a + amort_additions_cost - amort_dispositions_cost).quantize(Decimal("1"))
-    eoy_13e = (boy_13b + amort_current_year - amort_disposed_accum).quantize(Decimal("1"))
+    eoy_10d = (boy_10a + depr_additions_cost - depr_dispositions_cost).quantize(Decimal("0.01"))
+    eoy_10e = (boy_10b + depr_current_year - depr_disposed_accum).quantize(Decimal("0.01"))
+    eoy_13d = (boy_13a + amort_additions_cost - amort_dispositions_cost).quantize(Decimal("0.01"))
+    eoy_13e = (boy_13b + amort_current_year - amort_disposed_accum).quantize(Decimal("0.01"))
 
     # Save computed EOY values
     _set_field_value(tax_return, "L10d", str(eoy_10d))
@@ -1000,7 +1016,7 @@ def compute_return(tax_return) -> int:
         if fv and fv.is_overridden:
             continue
 
-        result = formula_fn(values).quantize(Decimal("1"))
+        result = formula_fn(values).quantize(Decimal("0.01"))
         values[line_number] = result  # update for downstream formulas
 
         if fv:

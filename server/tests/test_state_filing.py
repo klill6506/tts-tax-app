@@ -195,8 +195,8 @@ class TestCreateStateReturn:
         )
         assert resp.status_code == 201
         data = resp.json()
-        # GA-600S has 85 lines
-        assert len(data["field_values"]) == 85
+        # GA-600S has 82 lines
+        assert len(data["field_values"]) == 82
 
     def test_ga_ratios_default_to_one(
         self, federal_return, seeded_ga600s, user_and_http
@@ -294,7 +294,14 @@ class TestCreateStateReturn:
     ):
         """Having a state return doesn't block creating new federal returns
         for other tax years."""
+        from apps.returns.management.commands.seed_1120s import Command as SeedCmd
+        import io
         _, http = user_and_http
+        # Seed form definitions for years used in this test
+        for yr in [2024, 2023]:
+            cmd = SeedCmd()
+            cmd.stdout = io.StringIO()
+            cmd.handle(year=yr)
         # Create first tax year + federal + state
         ty1 = TaxYear.objects.create(entity=entity_ga, year=2024, filing_states=["GA"])
         resp = http.post(

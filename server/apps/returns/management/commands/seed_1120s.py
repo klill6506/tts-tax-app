@@ -166,7 +166,7 @@ SECTIONS = [
             ("D_FREE6_DESC", "", T, "", False, 550, DR),
             ("D_FREE6", "", C, "", False, 551, DR),
             # Summary lines
-            ("19", "Other deductions", C, "", True, 600, DR),
+            ("19", "Other deductions", C, "1120S_L19", True, 600, DR),
             ("20", "Total deductions", C, "", True, 610, DR),
             ("21", "Ordinary business income (loss)", C, "", True, 620, DR),
         ],
@@ -481,7 +481,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        year = options["year"]
+        year = options.get("year", 2025)
         form, created = FormDefinition.objects.update_or_create(
             code="1120-S",
             tax_year_applicable=year,

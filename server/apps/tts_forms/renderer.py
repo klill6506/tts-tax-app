@@ -829,11 +829,11 @@ def render_k1(tax_return, shareholder) -> bytes:
             "subtitle": f"Box 17, Code V — {shareholder.name}",
             "form_code": "1120-S K-1",
             "items": [
-                ("Ordinary business income (loss)", str(qbi_income)),
-                ("W-2 wages", str(qbi_w2)),
-                ("UBIA of qualified property", str(qbi_ubia)),
-                ("Specified service trade or business (SSTB)", "Yes" if is_sstb else "No"),
-                ("Entity name", entity_name),
+                {"description": "Ordinary business income (loss)", "amount": str(qbi_income)},
+                {"description": "W-2 wages", "amount": str(qbi_w2)},
+                {"description": "UBIA of qualified property", "amount": str(qbi_ubia)},
+                {"description": "Specified service trade or business (SSTB)", "amount": "Yes" if is_sstb else "No"},
+                {"description": "Entity name", "amount": entity_name},
             ],
         }]
 

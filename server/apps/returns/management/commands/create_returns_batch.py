@@ -75,7 +75,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, **options):
-        year = options["year"]
+        year = options.get("year", 2025)
         dry_run = options["dry_run"]
         recreate = options["recreate"]
         username = options["user"]
