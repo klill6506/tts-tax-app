@@ -353,6 +353,12 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Schedule L — Balance Sheet (inventory flows from COGS)
   ["L3a", (v) => val(v, "A1")],
   ["L3d", (v) => val(v, "A7")],
+  // Schedule L EOY — server-computed from depreciation worksheet via compute_schedule_l().
+  // Identity formulas mark these as computed (grayed out) on the input screen.
+  ["L10d", (v) => val(v, "L10d")],
+  ["L10e", (v) => val(v, "L10e")],
+  ["L13d", (v) => val(v, "L13d")],
+  ["L13e", (v) => val(v, "L13e")],
   ["L15a", (v) => sumLines(v, "L1a","L3a","L4a","L5a","L6a","L7a","L8a","L9a","L12a","L14a")
     + val(v, "L2a") - val(v, "L2b")
     + val(v, "L10a") - val(v, "L10b")

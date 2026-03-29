@@ -526,3 +526,20 @@ class TestSchedLDeprTieDiagnostic:
 
         findings = sched_l_depr_tie_check(tax_return.tax_year)
         assert len(findings) == 0
+
+
+# ===========================================================================
+# Schedule L computed flags
+# ===========================================================================
+
+@pytest.mark.django_db
+class TestScheduleLComputedFlags:
+    """L3d, L10d, L10e, L13d, L13e should be marked is_computed=True."""
+
+    def test_schedule_l_eoy_fields_are_computed(self, seeded_1120s):
+        for ln in ["L3d", "L10d", "L10e", "L13d", "L13e"]:
+            line = FormLine.objects.get(
+                section__form=seeded_1120s,
+                line_number=ln,
+            )
+            assert line.is_computed, f"{ln} should be is_computed=True"
