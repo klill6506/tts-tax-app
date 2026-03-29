@@ -159,6 +159,13 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     # Schedule M-2 — 4 columns: (a) AAA, (b) OAA, (c) STPI, (d) Accu E&P
     # Column (a) AAA — auto-computed
     ("M2_2a", lambda v: max(ZERO, _d(v, "K1"))),
+    # M-2 Line 3a: Other additions to AAA — non-ordinary K income items
+    # plus tax-exempt income.  Per IRS instructions for Schedule M-2.
+    ("M2_3a", lambda v: (
+        _d(v, "K2") + _d(v, "K3") + _d(v, "K4") + _d(v, "K5a")
+        + _d(v, "K6") + _d(v, "K7") + _d(v, "K8a") + _d(v, "K9")
+        + _d(v, "K10") + _d(v, "K16a")
+    )),
     ("M2_4a", lambda v: max(ZERO, -_d(v, "K1"))),
     # Per IRS instructions: M-2 Line 5 col (a) = K11 + K12a-K12d + K16c
     ("M2_5a", lambda v: _sum(v, "K11", "K12a", "K12b", "K12c", "K12d", "K16c")),
@@ -746,12 +753,12 @@ def aggregate_dispositions(tax_return) -> None:
     for _ln in _output_lines:
         _set_field_value(tax_return, _ln, "0.00")
 
-    disposed = DepreciationAsset.objects.filter(
+    disposed = list(DepreciationAsset.objects.filter(
         tax_return=tax_return,
         date_sold__isnull=False,
-    )
+    ))
 
-    if not disposed.exists():
+    if not disposed:
         return
 
     part1_line2_total = ZERO
@@ -836,6 +843,32 @@ def aggregate_dispositions(tax_return) -> None:
         _set_field_value(
             tax_return, "K8c",
             str(unrecaptured_1250_total.quantize(Decimal("0.01"))),
+        )
+
+    # Disposition AMT adjustment → add to K15a
+    # AMT gain differs from regular gain because AMT depreciation differs.
+    # aggregate_depreciation() already wrote K15a for ongoing depr; ADD to it.
+    disp_amt_adjustment = ZERO
+    for a in disposed:
+        if a.gain_loss_on_sale is not None and a.amt_gain_loss_on_sale is not None:
+            disp_amt_adjustment += (a.gain_loss_on_sale - a.amt_gain_loss_on_sale)
+
+    if disp_amt_adjustment != 0:
+        existing_k15a = ZERO
+        try:
+            fv = FormFieldValue.objects.select_related("form_line").get(
+                tax_return=tax_return,
+                form_line__line_number="K15a",
+            )
+            if fv.value:
+                existing_k15a = Decimal(fv.value)
+        except (FormFieldValue.DoesNotExist, InvalidOperation):
+            pass
+
+        combined = existing_k15a + disp_amt_adjustment
+        _set_field_value(
+            tax_return, "K15a",
+            str(combined.quantize(Decimal("0.01"))),
         )
 
 

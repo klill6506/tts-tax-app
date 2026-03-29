@@ -997,7 +997,7 @@ class TestComputeOverride:
                     "L24a", "L24d", "L27a", "L27d",
                     "D_MEALS_DED", "D_MEALS_NONDED",
                     "M1_3b", "M1_4", "M1_7", "M1_8",
-                    "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+                    "M2_2a", "M2_3a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
                     "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]
@@ -1034,7 +1034,7 @@ class TestComputeOverride:
                     "L24a", "L24d", "L27a", "L27d",
                     "D_MEALS_DED", "D_MEALS_NONDED",
                     "M1_3b", "M1_4", "M1_7", "M1_8",
-                    "M2_2a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
+                    "M2_2a", "M2_3a", "M2_4a", "M2_5a", "M2_6a", "M2_7a", "M2_8a",
                     "M2_6b", "M2_8b", "M2_6c", "M2_8c", "M2_6d", "M2_8d"]:
             if ln in lines and not FormFieldValue.objects.filter(
                 tax_return=tr, form_line=lines[ln]

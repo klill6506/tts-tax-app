@@ -314,6 +314,43 @@ class TestComputeScheduleL:
         # Should not have been modified
         assert _get_line(tax_return, "L10d") == 999
 
+    def test_schedule_l_updates_after_asset_add(self, tax_return):
+        """Adding an asset and calling aggregate+compute_schedule_l updates L10d."""
+        from unittest.mock import patch
+
+        _set_line(tax_return, "L10a", "100000")  # BOY gross
+        _set_line(tax_return, "L10b", "40000")   # BOY accum depr
+
+        DepreciationAsset.objects.create(
+            tax_return=tax_return,
+            asset_number=1,
+            description="New equipment",
+            group_label="Machinery and Equipment",
+            cost_basis=Decimal("50000"),
+            date_acquired=date(2025, 3, 15),
+            prior_depreciation=Decimal("0"),
+            flow_to="page1",
+        )
+
+        mock_result = {
+            "current_depreciation": Decimal("10000"),
+            "bonus_amount": Decimal("0"),
+            "amt_current_depreciation": Decimal("10000"),
+            "state_current_depreciation": Decimal("10000"),
+            "state_bonus_disallowed": Decimal("0"),
+        }
+        with patch(
+            "apps.tts_forms.depreciation_engine.calculate_asset_depreciation",
+            return_value=mock_result,
+        ):
+            aggregate_depreciation(tax_return)
+        compute_schedule_l(tax_return)
+
+        # L10d = BOY 100000 + addition 50000 = 150000
+        assert _get_line(tax_return, "L10d") == 150000
+        # L10e = BOY 40000 + current 10000 = 50000
+        assert _get_line(tax_return, "L10e") == 50000
+
 
 # ===========================================================================
 # DB-Backed Tests: AMT to K15a
@@ -386,6 +423,56 @@ class TestAMTToK15a:
 
         # No adjustment — K15a should remain 0
         assert _get_line(tax_return, "K15a") == 0
+
+    def test_disposition_amt_adds_to_k15a(self, tax_return):
+        """When a sold asset has different regular/AMT gain, K15a includes both
+        the ongoing depreciation AMT adjustment AND the disposition adjustment."""
+        from unittest.mock import patch
+        from apps.returns.compute import aggregate_dispositions
+
+        asset = DepreciationAsset.objects.create(
+            tax_return=tax_return,
+            asset_number=1,
+            description="Pre-2018 equipment",
+            group_label="Machinery and Equipment",
+            cost_basis=Decimal("30500"),
+            date_acquired=date(2020, 6, 1),
+            date_sold=date(2025, 8, 15),
+            sales_price=Decimal("45000"),
+            prior_depreciation=Decimal("20000"),
+            flow_to="page1",
+            # Regular total depr = 20000 + 878.40 = 20878.40
+            # AMT total depr = 18000 + 2034.35 = 20034.35
+            gain_loss_on_sale=Decimal("34378.40"),    # 45000 - (30500 - 20878.40)
+            amt_gain_loss_on_sale=Decimal("35465.65"),  # 45000 - (30500 - 20034.35) = different basis
+        )
+
+        # Mock the depreciation engine for ongoing depreciation AMT adjustment
+        mock_result = {
+            "current_depreciation": Decimal("878.40"),
+            "bonus_amount": Decimal("0"),
+            "amt_current_depreciation": Decimal("2034.35"),
+            "state_current_depreciation": Decimal("878.40"),
+            "state_bonus_disallowed": Decimal("0"),
+        }
+        with patch(
+            "apps.tts_forms.depreciation_engine.calculate_asset_depreciation",
+            return_value=mock_result,
+        ):
+            aggregate_depreciation(tax_return)
+
+        # After aggregate_depreciation, K15a = 878.40 - 2034.35 = -1155.95
+        k15a_after_depr = _get_line(tax_return, "K15a")
+        assert k15a_after_depr == Decimal("-1155.95")
+
+        # Now run disposition aggregation (adds disposition AMT adjustment)
+        aggregate_dispositions(tax_return)
+
+        # Disposition AMT adj = regular_gain - amt_gain = 34378.40 - 35465.65 = -1087.25
+        # K15a = -1155.95 + (-1087.25) = -2243.20
+        k15a_final = _get_line(tax_return, "K15a")
+        expected = Decimal("-1155.95") + (Decimal("34378.40") - Decimal("35465.65"))
+        assert k15a_final == expected.quantize(Decimal("0.01"))
 
 
 # ===========================================================================

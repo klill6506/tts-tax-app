@@ -371,6 +371,7 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   // Schedule M-2 — 4 columns: (a) AAA, (b) OAA, (c) STPI, (d) Accu E&P
   // Column (a) AAA
   ["M2_2a", (v) => Math.max(0, val(v, "21"))],
+  ["M2_3a", (v) => val(v, "K2") + val(v, "K3") + val(v, "K4") + val(v, "K5a") + val(v, "K6") + val(v, "K7") + val(v, "K8a") + val(v, "K9") + val(v, "K10") + val(v, "K16a")],
   ["M2_4a", (v) => Math.max(0, -val(v, "21"))],
   ["M2_5a", (v) => sumLines(v, "K12a","K11","K16c")],
   ["M2_6a", (v) => val(v, "M2_1a") + val(v, "M2_2a") + val(v, "M2_3a") - val(v, "M2_4a") - val(v, "M2_5a")],
@@ -4779,7 +4780,7 @@ function DepreciationEditForm({
           </div>
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Life (years)</label>
-            <select defaultValue={asset.life || ""} onChange={(e) => save({ life: e.target.value || null })} className={inputClass}>
+            <select value={asset.life ? String(parseFloat(asset.life)) : ""} onChange={(e) => save({ life: e.target.value || null })} className={inputClass}>
               <option value="">--</option>
               {LIFE_CHOICES.map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -4830,7 +4831,7 @@ function DepreciationEditForm({
               </div>
               <div>
                 <label className="block text-xs font-medium text-tx-secondary mb-0.5">AMT Life</label>
-                <select defaultValue={asset.amt_life || ""} onChange={(e) => save({ amt_life: e.target.value || null })} className={inputClass}>
+                <select value={asset.amt_life ? String(parseFloat(asset.amt_life)) : ""} onChange={(e) => save({ amt_life: e.target.value || null })} className={inputClass}>
                   <option value="">(same)</option>
                   {LIFE_CHOICES.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>

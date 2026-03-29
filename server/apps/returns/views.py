@@ -2335,8 +2335,9 @@ class TaxReturnViewSet(
         if request.method == "DELETE":
             asset.delete()
             # Re-aggregate totals after deletion
-            from .compute import aggregate_depreciation
+            from .compute import aggregate_depreciation, compute_schedule_l
             aggregate_depreciation(tax_return)
+            compute_schedule_l(tax_return)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         # PATCH — auto-suggest bonus_pct on date_acquired change
@@ -2364,8 +2365,9 @@ class TaxReturnViewSet(
 
         # Auto-calculate depreciation on every save + flow totals to return
         saved = _auto_calculate_asset(saved, tax_return)
-        from .compute import aggregate_depreciation
+        from .compute import aggregate_depreciation, compute_schedule_l
         aggregate_depreciation(tax_return)
+        compute_schedule_l(tax_return)
 
         return Response(DepreciationAssetSerializer(saved).data)
 
@@ -2373,8 +2375,9 @@ class TaxReturnViewSet(
     def depreciation_calculate(self, request, pk=None):
         """Run depreciation engine on all assets and save results."""
         tax_return = self.get_object()
-        from .compute import aggregate_depreciation
+        from .compute import aggregate_depreciation, compute_schedule_l
         aggregate_depreciation(tax_return)
+        compute_schedule_l(tax_return)
         qs = DepreciationAsset.objects.filter(tax_return=tax_return)
         return Response(DepreciationAssetSerializer(qs, many=True).data)
 

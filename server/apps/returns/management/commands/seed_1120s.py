@@ -437,7 +437,7 @@ SECTIONS = [
             ("M2_2c", "Ordinary income (STPI)", C, "1120S_M2_2c", False, 22, DR),
             ("M2_2d", "Ordinary income (Accu E&P)", C, "1120S_M2_2d", False, 23, DR),
             # Row 3 — Other additions
-            ("M2_3a", "Other additions (AAA)", C, "1120S_M2_3a", False, 30, CR),
+            ("M2_3a", "Other additions (AAA)", C, "1120S_M2_3a", True, 30, CR),
             ("M2_3b", "Other additions (OAA)", C, "1120S_M2_3b", False, 31, CR),
             ("M2_3c", "Other additions (STPI)", C, "1120S_M2_3c", False, 32, CR),
             ("M2_3d", "Other additions (Accu E&P)", C, "1120S_M2_3d", False, 33, CR),

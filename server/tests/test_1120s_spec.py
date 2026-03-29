@@ -425,6 +425,42 @@ class TestM2AAAllReductions:
         assert values["M2_5a"] == 10000
 
 
+class TestM2CapitalGainFlow:
+    """M2_3a should include non-ordinary K income items per IRS M-2 instructions."""
+
+    def test_m2_capital_gain_flow(self):
+        values = _run_formulas({
+            "1a": 100000, "1b": 0,
+            "K9": 25000,    # Section 1231 gain (from 4797)
+            "M2_1a": 10000,
+        })
+        assert values["M2_3a"] == 25000
+        # M2_6a should include it: 10000 + K1 + 25000 - ...
+        assert values["M2_6a"] == values["M2_1a"] + values["M2_2a"] + values["M2_3a"] - values["M2_4a"] - values["M2_5a"]
+
+    def test_m2_tax_exempt_flow(self):
+        values = _run_formulas({
+            "1a": 50000, "1b": 0,
+            "K16a": 8000,   # Tax-exempt interest
+            "M2_1a": 20000,
+        })
+        assert values["M2_3a"] == 8000
+        # M2_6a should include the tax-exempt amount
+        assert values["M2_6a"] == values["M2_1a"] + values["M2_2a"] + values["M2_3a"] - values["M2_4a"] - values["M2_5a"]
+
+    def test_m2_multiple_k_items(self):
+        values = _run_formulas({
+            "1a": 200000, "1b": 0,
+            "K4": 5000,     # Interest income
+            "K5a": 3000,    # Ordinary dividends
+            "K9": 12000,    # Section 1231 gain
+            "K16a": 2000,   # Tax-exempt interest
+            "M2_1a": 30000,
+        })
+        # M2_3a = K2+K3+K4+K5a+K6+K7+K8a+K9+K10+K16a = 5000+3000+12000+2000 = 22000
+        assert values["M2_3a"] == 22000
+
+
 # ===========================================================================
 # Cross-Form Flow Tests (from spec scenarios)
 # ===========================================================================
