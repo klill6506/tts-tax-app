@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand
 from apps.returns.models import (
     FieldType,
     FormDefinition,
+    FormFieldValue,
     FormLine,
     FormSection,
     NormalBalance,
@@ -502,7 +503,7 @@ class Command(BaseCommand):
 
             new_line_numbers = {ln for ln, *_ in lines}
             for line_num, label, ftype, mkey, computed, sort, nbal in lines:
-                FormLine.objects.update_or_create(
+                line, _ = FormLine.objects.update_or_create(
                     section=section,
                     line_number=line_num,
                     defaults={
@@ -514,6 +515,13 @@ class Command(BaseCommand):
                         "normal_balance": nbal,
                     },
                 )
+                # If this line is now computed, clear any manual overrides
+                # on existing FormFieldValues so the formula takes effect.
+                if computed:
+                    FormFieldValue.objects.filter(
+                        form_line=line,
+                        is_overridden=True,
+                    ).update(is_overridden=False)
                 line_count += 1
 
             # Remove stale lines (e.g., old Schedule B entries)
@@ -523,7 +531,6 @@ class Command(BaseCommand):
             stale_count = stale.count()
             if stale_count:
                 # Must delete protected FormFieldValues first
-                from apps.returns.models import FormFieldValue
                 fv_deleted, _ = FormFieldValue.objects.filter(
                     form_line__in=stale
                 ).delete()

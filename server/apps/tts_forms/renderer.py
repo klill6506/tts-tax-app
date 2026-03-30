@@ -1800,19 +1800,24 @@ def render_4797(tax_return) -> bytes:
         p3_total_gain += total_gain
 
         if is_1250:
-            # §1250 — Line 25a: applicable percentage (100% for >1yr)
-            field_values[f"P3_25a_{col}"] = ("100%", "text")
-            # §1250 — Line 25b: additional depreciation (0 for post-1986 SL) [R007]
-            field_values[f"P3_25b_{col}"] = (str(ZERO), "currency")
+            # §1250 property — Lines 26a through 26g
+            # Post-1986 straight-line: additional depreciation = $0 [R007]
+            field_values[f"P3_26a_{col}"] = (str(ZERO), "currency")
+            # 26b = applicable % (100%) × smaller of Line 24 or 26a = 0
+            field_values[f"P3_26b_{col}"] = (str(ZERO), "currency")
+            # 26g = sum of 26b + 26e + 26f = 0
+            field_values[f"P3_26g_{col}"] = (str(ZERO), "currency")
             recapture = ZERO
         else:
-            # §1245 — Line 26g: depreciation allowed or allowable
-            field_values[f"P3_26g_{col}"] = (str(total_depr), "currency")
-            # R005 — recapture = min(gain, depreciation)
+            # §1245 property — Lines 25a and 25b
+            # 25a = depreciation allowed or allowable (same as Line 22)
+            field_values[f"P3_25a_{col}"] = (str(total_depr), "currency")
+            # 25b = smaller of Line 24 (total gain) or Line 25a (depreciation)
             recapture = min(total_gain, total_depr)
+            field_values[f"P3_25b_{col}"] = (str(recapture), "currency")
 
-        # Line 27a: Recapture amount (lesser of gain or 25b or 26g)
-        field_values[f"P3_27a_{col}"] = (str(recapture), "currency")
+        # Line 27 is ONLY for §1252 farm property — do NOT write anything here
+        # for §1245 or §1250 assets.
         p3_total_recapture += recapture
 
     # Part III summary lines

@@ -2334,10 +2334,9 @@ class TaxReturnViewSet(
 
         if request.method == "DELETE":
             asset.delete()
-            # Re-aggregate totals after deletion
-            from .compute import aggregate_depreciation, compute_schedule_l
-            aggregate_depreciation(tax_return)
-            compute_schedule_l(tax_return)
+            # Re-run full compute after deletion so ALL aggregates update
+            from .compute import compute_return
+            compute_return(tax_return)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         # PATCH — auto-suggest bonus_pct on date_acquired change
@@ -2363,11 +2362,13 @@ class TaxReturnViewSet(
         ser.is_valid(raise_exception=True)
         saved = ser.save()
 
-        # Auto-calculate depreciation on every save + flow totals to return
+        # Auto-calculate depreciation on every save + flow ALL totals to return.
+        # compute_return() calls aggregate_depreciation, compute_schedule_l,
+        # aggregate_dispositions, aggregate_schedule_d, aggregate_rental_income,
+        # aggregate_officer_compensation, and all formula evaluations.
         saved = _auto_calculate_asset(saved, tax_return)
-        from .compute import aggregate_depreciation, compute_schedule_l
-        aggregate_depreciation(tax_return)
-        compute_schedule_l(tax_return)
+        from .compute import compute_return
+        compute_return(tax_return)
 
         return Response(DepreciationAssetSerializer(saved).data)
 
@@ -2375,9 +2376,8 @@ class TaxReturnViewSet(
     def depreciation_calculate(self, request, pk=None):
         """Run depreciation engine on all assets and save results."""
         tax_return = self.get_object()
-        from .compute import aggregate_depreciation, compute_schedule_l
-        aggregate_depreciation(tax_return)
-        compute_schedule_l(tax_return)
+        from .compute import compute_return
+        compute_return(tax_return)
         qs = DepreciationAsset.objects.filter(tax_return=tax_return)
         return Response(DepreciationAssetSerializer(qs, many=True).data)
 
