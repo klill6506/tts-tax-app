@@ -426,7 +426,12 @@ class TestAMTToK15a:
 
     def test_disposition_amt_goes_to_k15b(self, tax_return):
         """When a sold asset has different regular/AMT gain, K15a has ongoing
-        depreciation AMT adjustment only; K15b has the disposition adjustment."""
+        depreciation AMT adjustment only; K15b has the disposition adjustment.
+
+        aggregate_depreciation now recomputes disposal fields, so we set
+        amt_prior_depreciation to produce a different AMT basis and let
+        the aggregate compute gain_loss_on_sale / amt_gain_loss_on_sale.
+        """
         from unittest.mock import patch
         from apps.returns.compute import aggregate_dispositions
 
@@ -440,12 +445,12 @@ class TestAMTToK15a:
             date_sold=date(2025, 8, 15),
             sales_price=Decimal("45000"),
             prior_depreciation=Decimal("20000"),
+            amt_prior_depreciation=Decimal("18000"),
             flow_to="page1",
-            gain_loss_on_sale=Decimal("34378.40"),
-            amt_gain_loss_on_sale=Decimal("35465.65"),
+            # Don't set gain_loss_on_sale — aggregate_depreciation computes it
         )
 
-        # Mock the depreciation engine for ongoing depreciation AMT adjustment
+        # Mock the depreciation engine
         mock_result = {
             "current_depreciation": Decimal("878.40"),
             "bonus_amount": Decimal("0"),
@@ -463,6 +468,19 @@ class TestAMTToK15a:
         k15a_after_depr = _get_line(tax_return, "K15a")
         assert k15a_after_depr == Decimal("-1155.95")
 
+        # Verify disposal fields were computed by aggregate_depreciation:
+        # Regular: total_depr = 20000 + 878.40 + 0 + 0 = 20878.40
+        #   adj_basis = 30500 - 20878.40 = 9621.60
+        #   gain = 45000 - 9621.60 = 35378.40
+        # AMT: amt_total_depr = 18000 + 2034.35 + 0 = 20034.35
+        #   amt_adj_basis = 30500 - 20034.35 = 10465.65
+        #   amt_gain = 45000 - 10465.65 = 34534.35
+        asset.refresh_from_db()
+        reg_gain = asset.gain_loss_on_sale
+        amt_gain = asset.amt_gain_loss_on_sale
+        assert reg_gain == Decimal("35378.40"), f"Regular gain: {reg_gain}"
+        assert amt_gain == Decimal("34534.35"), f"AMT gain: {amt_gain}"
+
         # Now run disposition aggregation — should write to K15b, NOT K15a
         aggregate_dispositions(tax_return)
 
@@ -473,9 +491,9 @@ class TestAMTToK15a:
         )
 
         # K15b = disposition AMT adj = regular_gain - amt_gain
-        # = 34378.40 - 35465.65 = -1087.25
+        # = 35378.40 - 34534.35 = 844.05
         k15b = _get_line(tax_return, "K15b")
-        expected_k15b = (Decimal("34378.40") - Decimal("35465.65")).quantize(Decimal("0.01"))
+        expected_k15b = (reg_gain - amt_gain).quantize(Decimal("0.01"))
         assert k15b == expected_k15b, (
             f"K15b should be {expected_k15b}, got {k15b}"
         )

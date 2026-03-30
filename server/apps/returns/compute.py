@@ -530,6 +530,49 @@ def aggregate_depreciation(tax_return) -> None:
             "updated_at",
         ])
 
+        # Recompute disposal fields for sold assets using updated depreciation.
+        # Mirrors _auto_calculate_asset() disposal logic in views.py.
+        if asset.date_sold and asset.sales_price is not None:
+            sp = asset.sales_price
+            exp = asset.expenses_of_sale or ZERO
+            cb = asset.cost_basis or ZERO
+
+            # Regular disposal
+            total_depr = (
+                (asset.prior_depreciation or ZERO)
+                + asset.current_depreciation
+                + (asset.sec_179_elected or ZERO)
+                + asset.bonus_amount
+            )
+            adj_basis = cb - total_depr
+            total_gain = sp - exp - adj_basis
+            if resolve_recapture_type(asset) == "1250":
+                depr_recapture = ZERO
+            else:
+                depr_recapture = max(ZERO, min(total_gain, total_depr)) if total_gain > ZERO else ZERO
+            asset.gain_loss_on_sale = total_gain
+            asset.depreciation_recapture = depr_recapture
+            asset.capital_gain = total_gain - depr_recapture
+
+            # AMT disposal
+            amt_total_depr = (
+                (asset.amt_prior_depreciation or ZERO)
+                + asset.amt_current_depreciation
+                + (asset.sec_179_elected or ZERO)
+            )
+            amt_adj_basis = cb - amt_total_depr
+            amt_total_gain = sp - exp - amt_adj_basis
+            amt_depr_recapture = max(ZERO, min(amt_total_gain, amt_total_depr)) if amt_total_gain > ZERO else ZERO
+            asset.amt_gain_loss_on_sale = amt_total_gain
+            asset.amt_depreciation_recapture = amt_depr_recapture
+            asset.amt_capital_gain = amt_total_gain - amt_depr_recapture
+
+            asset.save(update_fields=[
+                "gain_loss_on_sale", "depreciation_recapture", "capital_gain",
+                "amt_gain_loss_on_sale", "amt_depreciation_recapture", "amt_capital_gain",
+                "updated_at",
+            ])
+
         # Accumulate by destination
         # current_depreciation includes 179 + bonus + regular MACRS.
         # Section 179 flows ONLY to K11 — never to Page 1 / 8825 / Sched F.

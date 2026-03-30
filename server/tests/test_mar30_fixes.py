@@ -262,3 +262,92 @@ class TestSeedClearsOverrides:
         assert fv.is_overridden is True, (
             "Non-computed field overrides should NOT be cleared by seed"
         )
+
+
+# ===========================================================================
+# Test: Disposal fields updated after aggregate_depreciation
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestDisposalFieldsUpdatedAfterAggregate:
+    """aggregate_depreciation should recompute disposal fields for sold assets."""
+
+    def test_disposal_fields_use_recalculated_depreciation(self, tax_return):
+        """After aggregate_depreciation, gain_loss_on_sale uses the engine's
+        current_depreciation, not a stale manually-set value."""
+        from apps.returns.compute import aggregate_depreciation
+
+        # Create asset with intentionally WRONG current_depreciation.
+        # aggregate_depreciation will recalculate it via the engine.
+        asset = DepreciationAsset.objects.create(
+            tax_return=tax_return,
+            asset_number=1,
+            description="Equipment for sale",
+            group_label="Machinery and Equipment",
+            cost_basis=Decimal("30500"),
+            date_acquired=date(2020, 3, 1),
+            date_sold=date(2025, 8, 15),
+            sales_price=Decimal("15000"),
+            prior_depreciation=Decimal("15878"),
+            current_depreciation=Decimal("9999"),  # wrong — engine will fix
+            bonus_amount=Decimal("0"),
+            sec_179_elected=Decimal("0"),
+            recapture_type="1245",
+            # Set stale disposal fields based on wrong depreciation
+            gain_loss_on_sale=Decimal("99999"),
+            amt_gain_loss_on_sale=Decimal("99999"),
+        )
+
+        aggregate_depreciation(tax_return)
+
+        asset.refresh_from_db()
+
+        # current_depreciation should be recalculated by engine (not 9999)
+        assert asset.current_depreciation != Decimal("9999"), (
+            "Engine should recalculate current_depreciation"
+        )
+
+        # gain_loss_on_sale should use the NEW current_depreciation
+        total_depr = (
+            asset.prior_depreciation
+            + asset.current_depreciation
+            + asset.sec_179_elected
+            + asset.bonus_amount
+        )
+        adj_basis = asset.cost_basis - total_depr
+        expected_gain = asset.sales_price - adj_basis
+        assert asset.gain_loss_on_sale == expected_gain, (
+            f"gain_loss_on_sale should be {expected_gain}, "
+            f"got {asset.gain_loss_on_sale}"
+        )
+
+        # AMT fields should also be refreshed (not 99999)
+        assert asset.amt_gain_loss_on_sale != Decimal("99999"), (
+            "amt_gain_loss_on_sale should be recalculated"
+        )
+
+    def test_non_disposed_asset_not_affected(self, tax_return):
+        """Assets without date_sold should not get disposal fields set."""
+        from apps.returns.compute import aggregate_depreciation
+
+        asset = DepreciationAsset.objects.create(
+            tax_return=tax_return,
+            asset_number=1,
+            description="Active equipment",
+            group_label="Machinery and Equipment",
+            cost_basis=Decimal("30500"),
+            date_acquired=date(2020, 3, 1),
+            date_sold=None,
+            prior_depreciation=Decimal("15878"),
+            current_depreciation=Decimal("5000"),
+            bonus_amount=Decimal("0"),
+            sec_179_elected=Decimal("0"),
+        )
+
+        aggregate_depreciation(tax_return)
+
+        asset.refresh_from_db()
+        assert asset.gain_loss_on_sale is None, (
+            "Non-disposed asset should not have gain_loss_on_sale"
+        )
