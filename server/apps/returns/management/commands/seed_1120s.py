@@ -321,7 +321,7 @@ SECTIONS = [
             ("K17b", "Investment expenses", C, "1120S_K17b", False, 220, DR),
             ("K17c", "Dividend equivalents", C, "1120S_K17c", False, 222, DR),
             # QBI (Section 199A) — flows to K-1 Box 17, Code V
-            ("QBI_W2_WAGES", "Section 199A — W-2 wages paid", C, "1120S_QBI_W2", False, 225, DR),
+            ("QBI_W2_WAGES", "Section 199A — W-2 wages paid", C, "1120S_QBI_W2", True, 225, DR),
             ("QBI_UBIA", "Section 199A — UBIA of qualified property", C, "1120S_QBI_UBIA", False, 226, DR),
             ("QBI_IS_SSTB", "Section 199A — SSTB indicator", B, "1120S_QBI_SSTB", False, 227, DR),
             ("K18", "Income (loss) reconciliation — total", C, "", True, 230, CR),

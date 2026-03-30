@@ -2487,6 +2487,212 @@ def render_depreciation_schedule(tax_return, screen_mode: bool = False) -> bytes
     return buf.getvalue()
 
 
+def render_amt_depreciation_schedule(tax_return, screen_mode: bool = False) -> bytes:
+    """
+    Render an AMT depreciation schedule report in landscape orientation.
+
+    Shows AMT-specific columns: AMT Method, AMT Life, AMT Prior, AMT Current,
+    AMT Adjustment (regular current - AMT current).
+    """
+    from apps.returns.models import DepreciationAsset
+
+    entity = tax_return.tax_year.entity
+    entity_name = entity.legal_name or entity.name
+    year = tax_return.tax_year.year
+
+    assets = DepreciationAsset.objects.filter(
+        tax_return=tax_return,
+    ).order_by("flow_to", "group_label", "description")
+
+    if not assets.exists():
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf, pagesize=(792, 612))
+        c.showPage()
+        c.save()
+        buf.seek(0)
+        return buf.getvalue()
+
+    flow_labels = {
+        "page1": "Page 1",
+        "8825": "Form 8825",
+        "sched_f": "Schedule F",
+    }
+    groups: dict[str, list] = {}
+    for a in assets:
+        key = a.flow_to or "page1"
+        groups.setdefault(key, []).append(a)
+
+    PAGE_W, PAGE_H = 792, 612
+    LEFT = 36
+    TOP = PAGE_H - 36
+    RIGHT = PAGE_W - 36
+
+    # Columns: Description(160), DateAcq(55), Cost(70), AMT Method(60), AMT Life(35),
+    #          AMT Prior(75), AMT Current(75), Reg Current(75), AMT Adj(75)
+    COL_WIDTHS = [160, 55, 70, 60, 35, 75, 75, 75, 75]
+    COL_HEADERS = [
+        "Description", "Date Acq", "Cost Basis", "AMT Method", "Life",
+        "AMT Prior", "AMT Current", "Reg Current", "AMT Adj",
+    ]
+
+    col_x = []
+    x = LEFT
+    for w in COL_WIDTHS:
+        col_x.append(x)
+        x += w
+
+    HEADER_FONT = "Helvetica-Bold"
+    BODY_FONT = "Courier-Bold"
+    TITLE_SIZE = 12
+    COL_HEADER_SIZE = 7
+    DATA_SIZE = 8
+    ROW_H = 12
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
+    c.setFillColorRGB(*_data_color(screen_mode))
+
+    def _fmt(val):
+        if val is None:
+            return ""
+        d = Decimal(str(val))
+        if d == 0:
+            return ""
+        if d < 0:
+            return f"({abs(d):,.0f})"
+        return f"{d:,.0f}"
+
+    def _amt_method_display(a):
+        if a.is_amortization:
+            code = a.amort_code or "197"
+            months = a.amort_months or 180
+            return f"S/L {code}"
+        method = a.method or ""
+        amt_method = a.amt_method or ("150DB" if method == "200DB" else method)
+        conv = a.convention or "HY"
+        return f"{amt_method} {conv}"
+
+    for flow_key, group_assets in groups.items():
+        flow_label = flow_labels.get(flow_key, flow_key)
+        y = TOP
+
+        c.setFont(HEADER_FONT, TITLE_SIZE)
+        c.drawCentredString(PAGE_W / 2, y, "AMT DEPRECIATION SCHEDULE")
+        y -= ROW_H + 2
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(PAGE_W / 2, y, f"{entity_name} \u2014 {year} Tax Return")
+        y -= ROW_H
+        c.drawCentredString(PAGE_W / 2, y, f"Flow: {flow_label}")
+        y -= ROW_H + 8
+
+        c.setFont(HEADER_FONT, COL_HEADER_SIZE)
+        for i, hdr in enumerate(COL_HEADERS):
+            if i >= 5:
+                c.drawRightString(col_x[i] + COL_WIDTHS[i] - 2, y, hdr)
+            else:
+                c.drawString(col_x[i] + 2, y, hdr)
+        y -= 2
+        c.setLineWidth(0.5)
+        c.line(LEFT, y, RIGHT, y)
+        y -= ROW_H
+
+        t_cost = ZERO
+        t_amt_prior = ZERO
+        t_amt_current = ZERO
+        t_reg_current = ZERO
+        t_amt_adj = ZERO
+
+        c.setFont(BODY_FONT, DATA_SIZE)
+        for a in group_assets:
+            if y < 80:
+                c.showPage()
+                c.setPageSize((PAGE_W, PAGE_H))
+                y = TOP
+                c.setFont(HEADER_FONT, COL_HEADER_SIZE)
+                for i, hdr in enumerate(COL_HEADERS):
+                    if i >= 5:
+                        c.drawRightString(col_x[i] + COL_WIDTHS[i] - 2, y, hdr)
+                    else:
+                        c.drawString(col_x[i] + 2, y, hdr)
+                y -= 2
+                c.line(LEFT, y, RIGHT, y)
+                y -= ROW_H
+                c.setFont(BODY_FONT, DATA_SIZE)
+
+            is_disposed = a.date_sold is not None
+            prefix = "*" if is_disposed else ""
+            desc = f"{prefix}{a.description or ''}"[:24]
+            c.drawString(col_x[0] + 2, y, desc)
+
+            if a.date_acquired:
+                c.drawString(col_x[1] + 2, y, a.date_acquired.strftime("%m/%Y"))
+
+            c.drawRightString(col_x[2] + COL_WIDTHS[2] - 2, y, _fmt(a.cost_basis))
+            c.drawString(col_x[3] + 2, y, _amt_method_display(a)[:9])
+
+            amt_life = a.amt_life or a.life
+            if amt_life is not None:
+                life_str = str(int(amt_life)) if amt_life == int(amt_life) else str(amt_life)
+                c.drawRightString(col_x[4] + COL_WIDTHS[4] - 2, y, life_str)
+
+            amt_prior = a.amt_prior_depreciation or ZERO
+            amt_current = a.amt_current_depreciation or ZERO
+            reg_current = a.current_depreciation or ZERO
+            amt_adj = reg_current - amt_current
+
+            c.drawRightString(col_x[5] + COL_WIDTHS[5] - 2, y, _fmt(amt_prior))
+            c.drawRightString(col_x[6] + COL_WIDTHS[6] - 2, y, _fmt(amt_current))
+            c.drawRightString(col_x[7] + COL_WIDTHS[7] - 2, y, _fmt(reg_current))
+            c.drawRightString(col_x[8] + COL_WIDTHS[8] - 2, y, _fmt(amt_adj))
+
+            t_cost += a.cost_basis or ZERO
+            t_amt_prior += amt_prior
+            t_amt_current += amt_current
+            t_reg_current += reg_current
+            t_amt_adj += amt_adj
+
+            y -= ROW_H
+
+        # Totals row
+        c.setLineWidth(0.5)
+        c.line(LEFT, y + ROW_H - 2, RIGHT, y + ROW_H - 2)
+        c.setFont(HEADER_FONT, DATA_SIZE)
+        c.drawString(col_x[0] + 2, y, "TOTALS")
+        c.drawRightString(col_x[2] + COL_WIDTHS[2] - 2, y, _fmt(t_cost))
+        c.drawRightString(col_x[5] + COL_WIDTHS[5] - 2, y, _fmt(t_amt_prior))
+        c.drawRightString(col_x[6] + COL_WIDTHS[6] - 2, y, _fmt(t_amt_current))
+        c.drawRightString(col_x[7] + COL_WIDTHS[7] - 2, y, _fmt(t_reg_current))
+        c.drawRightString(col_x[8] + COL_WIDTHS[8] - 2, y, _fmt(t_amt_adj))
+        y -= ROW_H + 4
+        c.line(LEFT, y + ROW_H - 2, RIGHT, y + ROW_H - 2)
+        y -= ROW_H
+
+        # Summary
+        c.setFont(BODY_FONT, DATA_SIZE)
+        lx = LEFT + 20
+        vx = LEFT + 280
+        for label, val in [
+            ("Grand Total AMT Current:", t_amt_current),
+            ("Grand Total Regular Current:", t_reg_current),
+            ("Total AMT Adjustment (K15a):", t_amt_adj),
+        ]:
+            c.drawString(lx, y, label)
+            c.drawRightString(vx, y, f"$ {_fmt(val) or '0'}")
+            y -= ROW_H
+
+        has_disposed = any(a.date_sold is not None for a in group_assets)
+        if has_disposed:
+            y -= ROW_H * 0.5
+            c.setFont("Helvetica", 7)
+            c.drawString(LEFT + 2, y, "* Disposed assets")
+
+        c.showPage()
+
+    c.save()
+    buf.seek(0)
+    return buf.getvalue()
+
+
 # ---------------------------------------------------------------------------
 # Complete Return rendering (all forms combined)
 # ---------------------------------------------------------------------------
@@ -2815,11 +3021,19 @@ def render_complete_return(
         logger.warning("render_complete: Schedule D / 8949 failed: %s", e)
 
     # 3e. Depreciation Schedule (if depreciation assets exist)
+    has_assets = DepreciationAsset.objects.filter(tax_return=tax_return).exists()
     try:
-        if DepreciationAsset.objects.filter(tax_return=tax_return).exists():
+        if has_assets:
             _append(render_depreciation_schedule(tax_return), "Depreciation Schedule")
     except Exception as e:
         logger.warning("render_complete: depreciation schedule failed: %s", e)
+
+    # 3f. AMT Depreciation Schedule
+    try:
+        if has_assets:
+            _append(render_amt_depreciation_schedule(tax_return), "AMT Depreciation Schedule")
+    except Exception as e:
+        logger.warning("render_complete: AMT depreciation schedule failed: %s", e)
 
     # 3d. Meals and Entertainment Statement — if meals data exists
     try:

@@ -65,12 +65,10 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-pdf")
     def render_pdf(self, request, pk=None):
         """Generate a PDF for this tax return using the official IRS template."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
 
-        # Ensure all computed fields are up-to-date before rendering
-        compute_return(tax_return)
+        # compute_return() removed — PATCH/DELETE handlers now call it
+        # after every save, so values are always up-to-date by render time.
 
         # Optional statement detail items from request body
         statement_items = None
@@ -119,10 +117,7 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-k1s")
     def render_k1s(self, request, pk=None):
         """Generate all Schedule K-1 PDFs for this tax return."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
-        compute_return(tax_return)
 
         form_code = tax_return.form_definition.code
         if form_code not in ("1120-S",):
@@ -157,10 +152,7 @@ class PDFRenderMixin:
     )
     def render_k1_single(self, request, pk=None, sh_id=None):
         """Generate a single K-1 PDF for one shareholder."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
-        compute_return(tax_return)
         try:
             sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
         except Shareholder.DoesNotExist:
@@ -287,16 +279,11 @@ class PDFRenderMixin:
     )
     def render_7203(self, request, pk=None, sh_id=None):
         """Generate Form 7203 for one shareholder."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
         try:
             sh = Shareholder.objects.get(id=sh_id, tax_return=tax_return)
         except Shareholder.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-
-        # Ensure K-line values are fresh before computing 7203
-        compute_return(tax_return)
 
         try:
             from .renderer import render_7203 as do_render_7203
@@ -317,8 +304,6 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-7203s")
     def render_7203s(self, request, pk=None):
         """Generate all Form 7203s for this return, concatenated."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
 
         form_code = tax_return.form_definition.code
@@ -327,9 +312,6 @@ class PDFRenderMixin:
                 {"error": f"7203 generation not supported for {form_code}."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Ensure K-line values are fresh before computing 7203
-        compute_return(tax_return)
 
         try:
             from .renderer import render_all_7203s
@@ -362,10 +344,7 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-4562")
     def render_4562_pdf(self, request, pk=None):
         """Generate Form 4562 (Depreciation and Amortization) for this tax return."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
-        compute_return(tax_return)
 
         try:
             pdf_bytes = render_4562(tax_return)
@@ -393,10 +372,7 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-4797")
     def render_4797_pdf(self, request, pk=None):
         """Generate Form 4797 (Sales of Business Property) for this tax return."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
-        compute_return(tax_return)
 
         try:
             pdf_bytes = render_4797(tax_return)
@@ -424,10 +400,7 @@ class PDFRenderMixin:
     @action(detail=True, methods=["post"], url_path="render-depreciation-schedule")
     def render_depreciation_schedule_pdf(self, request, pk=None):
         """Generate a depreciation schedule report for this tax return."""
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
-        compute_return(tax_return)
 
         try:
             pdf_bytes = render_depreciation_schedule(tax_return)
@@ -459,14 +432,12 @@ class PDFRenderMixin:
         Accepts optional `package` query param:
             client, filing, extension, state, k1s, invoice, letter
         """
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
         package = request.query_params.get("package")
         screen_mode = request.query_params.get("screen", "").lower() == "true"
 
-        # Ensure all computed fields (M-2, totals, etc.) are up-to-date
-        compute_return(tax_return)
+        # compute_return() removed — PATCH/DELETE handlers now call it
+        # after every save, so values are always up-to-date by render time.
 
         if package and package not in PRINT_PACKAGES:
             return Response(
@@ -513,12 +484,8 @@ class PDFRenderMixin:
         Accepts optional `package` query param (same as render-complete).
         Returns JSON: [{"form": "Form 1120-S (p.1)", "page": 1}, ...]
         """
-        from apps.returns.compute import compute_return
-
         tax_return = self.get_object()
         package = request.query_params.get("package")
-
-        compute_return(tax_return)
 
         if package and package not in PRINT_PACKAGES:
             return Response(

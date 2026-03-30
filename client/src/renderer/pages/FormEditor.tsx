@@ -350,6 +350,8 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["26", (v) => Math.max(0, val(v, "23d") - val(v, "22c"))],
   // Schedule K — nondeductible expenses
   ["K16c", (v) => val(v, "D_MEALS_NONDED")],
+  // QBI — Section 199A W-2 wages = salaries + officer comp
+  ["QBI_W2_WAGES", (v) => val(v, "8") + val(v, "7")],
   // Schedule L — Balance Sheet (inventory flows from COGS)
   ["L3a", (v) => val(v, "A1")],
   ["L3d", (v) => val(v, "A7")],
@@ -5467,9 +5469,9 @@ function FieldRow({
         field.is_computed ? "bg-surface-alt/50" : ""
       }`}
     >
-      {/* Line number */}
+      {/* Line number — hide long QBI_ prefixed line numbers */}
       <div className="w-14 shrink-0 text-xs font-medium text-tx-secondary">
-        {field.line_number}
+        {field.line_number.startsWith("QBI_") ? "" : field.line_number}
       </div>
 
       {/* Label */}

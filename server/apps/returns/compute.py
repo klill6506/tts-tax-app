@@ -117,6 +117,9 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
         - _d(v, "K12c") - _d(v, "K12d")
     )),
 
+    # QBI — Section 199A W-2 wages = salaries (Line 8) + officer comp (Line 7)
+    ("QBI_W2_WAGES", lambda v: _d(v, "8") + _d(v, "7")),
+
     # Schedule L — Balance Sheet
     # Inventory flows from COGS (Schedule A)
     ("L3a", lambda v: _d(v, "A1")),   # BOY inventory = COGS beginning inventory
@@ -747,9 +750,9 @@ def aggregate_dispositions(tax_return) -> None:
     # Clear all disposition output lines before recomputing
     form_code = tax_return.form_definition.code
     if form_code == "1065":
-        _output_lines = ["K10", "6", "K8c"]
+        _output_lines = ["K10", "6", "K8c", "K15b"]
     else:
-        _output_lines = ["K9", "4", "K8c"]
+        _output_lines = ["K9", "4", "K8c", "K15b"]
     for _ln in _output_lines:
         _set_field_value(tax_return, _ln, "0.00")
 
@@ -845,30 +848,19 @@ def aggregate_dispositions(tax_return) -> None:
             str(unrecaptured_1250_total.quantize(Decimal("0.01"))),
         )
 
-    # Disposition AMT adjustment → add to K15a
+    # Disposition AMT adjustment → K15b (adjusted gain or loss)
     # AMT gain differs from regular gain because AMT depreciation differs.
-    # aggregate_depreciation() already wrote K15a for ongoing depr; ADD to it.
+    # K15a is for ongoing depreciation adjustment (set by aggregate_depreciation).
+    # K15b is for disposition AMT adjustment (regular gain − AMT gain).
     disp_amt_adjustment = ZERO
     for a in disposed:
         if a.gain_loss_on_sale is not None and a.amt_gain_loss_on_sale is not None:
             disp_amt_adjustment += (a.gain_loss_on_sale - a.amt_gain_loss_on_sale)
 
     if disp_amt_adjustment != 0:
-        existing_k15a = ZERO
-        try:
-            fv = FormFieldValue.objects.select_related("form_line").get(
-                tax_return=tax_return,
-                form_line__line_number="K15a",
-            )
-            if fv.value:
-                existing_k15a = Decimal(fv.value)
-        except (FormFieldValue.DoesNotExist, InvalidOperation):
-            pass
-
-        combined = existing_k15a + disp_amt_adjustment
         _set_field_value(
-            tax_return, "K15a",
-            str(combined.quantize(Decimal("0.01"))),
+            tax_return, "K15b",
+            str(disp_amt_adjustment.quantize(Decimal("0.01"))),
         )
 
 

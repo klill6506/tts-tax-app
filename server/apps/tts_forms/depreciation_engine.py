@@ -123,31 +123,35 @@ MACRS_200DB_MQ: dict[int, dict[int, list[str]]] = {
 }
 
 # 150% Declining Balance — Half-Year Convention
+# 150% Declining Balance — Half-Year Convention
+# IRS Publication 946, Table A-14 (3yr, 5yr, 7yr, 10yr) and Table A-1 (15yr, 20yr).
+# All include automatic switch to straight-line in the optimal year.
+# Every table MUST sum to 1.0000 (±0.001).
 MACRS_150DB_HY: dict[int, list[str]] = {
     3: [
         "0.2500", "0.3750", "0.2500", "0.1250",
     ],
     5: [
-        "0.1500", "0.2550", "0.1785", "0.1249", "0.1249", "0.0667",
+        "0.1500", "0.2550", "0.1785", "0.1666", "0.1666", "0.0833",
     ],
     7: [
-        "0.1071", "0.1913", "0.1535", "0.1230", "0.0986", "0.0861",
-        "0.0861", "0.0543",
+        "0.1071", "0.1913", "0.1503", "0.1225", "0.1225", "0.1225",
+        "0.1225", "0.0613",
     ],
     10: [
-        "0.0750", "0.1388", "0.1180", "0.1003", "0.0852", "0.0724",
-        "0.0624", "0.0624", "0.0624", "0.0624", "0.0307",
+        "0.0750", "0.1388", "0.1180", "0.1003", "0.0853", "0.0872",
+        "0.0872", "0.0872", "0.0872", "0.0872", "0.0466",
     ],
     15: [
-        "0.0500", "0.0925", "0.0833", "0.0749", "0.0674", "0.0607",
-        "0.0546", "0.0492", "0.0443", "0.0443", "0.0443", "0.0443",
-        "0.0443", "0.0443", "0.0443", "0.0221",
+        "0.0500", "0.0950", "0.0855", "0.0770", "0.0693", "0.0623",
+        "0.0590", "0.0590", "0.0591", "0.0590", "0.0591", "0.0590",
+        "0.0591", "0.0590", "0.0591", "0.0295",
     ],
     20: [
-        "0.0375", "0.0694", "0.0642", "0.0594", "0.0550", "0.0509",
-        "0.0471", "0.0436", "0.0403", "0.0373", "0.0345", "0.0345",
-        "0.0345", "0.0345", "0.0345", "0.0345", "0.0345", "0.0345",
-        "0.0345", "0.0345", "0.0172",
+        "0.0375", "0.0722", "0.0668", "0.0618", "0.0571", "0.0528",
+        "0.0489", "0.0452", "0.0447", "0.0446", "0.0446", "0.0446",
+        "0.0446", "0.0446", "0.0446", "0.0446", "0.0446", "0.0446",
+        "0.0446", "0.0446", "0.0223",
     ],
 }
 
@@ -538,6 +542,20 @@ def _calculate_amt(
         amt_depr = (depreciable_basis * pct).quantize(PENNY, rounding=ROUND_HALF_UP)
         if year_num == 1:
             amt_depr += sec_179 + bonus_amount
+
+        # Disposal convention for sold assets (same as regular depreciation)
+        if asset.date_sold and asset.date_sold.year == tax_year and year_num > 1:
+            if asset.convention == "HY":
+                amt_depr = (amt_depr / 2).quantize(PENNY, rounding=ROUND_HALF_UP)
+            elif asset.convention == "MQ":
+                sold_quarter = _quarter(asset.date_sold)
+                factor = Decimal(str(sold_quarter - 0.5)) / Decimal("4")
+                amt_depr = (amt_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
+            elif asset.convention == "MM":
+                sold_month = asset.date_sold.month
+                factor = Decimal(str(sold_month - 0.5)) / Decimal("12")
+                amt_depr = (amt_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
+
         return amt_depr
 
     # 200DB → use 150DB for AMT
@@ -566,6 +584,19 @@ def _calculate_amt(
     # Add back 179 and bonus for first year
     if year_num == 1:
         amt_depr += sec_179 + bonus_amount
+
+    # Disposal convention for sold assets (same as regular depreciation)
+    if asset.date_sold and asset.date_sold.year == tax_year and year_num > 1:
+        if asset.convention == "HY":
+            amt_depr = (amt_depr / 2).quantize(PENNY, rounding=ROUND_HALF_UP)
+        elif asset.convention == "MQ":
+            sold_quarter = _quarter(asset.date_sold)
+            factor = Decimal(str(sold_quarter - 0.5)) / Decimal("4")
+            amt_depr = (amt_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
+        elif asset.convention == "MM":
+            sold_month = asset.date_sold.month
+            factor = Decimal(str(sold_month - 0.5)) / Decimal("12")
+            amt_depr = (amt_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
 
     return amt_depr
 
