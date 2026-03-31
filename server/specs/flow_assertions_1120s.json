@@ -1,0 +1,344 @@
+{
+  "export_version": "1.0",
+  "exported_at": "2026-03-30T23:42:14.293404+00:00",
+  "entity_type": "1120S",
+  "assertion_count": 15,
+  "assertions": [
+    {
+      "assertion_id": "TI001",
+      "title": "MACRS 150DB HY tables must sum to 100%",
+      "description": "Each life in the 150DB half-year table must have percentages summing to 1.0 (\u00c2\u00b10.002). Failure means assets won't fully depreciate.",
+      "assertion_type": "table_invariant",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "check": "sum_equals_one",
+        "module": "apps.tts_forms.depreciation_engine",
+        "params": {
+          "lives": [
+            3,
+            5,
+            7,
+            10,
+            15,
+            20
+          ],
+          "tolerance": 0.002
+        },
+        "table_name": "MACRS_150DB_HY"
+      },
+      "bug_reference": "Mar 30 2026 \u00e2\u20ac\u201d ALL 150DB tables only recovered 87-90%, never implemented SL switchover",
+      "status": "active"
+    },
+    {
+      "assertion_id": "TI002",
+      "title": "MACRS 200DB HY tables must sum to 100%",
+      "description": "Each life in the 200DB half-year table must have percentages summing to 1.0 (\u00c2\u00b10.002).",
+      "assertion_type": "table_invariant",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "check": "sum_equals_one",
+        "module": "apps.tts_forms.depreciation_engine",
+        "params": {
+          "lives": [
+            3,
+            5,
+            7,
+            10,
+            15,
+            20
+          ],
+          "tolerance": 0.002
+        },
+        "table_name": "MACRS_200DB_HY"
+      },
+      "bug_reference": "Preventive \u00e2\u20ac\u201d 200DB tables currently correct",
+      "status": "active"
+    },
+    {
+      "assertion_id": "TI003",
+      "title": "150DB HY table length = life + 1",
+      "description": "Half-year convention adds one partial year. A 5yr table must have 6 entries, 7yr must have 8, etc.",
+      "assertion_type": "table_invariant",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "check": "length_equals_life_plus_one",
+        "module": "apps.tts_forms.depreciation_engine",
+        "params": {
+          "lives": [
+            3,
+            5,
+            7,
+            10,
+            15,
+            20
+          ]
+        },
+        "table_name": "MACRS_150DB_HY"
+      },
+      "bug_reference": "Preventive",
+      "status": "active"
+    },
+    {
+      "assertion_id": "TI004",
+      "title": "200DB HY table length = life + 1",
+      "description": "Half-year convention adds one partial year.",
+      "assertion_type": "table_invariant",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "check": "length_equals_life_plus_one",
+        "module": "apps.tts_forms.depreciation_engine",
+        "params": {
+          "lives": [
+            3,
+            5,
+            7,
+            10,
+            15,
+            20
+          ]
+        },
+        "table_name": "MACRS_200DB_HY"
+      },
+      "bug_reference": "Preventive",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA001",
+      "title": "K9 (Section 1231 gain) must appear in M2_3a formula",
+      "description": "Schedule K Line 9 flows to M-2 Line 3a (Other additions to AAA). Without this, capital gains from asset dispositions don't affect retained earnings.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "K9",
+        "must_appear_in_formula": "M2_3a"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d capital gains not flowing to M-2",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA002",
+      "title": "K2 (rental income) must appear in M2_3a formula",
+      "description": "Net rental real estate income from K2 must flow to M-2 Line 3a.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "K2",
+        "must_appear_in_formula": "M2_3a"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d M-2 only had K1, missing all other K income items",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA003",
+      "title": "K7 (ST capital gain) must appear in M2_3a formula",
+      "description": "Short-term capital gains from K7 must flow to M-2 Line 3a.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "K7",
+        "must_appear_in_formula": "M2_3a"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d M-2 missing all non-ordinary K income",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA004",
+      "title": "K8a (LT capital gain) must appear in M2_3a formula",
+      "description": "Long-term capital gains from K8a must flow to M-2 Line 3a.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "K8a",
+        "must_appear_in_formula": "M2_3a"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d M-2 missing all non-ordinary K income",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA005",
+      "title": "K16a (tax-exempt income) must appear in M2_3a formula",
+      "description": "Tax-exempt interest from K16a increases AAA via M-2 Line 3a.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "K16a",
+        "must_appear_in_formula": "M2_3a"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d M-2 missing tax-exempt income",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA006",
+      "title": "K15a must map to K-1 Box 15 Code A",
+      "description": "Post-1986 depreciation adjustment (ongoing) must flow to shareholder K-1 Box 15 with Code A.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "check": "k1_coded_entry_exists",
+        "k_line": "K15a",
+        "module": "apps.tts_forms.renderer",
+        "items_list": "K15_ITEMS",
+        "expected_code": "A"
+      },
+      "bug_reference": "K-1 wiring verification",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA007",
+      "title": "K15b must map to K-1 Box 15 Code B",
+      "description": "Adjusted gain or loss (disposition AMT) must flow to K-1 Box 15 with Code B.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "check": "k1_coded_entry_exists",
+        "k_line": "K15b",
+        "module": "apps.tts_forms.renderer",
+        "items_list": "K15_ITEMS",
+        "expected_code": "B"
+      },
+      "bug_reference": "Mar 30 2026 \u00e2\u20ac\u201d disposition AMT was going to K15a instead of K15b",
+      "status": "active"
+    },
+    {
+      "assertion_id": "RC001",
+      "title": "M-2 ending balances must equal L24d (retained earnings)",
+      "description": "L24d = M2_8a + M2_8b + M2_8c + M2_8d. If these don't match, the balance sheet won't balance.",
+      "assertion_type": "reconciliation",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "inputs": {
+          "1a": "100000",
+          "K16d": "10000",
+          "M2_1a": "50000"
+        },
+        "check_type": "formula_equals",
+        "description": "Retained earnings = sum of M-2 ending balances",
+        "assert_field": "L24d",
+        "expected_formula": "M2_8a + M2_8b + M2_8c + M2_8d",
+        "expected_value": "140000"
+      },
+      "bug_reference": "Balance sheet reconciliation \u00e2\u20ac\u201d preventive",
+      "status": "active"
+    },
+    {
+      "assertion_id": "RC002",
+      "title": "\u00c2\u00a71245 gain splits correctly to K9 + Line 4",
+      "description": "For a \u00c2\u00a71245 asset sold at a gain with depreciation: ordinary recapture goes to Page 1 Line 4, Section 1231 excess goes to K9.",
+      "assertion_type": "reconciliation",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "asset": {
+          "cost_basis": "30500",
+          "sales_price": "15000",
+          "holding_months": 60,
+          "recapture_type": "1245",
+          "total_depreciation": "20878"
+        },
+        "expected": {
+          "note": "This is a loss scenario \u00e2\u20ac\u201d adjust values for gain test",
+          "total_gain": "-5878"
+        },
+        "check_type": "end_to_end_disposition",
+        "description": "Verifies 4797 routing, K9, and Line 4 flow"
+      },
+      "bug_reference": "Mar 29 2026 \u00e2\u20ac\u201d 1245 classification and flow verification",
+      "status": "active"
+    },
+    {
+      "assertion_id": "RC003",
+      "title": "QBI W-2 wages = Line 7 + Line 8",
+      "description": "Section 199A W-2 wages auto-calculates from officer compensation (Line 7) plus salaries and wages (Line 8).",
+      "assertion_type": "reconciliation",
+      "entity_types": [
+        "1120S"
+      ],
+      "definition": {
+        "inputs": {
+          "7": "30000",
+          "8": "50000"
+        },
+        "check_type": "formula_equals",
+        "description": "QBI_W2_WAGES = Line 7 + Line 8",
+        "assert_field": "QBI_W2_WAGES",
+        "expected_value": "80000"
+      },
+      "bug_reference": "Mar 30 2026 \u00e2\u20ac\u201d QBI W-2 wages was manual input, now computed",
+      "status": "active"
+    },
+    {
+      "assertion_id": "RC004",
+      "title": "AMT depreciation halved on disposal (half-year convention)",
+      "description": "When a 200DB HY asset is sold in a year after placement, AMT current depreciation must be halved for the half-year disposal convention, same as regular depreciation.",
+      "assertion_type": "reconciliation",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "asset": {
+          "life": 5,
+          "method": "200DB",
+          "tax_year": 2025,
+          "date_sold": "2025-08-15",
+          "convention": "HY",
+          "cost_basis": "30500",
+          "date_acquired": "2020-08-01"
+        },
+        "expected": {
+          "note": "AMT current \u00e2\u2030\u02c6 $1,271 (Lacerte verified)",
+          "amt_current_must_be_halved": true,
+          "amt_must_be_less_than_regular": false
+        },
+        "check_type": "amt_disposal_convention",
+        "description": "AMT disposal convention must match regular disposal convention"
+      },
+      "bug_reference": "Mar 30 2026 \u00e2\u20ac\u201d AMT not halved on disposal, showed $2,034 instead of $1,271",
+      "status": "active"
+    }
+  ]
+}

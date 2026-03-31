@@ -30,6 +30,7 @@ Do not change without discussing with Ken first.
 Always follow these exactly.
 
 - **Testing** — never run full test suite during development. Fast tests only: `poetry run pytest -m "not db" --ignore=tests/test_acroform_filler.py`
+- **Flow assertion gate** — any session modifying compute.py, renderer.py, k1_allocator.py, aggregate functions, depreciation_engine.py, or MACRS tables MUST run `pytest tests/test_flow_assertions.py -v` and ALL assertions must pass before committing. If an assertion fails, fix the code — do not modify the assertion JSON without explicit instruction.
 - **Git** — always `git add . && git commit -m "message" && git push origin main` together. Never commit without pushing.
 - **MACRS display** — store method internally as 200DB/150DB/SL/NONE. Always display as "MACRS 200DB HY 5yr" format in UI and on printed schedules. Never show raw codes to user.
 - **Color system** — RED/YELLOW/GREEN on all data entry fields. RED=error, YELLOW=calculated/imported, GREEN=manually entered. Never deviate.
