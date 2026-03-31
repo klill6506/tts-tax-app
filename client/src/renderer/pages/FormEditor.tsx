@@ -4702,7 +4702,21 @@ function DepreciationEditForm({
               defaultValue={asset.group_label}
               onChange={(e) => {
                 const g = e.target.value;
-                save({ group_label: g });
+                const ASSET_DEFAULTS: Record<string, Record<string, string>> = {
+                  "Machinery and Equipment": { method: "200DB", convention: "HY", life: "7", amt_life: "7", bonus_pct: "0" },
+                  "Furniture and Fixtures":  { method: "200DB", convention: "HY", life: "7", amt_life: "7", bonus_pct: "0" },
+                  "Vehicles":                { method: "200DB", convention: "HY", life: "5", amt_life: "5", bonus_pct: "0" },
+                  "Buildings":               { method: "SL",    convention: "MM", life: "39", amt_life: "40", bonus_pct: "0" },
+                  "Improvements":            { method: "SL",    convention: "MM", life: "39", amt_life: "40", bonus_pct: "0" },
+                  "Land":                    { method: "NONE",  convention: "",   life: "",   amt_life: "",   bonus_pct: "0" },
+                  "Intangibles/Amortization": { method: "SL",  convention: "MM", life: "15", amt_life: "15", bonus_pct: "0" },
+                };
+                const defaults = ASSET_DEFAULTS[g];
+                if (defaults) {
+                  save({ group_label: g, ...defaults });
+                } else {
+                  save({ group_label: g });
+                }
                 setShowVehicle(g === "Vehicles");
                 setShowAmort(g === "Intangibles/Amortization");
               }}

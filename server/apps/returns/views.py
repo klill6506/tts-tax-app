@@ -2291,20 +2291,6 @@ class TaxReturnViewSet(
         ) or 0
         asset_number = max_num + 1
 
-        # Auto-suggest bonus_pct if not provided
-        if "bonus_pct" not in data and data.get("date_acquired"):
-            from apps.tts_forms.depreciation_engine import suggest_bonus_pct
-            import datetime
-            try:
-                acq_date = datetime.date.fromisoformat(data["date_acquired"])
-                data["bonus_pct"] = str(suggest_bonus_pct(
-                    acq_date,
-                    group_label=data.get("group_label", ""),
-                    is_amortization=data.get("is_amortization", False),
-                ))
-            except (ValueError, TypeError):
-                pass
-
         ser = DepreciationAssetSerializer(data=data)
         ser.is_valid(raise_exception=True)
         # asset_number is read_only on serializer, pass via save()
@@ -2339,24 +2325,12 @@ class TaxReturnViewSet(
             compute_return(tax_return)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        # PATCH — auto-suggest bonus_pct on date_acquired change
+        # PATCH
         data = request.data.copy()
         # Convert empty date strings to None for nullable DateFields
         for date_field in ("date_acquired", "date_sold"):
             if date_field in data and data[date_field] == "":
                 data[date_field] = None
-        if data.get("date_acquired") and "bonus_pct" not in data:
-            from apps.tts_forms.depreciation_engine import suggest_bonus_pct
-            import datetime
-            try:
-                acq_date = datetime.date.fromisoformat(data["date_acquired"])
-                data["bonus_pct"] = str(suggest_bonus_pct(
-                    acq_date,
-                    group_label=data.get("group_label", asset.group_label),
-                    is_amortization=data.get("is_amortization", asset.is_amortization),
-                ))
-            except (ValueError, TypeError):
-                pass
 
         ser = DepreciationAssetSerializer(asset, data=data, partial=True)
         ser.is_valid(raise_exception=True)

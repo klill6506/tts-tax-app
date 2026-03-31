@@ -1118,12 +1118,21 @@ def render_8825(tax_return) -> bytes:
         total_income += prop_income
         total_expenses += prop_total_exp
 
-    # Summary lines (totals across all properties)
-    total_net = total_income - total_expenses
-    if total_income != 0:
-        field_values["20a"] = (str(total_income), "currency")
-    if total_expenses != 0:
-        field_values["20b"] = (str(total_expenses), "currency")
+    # Summary lines — IRS Form 8825 Lines 20-21
+    # Line 20a: Combined net income from properties (positive nets only)
+    # Line 20b: Combined net loss from properties (negative nets only)
+    # Line 21: Net income (loss) = 20a + 20b (+ any 4797 rental gains)
+    total_net_income = sum(
+        (p.net_rent for p in properties if p.net_rent > 0), ZERO,
+    )
+    total_net_loss = sum(
+        (p.net_rent for p in properties if p.net_rent < 0), ZERO,
+    )
+    total_net = total_net_income + total_net_loss
+    if total_net_income != 0:
+        field_values["20a"] = (str(total_net_income), "currency")
+    if total_net_loss != 0:
+        field_values["20b"] = (str(total_net_loss), "currency")
     if total_net != 0:
         field_values["21"] = (str(total_net), "currency")
 
@@ -2871,7 +2880,8 @@ def render_complete_return(
     # Pages to skip: {form_name_prefix: set of page indices (0-based)}
     # Page index 1 = second page of the source PDF (instructions-only pages)
     SKIP_PAGES: dict[str, set[int]] = {
-        "Form 8879-S": {1},  # page 2 is IRS instructions only
+        "Form 8879-S": {1},      # page 2 is IRS instructions only
+        "Form 1125-A": {1, 2},   # pages 2-3 are IRS instructions
     }
 
     def _append(pdf_bytes: bytes, form_name: str = "Unknown") -> None:

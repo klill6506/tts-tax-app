@@ -179,7 +179,7 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     ("M2_7a", lambda v: _d(v, "K16d")),
     # Per IRC 1368(e)(1): distributions cannot reduce AAA below zero.
     # Losses CAN make AAA negative, but distributions are capped.
-    ("M2_8a", lambda v: _d(v, "M2_6a") - min(_d(v, "M2_7a"), max(ZERO, _d(v, "M2_6a")))),
+    ("M2_8a", lambda v: _d(v, "M2_6a") - _d(v, "M2_7a")),
     # Column (b) OAA — line 6 and 8 computed, rest manual
     ("M2_6b", lambda v: (
         _d(v, "M2_1b") + _d(v, "M2_2b") + _d(v, "M2_3b")

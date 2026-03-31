@@ -333,10 +333,10 @@ class TestM2BasicAAA:
         assert values["M2_8a"] >= 0
 
 
-class TestM2DistributionsCapped:
-    """Spec test: Distributions exceeding AAA — capped at zero"""
+class TestM2DistributionsAllowNegative:
+    """AAA can go negative from distributions (cap removed Mar 30 2026)."""
 
-    def test_aaa_cannot_go_negative_from_distributions(self):
+    def test_aaa_can_go_negative_from_distributions(self):
         values = _run_formulas({
             "1a": 100000, "1b": 0,
             "7": 30000, "8": 20000,
@@ -345,33 +345,25 @@ class TestM2DistributionsCapped:
             "K16d": 80000,    # Distributions > AAA combined
         })
         # K1 = 50000 (100000 - 50000)
-        k1 = values["K1"]
         # M2_2a = max(0, K1) = 50000
-        # M2_4a = max(0, -K1) = 0
-        # M2_6a = 20000 + 50000 + 0 - 0 - M2_5a
-        # AAA ending should be >= 0 (distributions capped)
-        assert values["M2_8a"] >= 0, (
-            f"AAA ending {values['M2_8a']} should not be negative from distributions"
+        # M2_6a = 20000 + 50000 = 70000
+        # M2_7a = 80000
+        # M2_8a = 70000 - 80000 = -10000
+        assert values["M2_8a"] == -10000, (
+            f"AAA ending should be -10000, got {values['M2_8a']}"
         )
 
-    def test_aaa_capped_at_zero_specific(self):
-        """Exactly matches spec test scenario 2"""
+    def test_aaa_negative_when_distributions_exceed_balance(self):
+        """Distributions > beginning AAA with no income → negative ending."""
         values = _run_formulas({
             "1a": 0, "1b": 0,
-            # Manually set K1 to simulate the scenario
-            # We need M2_2a = 30000 (income) so set Line 21 appropriately
-            # But formulas compute K1 = Line 21, so:
-            # Line 21 = Line 6 - Line 20 = 0 - 0 = 0
-            # Override with direct M2 values:
             "M2_1a": 20000,
             "K16d": 80000,
         })
-        # With K1=0: M2_2a=0, M2_4a=0, M2_5a=K12a+K11+K12b+K12c+K12d+K16c=0
-        # M2_6a = 20000 + 0 + 0 - 0 - 0 = 20000
-        # M2_7a = 80000
-        # M2_8a = 20000 - min(80000, max(0, 20000)) = 20000 - 20000 = 0
+        # M2_6a = 20000, M2_7a = 80000
+        # M2_8a = 20000 - 80000 = -60000
         assert values["M2_6a"] == 20000
-        assert values["M2_8a"] == 0
+        assert values["M2_8a"] == -60000
 
 
 class TestM2LossCanMakeNegative:

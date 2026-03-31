@@ -260,24 +260,34 @@ class DepreciationAssetSerializer(serializers.ModelSerializer):
         )
 
     def get_method_display(self, obj):
-        """Format: 'MACRS 200DB HY 7yr' or 'S/L MM 39yr' or '--'."""
+        """Format: 'MACRS 7yr' or 'S/L 39yr' or '--'.
+
+        Shows 'MACRS {life}yr' when the method matches MACRS defaults for
+        that recovery period (200DB for 3-10yr, 150DB for 15-20yr, SL for
+        27.5/39yr). Otherwise shows the actual method code.
+        """
         if obj.method == "NONE" or obj.group_label == "Land":
             return "\u2014"
         if obj.is_amortization:
             code = obj.amort_code or "Amort"
             months = obj.amort_months or ""
             return f"S/L {code} {months}mo" if months else f"S/L {code}"
-        parts = []
-        if obj.method in ("200DB", "150DB"):
-            parts.append(f"MACRS {obj.method}")
+        life_val = float(obj.life) if obj.life is not None else 0
+        life_str = f"{life_val:g}yr" if life_val else ""
+
+        # Determine if method matches MACRS default for this life
+        is_macrs_default = (
+            (obj.method == "200DB" and life_val in (3, 5, 7, 10))
+            or (obj.method == "150DB" and life_val in (15, 20))
+            or (obj.method == "SL" and life_val in (27.5, 39))
+        )
+
+        if is_macrs_default:
+            return f"MACRS {life_str}"
         elif obj.method == "SL":
-            parts.append("S/L")
-        if obj.convention:
-            parts.append(obj.convention)
-        if obj.life is not None:
-            life_str = f"{float(obj.life):g}"
-            parts.append(f"{life_str}yr")
-        return " ".join(parts)
+            return f"S/L {life_str}"
+        else:
+            return f"{obj.method} {life_str}"
 
 
 class PreparerInfoSerializer(serializers.ModelSerializer):
