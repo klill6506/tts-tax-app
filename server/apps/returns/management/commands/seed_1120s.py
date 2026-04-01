@@ -562,3 +562,16 @@ class Command(BaseCommand):
                 f"Seeded {len(SECTIONS)} sections, {line_count} lines for {form.code}."
             )
         )
+
+        # Clean up phantom rental properties (auto-seeded by old client code)
+        from apps.returns.models import RentalProperty
+        phantom_count, _ = RentalProperty.objects.filter(
+            description__in=["Property 1", "Property 2", "Property 3"],
+            rents_received=0,
+        ).delete()
+        if phantom_count:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Removed {phantom_count} phantom rental properties."
+                )
+            )

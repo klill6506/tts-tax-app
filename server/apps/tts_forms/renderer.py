@@ -2877,6 +2877,140 @@ def _render_me_statement(
     return buf.getvalue()
 
 
+def render_schedule_f(tax_return) -> bytes | None:
+    """Render Schedule F (Profit or Loss From Farming) as a native statement page.
+
+    Returns PDF bytes if farm data exists, None otherwise.
+    """
+    from apps.returns.models import FormFieldValue
+
+    fvs = FormFieldValue.objects.filter(
+        tax_return=tax_return,
+        form_line__section__code="sched_f",
+    ).select_related("form_line")
+
+    # Build line_number → value dict
+    vals: dict[str, str] = {}
+    for fv in fvs:
+        if fv.value and fv.value not in ("", "0", "0.00"):
+            vals[fv.form_line.line_number] = fv.value
+
+    # Skip if no data
+    if not vals:
+        return None
+
+    entity = tax_return.tax_year.entity
+    entity_name = entity.legal_name or entity.name
+    year = tax_return.tax_year.year
+
+    buf = io.BytesIO()
+    PAGE_W, PAGE_H = letter  # portrait
+    c = canvas.Canvas(buf, pagesize=letter)
+
+    LM = 54    # left margin
+    RM = PAGE_W - 54
+    USABLE = RM - LM
+    LH = 14    # line height
+    y = PAGE_H - 54
+
+    # --- Header ---
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(LM, y, f"Schedule F — Profit or Loss From Farming ({year})")
+    y -= LH
+    c.setFont("Helvetica", 9)
+    c.drawString(LM, y, entity_name)
+    y -= LH * 1.5
+
+    def _fmt(val: str) -> str:
+        """Format a currency value."""
+        try:
+            from decimal import Decimal
+            d = Decimal(val)
+            neg = d < 0
+            d = abs(d)
+            formatted = f"${d:,.2f}"
+            return f"({formatted})" if neg else formatted
+        except Exception:
+            return val
+
+    def draw_line(label: str, line_num: str, is_total: bool = False):
+        nonlocal y
+        if y < 60:
+            c.showPage()
+            y = PAGE_H - 54
+        font = "Helvetica-Bold" if is_total else "Helvetica"
+        c.setFont(font, 9)
+        # Line number
+        c.drawString(LM, y, line_num)
+        # Label
+        c.drawString(LM + 30, y, label)
+        # Amount
+        val = vals.get(line_num, "")
+        if val:
+            c.drawRightString(RM, y, _fmt(val))
+        if is_total:
+            c.setLineWidth(0.5)
+            c.line(RM - 100, y - 2, RM, y - 2)
+        y -= LH
+
+    # --- Part I: Farm Income ---
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(LM, y, "Part I — Farm Income")
+    y -= LH
+
+    income_lines = [
+        ("F1a", "Sales of livestock and other resale items"),
+        ("F1b", "Cost or other basis of livestock and items sold"),
+        ("F1c", "Subtract line 1b from line 1a"),
+        ("F2", "Sales of livestock, produce, grains, and other products raised"),
+        ("F3", "Cooperative distributions"),
+        ("F4", "Agricultural program payments"),
+        ("F5", "Commodity Credit Corporation (CCC) loans"),
+        ("F6", "Crop insurance proceeds and federal crop disaster payments"),
+        ("F7", "Custom hire (machine work) income"),
+        ("F8", "Other farm income"),
+    ]
+    for ln, lbl in income_lines:
+        if ln in vals:
+            draw_line(lbl, ln)
+    draw_line("Gross farm income", "F9", is_total=True)
+    y -= LH * 0.5
+
+    # --- Part II: Farm Expenses ---
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(LM, y, "Part II — Farm Expenses")
+    y -= LH
+
+    expense_lines = [
+        ("F10", "Car and truck expenses"), ("F11", "Chemicals"),
+        ("F12", "Conservation expenses"), ("F13", "Custom hire (machine work)"),
+        ("F14", "Depreciation and section 179 expense"),
+        ("F15", "Employee benefit programs"), ("F16", "Feed"),
+        ("F17", "Fertilizers and lime"), ("F18", "Freight and trucking"),
+        ("F19", "Gasoline, fuel, and oil"), ("F20", "Insurance (other than health)"),
+        ("F21a", "Interest — Mortgage"), ("F21b", "Interest — Other"),
+        ("F22", "Labor hired"), ("F23", "Pension and profit-sharing plans"),
+        ("F24a", "Rent or lease — Vehicles, machinery, equipment"),
+        ("F24b", "Rent or lease — Other"), ("F25", "Repairs and maintenance"),
+        ("F26", "Seeds and plants"), ("F27", "Storage and warehousing"),
+        ("F28", "Supplies"), ("F29", "Taxes"), ("F30", "Utilities"),
+        ("F31", "Veterinary, breeding, and medicine"), ("F32", "Other farm expenses"),
+    ]
+    for ln, lbl in expense_lines:
+        if ln in vals:
+            draw_line(lbl, ln)
+    draw_line("Total farm expenses", "F33", is_total=True)
+    y -= LH * 0.5
+
+    # --- Net Profit/Loss ---
+    draw_line("Net farm profit or (loss)", "F34", is_total=True)
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def render_complete_return(
     tax_return,
     package: str | None = None,
@@ -3027,6 +3161,14 @@ def render_complete_return(
             _append(render_8825(tax_return), "Form 8825")
     except Exception as e:
         logger.warning("render_complete: 8825 failed: %s", e)
+
+    # 3a. Schedule F (Farm Income) — only if farm data exists
+    try:
+        sched_f_bytes = render_schedule_f(tax_return)
+        if sched_f_bytes:
+            _append(sched_f_bytes, "Schedule F")
+    except Exception as e:
+        logger.warning("render_complete: Schedule F failed: %s", e)
 
     # 3b. Form 4562 (Depreciation) — only if depreciation assets exist
     try:

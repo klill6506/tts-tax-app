@@ -2883,24 +2883,6 @@ function RentalPropertiesSection({
   onRefresh: () => Promise<void>;
 }) {
   const [saving, setSaving] = useState(false);
-  const seededRef = useRef(false);
-
-  // Auto-seed 3 blank properties on first visit if none exist
-  useEffect(() => {
-    if (properties.length === 0 && !seededRef.current) {
-      seededRef.current = true;
-      (async () => {
-        for (let i = 1; i <= 3; i++) {
-          await post(`/tax-returns/${taxReturnId}/rental-properties/`, {
-            description: `Property ${i}`,
-            property_type: "6",
-            rents_received: "0",
-          });
-        }
-        await onRefresh();
-      })();
-    }
-  }, [properties.length]);
 
   async function addProperty() {
     setSaving(true);

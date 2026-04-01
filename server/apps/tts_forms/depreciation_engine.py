@@ -372,15 +372,13 @@ def calculate_asset_depreciation(
 
     depreciable_basis = asset.cost_basis * business_pct
 
-    # 1. Section 179 — reduces depreciable basis (first year only)
-    sec_179 = ZERO
-    if year_num == 1:
-        sec_179 = min(asset.sec_179_elected, depreciable_basis)
-        depreciable_basis -= sec_179
+    # 1. Section 179 — permanently reduces depreciable basis
+    sec_179 = min(asset.sec_179_elected, depreciable_basis)
+    depreciable_basis -= sec_179
 
-    # 2. Bonus depreciation — applied to remaining basis after 179
+    # 2. Bonus depreciation — permanently reduces basis after 179
     bonus_amount = ZERO
-    if year_num == 1 and asset.bonus_pct > ZERO:
+    if asset.bonus_pct > ZERO:
         bonus_pct_dec = asset.bonus_pct / HUNDRED
         bonus_amount = (depreciable_basis * bonus_pct_dec).quantize(PENNY, rounding=ROUND_HALF_UP)
         depreciable_basis -= bonus_amount
@@ -417,7 +415,11 @@ def calculate_asset_depreciation(
             factor = Decimal(str(sold_month - 0.5)) / Decimal("12")
             regular_depr = (regular_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
 
-    current_depr = sec_179 + bonus_amount + regular_depr
+    # sec_179 and bonus are year-1-only expense items
+    if year_num == 1:
+        current_depr = sec_179 + bonus_amount + regular_depr
+    else:
+        current_depr = regular_depr
 
     # Luxury auto cap
     if asset.is_listed_property and asset.group_label == "Vehicles":
@@ -428,19 +430,19 @@ def calculate_asset_depreciation(
 
     # Listed property business use <= 50%: force SL
     if asset.is_listed_property and asset.business_pct <= Decimal("50"):
-        # Recalculate using SL
-        sl_basis = asset.cost_basis * business_pct
-        if year_num == 1:
-            sl_basis -= sec_179
+        # Recalculate using SL — basis always reduced by 179
+        sl_basis = asset.cost_basis * business_pct - sec_179
         # No bonus for listed property under 50%
         bonus_amount = ZERO
         pct = _macrs_pct("SL", float(asset.life or 5), asset.convention, year_num,
                          month_placed, quarter_placed)
         regular_depr = (sl_basis * pct).quantize(PENNY, rounding=ROUND_HALF_UP)
-        current_depr = sec_179 + regular_depr
+        current_depr = regular_depr
+        if year_num == 1:
+            current_depr += sec_179
 
     result["current_depreciation"] = current_depr
-    result["bonus_amount"] = bonus_amount
+    result["bonus_amount"] = bonus_amount if year_num == 1 else ZERO
 
     # -----------------------------------------------------------------------
     # AMT depreciation
@@ -528,9 +530,8 @@ def _calculate_amt(
         # Recalculate using same method (since the caller's current_depreciation
         # hasn't been saved to the asset yet)
         depreciable_basis = asset.cost_basis * business_pct
-        if year_num == 1:
-            depreciable_basis -= sec_179
-            depreciable_basis -= bonus_amount
+        depreciable_basis -= sec_179
+        depreciable_basis -= bonus_amount
         pct = _macrs_pct(
             method=asset.method,
             life=float(asset.life or 0),
@@ -566,9 +567,8 @@ def _calculate_amt(
         return ZERO
 
     depreciable_basis = asset.cost_basis * business_pct
-    if year_num == 1:
-        depreciable_basis -= sec_179
-        depreciable_basis -= bonus_amount  # Bonus is same for AMT post-TCJA
+    depreciable_basis -= sec_179
+    depreciable_basis -= bonus_amount  # Bonus is same for AMT post-TCJA
 
     pct = _macrs_pct(
         method=amt_method,
@@ -619,24 +619,22 @@ def _calculate_state_ga(
     """
     result = {"current": ZERO, "bonus_disallowed": ZERO}
 
-    # Georgia disallows all federal bonus depreciation
-    result["bonus_disallowed"] = bonus_amount
+    # Georgia disallows all federal bonus depreciation (year-1 only)
+    result["bonus_disallowed"] = bonus_amount if year_num == 1 else ZERO
 
     # State depreciable basis: same as federal but without bonus
     depreciable_basis = asset.cost_basis * business_pct
 
-    # State Section 179 (capped at GA limit)
-    state_179 = ZERO
-    if year_num == 1:
-        state_179 = min(sec_179, GA_179_LIMIT)
-        depreciable_basis -= state_179
+    # State Section 179 (capped at GA limit, permanently reduces basis)
+    state_179 = min(sec_179, GA_179_LIMIT)
+    depreciable_basis -= state_179
 
     # State uses federal method/life/convention but on full basis (no bonus)
     state_method = asset.state_method or asset.method
     state_life = float(asset.state_life or asset.life or 0)
 
     if state_life <= 0:
-        result["current"] = state_179
+        result["current"] = state_179 if year_num == 1 else ZERO
         return result
 
     pct = _macrs_pct(
@@ -663,7 +661,11 @@ def _calculate_state_ga(
             factor = Decimal(str(sold_month - 0.5)) / Decimal("12")
             state_depr = (state_depr * factor).quantize(PENNY, rounding=ROUND_HALF_UP)
 
-    result["current"] = state_179 + state_depr
+    # state_179 is a year-1-only expense item
+    if year_num == 1:
+        result["current"] = state_179 + state_depr
+    else:
+        result["current"] = state_depr
     return result
 
 
