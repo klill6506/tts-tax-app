@@ -104,7 +104,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 # AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
 ACROFORM_FORM_IDS: set[str] = {
     "f1120s", "f1120sk1", "f7004", "f8879s", "f8453s", "f1125a", "f8825", "f7203",
-    "f4797", "f1120ssd", "f8949", "f1125e", "f4562",
+    "f4797", "f1120ssd", "f8949", "f1125e", "f4562", "fschedf",
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -2878,7 +2878,7 @@ def _render_me_statement(
 
 
 def render_schedule_f(tax_return) -> bytes | None:
-    """Render Schedule F (Profit or Loss From Farming) as a native statement page.
+    """Render Schedule F using IRS PDF with AcroForm text overlay.
 
     Returns PDF bytes if farm data exists, None otherwise.
     """
@@ -2889,126 +2889,48 @@ def render_schedule_f(tax_return) -> bytes | None:
         form_line__section__code="sched_f",
     ).select_related("form_line")
 
-    # Build line_number → value dict
-    vals: dict[str, str] = {}
+    # Build field_values dict: {line_number: (raw_value, field_type)}
+    field_values: dict[str, tuple[str, str]] = {}
+    has_data = False
     for fv in fvs:
+        ln = fv.form_line.line_number
         if fv.value and fv.value not in ("", "0", "0.00"):
-            vals[fv.form_line.line_number] = fv.value
+            has_data = True
+        if fv.value:
+            ft = fv.form_line.field_type
+            # Map boolean header fields to checkbox entries
+            if ft == "boolean" and fv.value.lower() in ("true", "1", "yes"):
+                if ln == "FH_METHOD":
+                    field_values["FH_METHOD_CASH"] = ("true", "boolean")
+                elif ln == "FH_PARTICIPATION":
+                    field_values["FH_PARTICIPATION_YES"] = ("true", "boolean")
+                elif ln == "FH_1099_RECEIVED":
+                    field_values["FH_1099_RECEIVED_YES"] = ("true", "boolean")
+                elif ln == "FH_1099_FILED":
+                    field_values["FH_1099_FILED_YES"] = ("true", "boolean")
+                continue
+            elif ft == "boolean" and fv.value.lower() in ("false", "0", "no"):
+                if ln == "FH_PARTICIPATION":
+                    field_values["FH_PARTICIPATION_NO"] = ("true", "boolean")
+                elif ln == "FH_1099_RECEIVED":
+                    field_values["FH_1099_RECEIVED_NO"] = ("true", "boolean")
+                elif ln == "FH_1099_FILED":
+                    field_values["FH_1099_FILED_NO"] = ("true", "boolean")
+                continue
+            field_values[ln] = (fv.value, ft)
 
-    # Skip if no data
-    if not vals:
+    if not has_data:
         return None
 
-    entity = tax_return.tax_year.entity
-    entity_name = entity.legal_name or entity.name
-    year = tax_return.tax_year.year
+    tax_year = tax_return.form_definition.tax_year_applicable
+    header_data = _build_header_data(tax_return)
 
-    buf = io.BytesIO()
-    PAGE_W, PAGE_H = letter  # portrait
-    c = canvas.Canvas(buf, pagesize=letter)
-
-    LM = 54    # left margin
-    RM = PAGE_W - 54
-    USABLE = RM - LM
-    LH = 14    # line height
-    y = PAGE_H - 54
-
-    # --- Header ---
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(LM, y, f"Schedule F — Profit or Loss From Farming ({year})")
-    y -= LH
-    c.setFont("Helvetica", 9)
-    c.drawString(LM, y, entity_name)
-    y -= LH * 1.5
-
-    def _fmt(val: str) -> str:
-        """Format a currency value."""
-        try:
-            from decimal import Decimal
-            d = Decimal(val)
-            neg = d < 0
-            d = abs(d)
-            formatted = f"${d:,.2f}"
-            return f"({formatted})" if neg else formatted
-        except Exception:
-            return val
-
-    def draw_line(label: str, line_num: str, is_total: bool = False):
-        nonlocal y
-        if y < 60:
-            c.showPage()
-            y = PAGE_H - 54
-        font = "Helvetica-Bold" if is_total else "Helvetica"
-        c.setFont(font, 9)
-        # Line number
-        c.drawString(LM, y, line_num)
-        # Label
-        c.drawString(LM + 30, y, label)
-        # Amount
-        val = vals.get(line_num, "")
-        if val:
-            c.drawRightString(RM, y, _fmt(val))
-        if is_total:
-            c.setLineWidth(0.5)
-            c.line(RM - 100, y - 2, RM, y - 2)
-        y -= LH
-
-    # --- Part I: Farm Income ---
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(LM, y, "Part I — Farm Income")
-    y -= LH
-
-    income_lines = [
-        ("F1a", "Sales of livestock and other resale items"),
-        ("F1b", "Cost or other basis of livestock and items sold"),
-        ("F1c", "Subtract line 1b from line 1a"),
-        ("F2", "Sales of livestock, produce, grains, and other products raised"),
-        ("F3", "Cooperative distributions"),
-        ("F4", "Agricultural program payments"),
-        ("F5", "Commodity Credit Corporation (CCC) loans"),
-        ("F6", "Crop insurance proceeds and federal crop disaster payments"),
-        ("F7", "Custom hire (machine work) income"),
-        ("F8", "Other farm income"),
-    ]
-    for ln, lbl in income_lines:
-        if ln in vals:
-            draw_line(lbl, ln)
-    draw_line("Gross farm income", "F9", is_total=True)
-    y -= LH * 0.5
-
-    # --- Part II: Farm Expenses ---
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(LM, y, "Part II — Farm Expenses")
-    y -= LH
-
-    expense_lines = [
-        ("F10", "Car and truck expenses"), ("F11", "Chemicals"),
-        ("F12", "Conservation expenses"), ("F13", "Custom hire (machine work)"),
-        ("F14", "Depreciation and section 179 expense"),
-        ("F15", "Employee benefit programs"), ("F16", "Feed"),
-        ("F17", "Fertilizers and lime"), ("F18", "Freight and trucking"),
-        ("F19", "Gasoline, fuel, and oil"), ("F20", "Insurance (other than health)"),
-        ("F21a", "Interest — Mortgage"), ("F21b", "Interest — Other"),
-        ("F22", "Labor hired"), ("F23", "Pension and profit-sharing plans"),
-        ("F24a", "Rent or lease — Vehicles, machinery, equipment"),
-        ("F24b", "Rent or lease — Other"), ("F25", "Repairs and maintenance"),
-        ("F26", "Seeds and plants"), ("F27", "Storage and warehousing"),
-        ("F28", "Supplies"), ("F29", "Taxes"), ("F30", "Utilities"),
-        ("F31", "Veterinary, breeding, and medicine"), ("F32", "Other farm expenses"),
-    ]
-    for ln, lbl in expense_lines:
-        if ln in vals:
-            draw_line(lbl, ln)
-    draw_line("Total farm expenses", "F33", is_total=True)
-    y -= LH * 0.5
-
-    # --- Net Profit/Loss ---
-    draw_line("Net farm profit or (loss)", "F34", is_total=True)
-
-    c.showPage()
-    c.save()
-    buf.seek(0)
-    return buf.getvalue()
+    return render(
+        form_id="fschedf",
+        tax_year=tax_year,
+        field_values=field_values,
+        header_data=header_data,
+    )
 
 
 def render_complete_return(
@@ -3042,6 +2964,7 @@ def render_complete_return(
     SKIP_PAGES: dict[str, set[int]] = {
         "Form 8879-S": {1},      # page 2 is IRS instructions only
         "Form 1125-A": {1, 2},   # pages 2-3 are IRS instructions
+        "Schedule F": {1},       # page 2 is Part III accrual method + activity codes
     }
 
     def _append(pdf_bytes: bytes, form_name: str = "Unknown") -> None:

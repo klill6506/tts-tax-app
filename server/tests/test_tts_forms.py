@@ -866,7 +866,7 @@ class TestManifest:
         with open(manifest_path) as f:
             data = json.load(f)
         assert "forms" in data
-        assert len(data["forms"]) == 21
+        assert len(data["forms"]) == 22
 
     def test_manifest_entries_have_required_fields(self):
         manifest_path = (

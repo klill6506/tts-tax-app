@@ -268,6 +268,19 @@
       "pages": 3,
       "has_acroform": true,
       "notes": "Depreciation and amortization summary. Section 179, MACRS, amortization, listed property. 277 AcroForm fields (54 checkbox + 223 text)"
+    },
+    {
+      "form_id": "fschedf",
+      "form_code": "Schedule-F",
+      "title": "Profit or Loss From Farming",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1040sf.pdf",
+      "revision_date": "2025-05",
+      "sha256": "",
+      "local_path": "2025/f1040sf.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "Schedule F (Form 1040) — farm income and expenses. 100 AcroForm fields. Page 2 is Part III accrual method + activity codes (skip for S-Corp cash method)."
     }
   ]
 }
