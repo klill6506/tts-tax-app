@@ -10,6 +10,8 @@ import {
 } from "../lib/api";
 import { useFormContext } from "../lib/form-context";
 import CurrencyInput from "../components/CurrencyInput";
+import DateInput from "../components/DateInput";
+import { lookupZip } from "../lib/zip-lookup";
 // PdfViewer removed — browser native PDF embed is more reliable for print/zoom
 
 // ---------------------------------------------------------------------------
@@ -840,7 +842,7 @@ export default function FormEditor() {
             {sectionTabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); document.querySelector("main")?.scrollTo(0, 0); }}
                 className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition ${
                   activeTab === tab.id
                     ? "border-b-2 border-primary text-primary-text"
@@ -1351,6 +1353,13 @@ function InfoSection({
                     type="text"
                     value={entity.zip_code || ""}
                     onChange={(e) => handleEntityChange("zip_code", e.target.value)}
+                    onBlur={async (e) => {
+                      const match = await lookupZip(e.target.value);
+                      if (match) {
+                        if (!entity.city) handleEntityChange("city", match.city);
+                        if (!entity.state) handleEntityChange("state", match.state);
+                      }
+                    }}
                     className={inputClass}
                   />
                 </div>
@@ -1360,8 +1369,7 @@ function InfoSection({
                   <label className="mb-1 block text-xs font-medium text-tx-secondary">
                     Date Incorporated
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={entity.date_incorporated || ""}
                     onChange={(e) =>
                       handleEntityChange("date_incorporated", e.target.value)
@@ -1427,8 +1435,7 @@ function InfoSection({
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Tax Year Start
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={taxYearStart}
                 onChange={(e) => setTaxYearStart(e.target.value)}
                 className={inputClass}
@@ -1438,8 +1445,7 @@ function InfoSection({
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Tax Year End
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={taxYearEnd}
                 onChange={(e) => setTaxYearEnd(e.target.value)}
                 className={inputClass}
@@ -1454,8 +1460,7 @@ function InfoSection({
                     <label className="mb-1 block text-xs font-medium text-tx-secondary">
                       S Election Date
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={sElectionDate}
                       onChange={(e) => setSElectionDate(e.target.value)}
                       className={inputClass}
@@ -1593,7 +1598,7 @@ function InfoSection({
           </div>
           <div>
             <label className="mb-0.5 block text-xs font-medium text-tx-secondary">Signature Date</label>
-            <input type="date" value={signatureDate} onChange={(e) => setSignatureDate(e.target.value)} className={inputClass} />
+            <DateInput value={signatureDate} onChange={(e) => setSignatureDate(e.target.value)} className={inputClass} />
           </div>
         </div>
       </div>
@@ -1938,8 +1943,7 @@ function PreparerSection({
               <label className="mb-1 block text-xs font-medium text-tx-secondary">
                 Signature Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={signatureDate}
                 onChange={(e) => setSignatureDate(e.target.value)}
                 className={inputClass}
@@ -2453,7 +2457,14 @@ function ShareholdersSection({
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">ZIP</label>
-                  <input type="text" defaultValue={s.zip_code} onBlur={(e) => updateField(s.id, "zip_code", e.target.value)} className={inputClass + " text-xs"} />
+                  <input type="text" defaultValue={s.zip_code} onBlur={async (e) => {
+                    await updateField(s.id, "zip_code", e.target.value);
+                    const match = await lookupZip(e.target.value);
+                    if (match) {
+                      if (!s.city) await updateField(s.id, "city", match.city);
+                      if (!s.state) await updateField(s.id, "state", match.state);
+                    }
+                  }} className={inputClass + " text-xs"} />
                 </div>
               </div>
             </div>
@@ -2778,8 +2789,7 @@ function ShareholderLoansPanel({
               </div>
               <div>
                 <label className="text-[10px] text-tx-muted">Maturity Date</label>
-                <input
-                  type="date"
+                <DateInput
                   value={loan.maturity_date || ""}
                   onChange={(e) => {
                     setLoans(loans.map((l) => l.id === loan.id ? { ...l, maturity_date: e.target.value } : l));
@@ -3265,8 +3275,7 @@ function TaxPaymentsSection({
           <div className="grid grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-tx-muted mb-1">Extension Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={extensionDate}
                 onChange={(e) => setExtensionDate(e.target.value)}
                 className="w-full rounded-md border border-border bg-field px-3 py-1.5 text-sm text-tx focus:ring-2 focus:ring-primary"
@@ -4041,8 +4050,7 @@ function DispositionEditForm({
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date acquired</label>
             <div className="flex items-center gap-2">
-              <input
-                type="date"
+              <DateInput
                 defaultValue={disposition.date_acquired || ""}
                 disabled={disposition.date_acquired_various}
                 onBlur={(e) => save({ date_acquired: e.target.value || null } as any)}
@@ -4061,8 +4069,7 @@ function DispositionEditForm({
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date sold</label>
             <div className="flex items-center gap-2">
-              <input
-                type="date"
+              <DateInput
                 defaultValue={disposition.date_sold || ""}
                 disabled={disposition.date_sold_various}
                 onBlur={(e) => save({ date_sold: e.target.value || null } as any)}
@@ -4750,7 +4757,7 @@ function DepreciationEditForm({
           </div>
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Acquired</label>
-            <input type="date" defaultValue={asset.date_acquired || ""} onBlur={(e) => save({ date_acquired: e.target.value || null })} className={inputClass} />
+            <DateInput defaultValue={asset.date_acquired || ""} onBlur={(e) => save({ date_acquired: e.target.value || null })} className={inputClass} />
           </div>
           <div>
             <label className="block text-xs font-medium text-tx-secondary mb-0.5">Flow To</label>
@@ -4932,7 +4939,7 @@ function DepreciationEditForm({
                 <div className="grid grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-tx-secondary mb-0.5">Date Sold</label>
-                    <input type="date" defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
+                    <DateInput defaultValue={asset.date_sold || ""} onBlur={(e) => save({ date_sold: e.target.value || null })} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-tx-secondary mb-0.5">Recapture Type</label>

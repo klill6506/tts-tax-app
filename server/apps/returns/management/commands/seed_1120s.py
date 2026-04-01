@@ -473,7 +473,7 @@ SECTIONS = [
             ("M2_6c", "Subtotal (STPI)", C, "", True, 62, DR),
             ("M2_6d", "Subtotal (Accu E&P)", C, "", True, 63, DR),
             # Row 7 — Distributions
-            ("M2_7a", "Distributions (AAA)", C, "1120S_M2_7a", False, 70, DR),
+            ("M2_7a", "Distributions (AAA)", C, "1120S_M2_7a", True, 70, DR),
             ("M2_7b", "Distributions (OAA)", C, "1120S_M2_7b", False, 71, DR),
             ("M2_7c", "Distributions (STPI)", C, "1120S_M2_7c", False, 72, DR),
             ("M2_7d", "Distributions (Accu E&P)", C, "1120S_M2_7d", False, 73, DR),

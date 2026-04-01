@@ -786,7 +786,7 @@ export default function AppShell() {
       {/* ── Content + Status Bar ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Content */}
-        <main className={`flex-1 overflow-auto bg-surface ${isInEditor ? "px-5 py-4" : "p-6"}`}>
+        <main className={`flex-1 overflow-auto bg-surface ${isInEditor ? "px-5 pb-4" : "p-6"}`}>
           <div className={`mx-auto ${isInEditor ? "max-w-[1440px]" : "max-w-7xl"}`}>
             <Outlet context={{ setEditorBreadcrumb } as AppShellContext} />
           </div>
