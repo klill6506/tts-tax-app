@@ -413,12 +413,13 @@ export default function ReturnManager() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface-alt">
                 <tr>
-                  <SortableHeader col="client_name" label="Client" onSort={handleSort} indicator={<SortIndicator col="client_name" />} />
+                  <SortableHeader col="client_name" label="Name" onSort={handleSort} indicator={<SortIndicator col="client_name" />} />
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">FEIN</th>
                   <SortableHeader col="status" label="Status" onSort={handleSort} indicator={<SortIndicator col="status" />} />
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Preparer</th>
                   <SortableHeader col="updated_at" label="Modified" onSort={handleSort} indicator={<SortIndicator col="updated_at" />} />
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-tx-secondary">Linked Account</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-tx-secondary">Actions</th>
                 </tr>
               </thead>
@@ -427,9 +428,8 @@ export default function ReturnManager() {
                   <tr key={r.id} className="transition hover:bg-primary-subtle">
                     <td className="px-4 py-3">
                       <Link to={`/tax-returns/${r.id}/editor`} className="text-sm font-medium text-primary-text hover:underline">
-                        {r.client_name}
+                        {r.entity_type === "individual" ? r.client_name : r.entity_name}
                       </Link>
-                      <div className="text-xs text-tx-muted">{r.entity_name}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-surface-alt px-2 py-0.5 text-xs font-medium text-tx-secondary">
@@ -443,6 +443,9 @@ export default function ReturnManager() {
                     <td className="px-4 py-3 text-sm text-tx-secondary">{r.preparer_name || "—"}</td>
                     <td className="px-4 py-3 text-sm text-tx-secondary" title={new Date(r.updated_at).toLocaleString()}>
                       {relativeTime(r.updated_at)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-tx-muted">
+                      {r.entity_type !== "individual" ? r.client_name : ""}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">

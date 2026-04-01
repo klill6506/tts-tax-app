@@ -333,6 +333,10 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
   ["D_MEALS_DED", (v) => val(v, "D_MEALS_50") * 0.50 + val(v, "D_MEALS_DOT") * 0.80],
   ["D_MEALS_NONDED", (v) => val(v, "D_MEALS_50") * 0.50 + val(v, "D_MEALS_DOT") * 0.20 + val(v, "D_ENTERTAINMENT")],
   // Page 1 — Deductions
+  // Line 11 = sum of rent sub-lines
+  ["11", (v) => sumLines(v, "D_RENT_BUILDING", "D_RENT_OTHER")],
+  // Line 12 = sum of tax sub-lines
+  ["12", (v) => sumLines(v, "D_TAXES_PROPERTY", "D_TAXES_PAYROLL", "D_TAXES_OTHER")],
   ["19", (v) => sumLines(v,
     "D_ACCT","D_ANSW","D_AUTO","D_BANK","D_COMM","D_DELI",
     "D_DUES","D_GIFT","D_INSU","D_JANI","D_LAUN","D_LICE","D_LEGA",
@@ -340,6 +344,7 @@ const FORMULAS_1120S: [string, (v: Record<string, number>) => number][] = [
     "D_POST","D_PRNT","D_SECU","D_SUPP","D_TELE","D_TOOL",
     "D_TRAV","D_UNIF","D_UTIL","D_WAST",
     "D_FREE1","D_FREE2","D_FREE3","D_FREE4","D_FREE5","D_FREE6",
+    "D_FREE7","D_FREE8","D_FREE9","D_FREE10","D_FREE11",
   )],
   ["20", (v) => sumLines(v, "7","8","9","10","11","12","13","14","15","16","17","18","19")],
   ["21", (v) => val(v, "6") - val(v, "20")],
@@ -2064,8 +2069,8 @@ function PreparerSection({
 /** Lines 7-19 that are standard deduction lines (not computed totals). */
 const DEDUCTION_LINE_RANGE = ["7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
 /** Computed summary lines shown after deductions. */
-const DEDUCTION_SUMMARY_LINES = ["19", "20", "21"];
-const FREE_FORM_DEDUCTION_PAIRS = ["D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6"];
+const DEDUCTION_SUMMARY_LINES = ["11", "12", "19", "20", "21"];
+const FREE_FORM_DEDUCTION_PAIRS = ["D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6", "D_FREE7", "D_FREE8", "D_FREE9", "D_FREE10", "D_FREE11"];
 const MEALS_FIELDS = ["D_MEALS_50", "D_MEALS_DOT", "D_ENTERTAINMENT", "D_MEALS_DED", "D_MEALS_NONDED"];
 /** Tax & Payments section shown at the bottom. */
 const TAX_SECTION_CODE = "page1_tax";

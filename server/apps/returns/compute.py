@@ -64,6 +64,10 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
     )),
 
     # Page 1 — Deductions
+    # Line 11 = sum of rent sub-lines
+    ("11", lambda v: _sum(v, "D_RENT_BUILDING", "D_RENT_OTHER")),
+    # Line 12 = sum of tax sub-lines
+    ("12", lambda v: _sum(v, "D_TAXES_PROPERTY", "D_TAXES_PAYROLL", "D_TAXES_OTHER")),
     # Line 19 = sum of named "other deductions" (D_*) + free-form rows
     # Meals: only the deductible portion flows here
     ("19", lambda v: _sum(
@@ -74,6 +78,7 @@ FORMULAS_1120S: list[tuple[str, callable]] = [
         "D_POST", "D_PRNT", "D_SECU", "D_SUPP", "D_TELE", "D_TOOL",
         "D_TRAV", "D_UNIF", "D_UTIL", "D_WAST",
         "D_FREE1", "D_FREE2", "D_FREE3", "D_FREE4", "D_FREE5", "D_FREE6",
+        "D_FREE7", "D_FREE8", "D_FREE9", "D_FREE10", "D_FREE11",
     )),
     ("20", lambda v: _sum(
         v, "7", "8", "9", "10", "11", "12", "13",
