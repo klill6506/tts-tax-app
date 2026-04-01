@@ -155,6 +155,18 @@ def run_flow_assertion(assertion: dict):
             f"does not write to '{target_line}'"
         )
 
+    # --- Check: function source contains expected substring ---
+    elif check == "source_contains":
+        mod = importlib.import_module(defn["module"])
+        func = getattr(mod, defn["function"])
+        source_code = inspect.getsource(func)
+        expected = defn["expected_substring"]
+
+        assert expected in source_code, (
+            f"{assertion['assertion_id']}: Function {defn['function']} "
+            f"source does not contain '{expected}'"
+        )
+
     else:
         pytest.fail(
             f"{assertion['assertion_id']}: Unknown flow assertion check. "

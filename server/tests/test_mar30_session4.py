@@ -81,7 +81,7 @@ class TestRender8825Summary:
     """8825 summary lines use correct IRS line semantics."""
 
     def test_8825_summary_splits_income_loss(self):
-        """20a = positive nets, 20b = negative nets, 21 = total."""
+        """20a = gross income, 20b = gross expenses, 23 = net (Dec 2025 revision)."""
         from unittest.mock import patch, MagicMock
 
         prop_a = MagicMock()
@@ -146,12 +146,12 @@ class TestRender8825Summary:
             mock_tr.tax_year.entity.ein = "12-3456789"
             render_8825(mock_tr)
 
-        # 20a = positive nets = 9000
-        assert captured["20a"][0] == "9000"
-        # 20b = negative nets = -3000
-        assert captured["20b"][0] == "-3000"
-        # 21 = total = 6000
-        assert captured["21"][0] == "6000"
+        # 20a = total gross income = 24000 + 5000 = 29000
+        assert captured["20a"][0] == "29000"
+        # 20b = total gross expenses = 15000 + 8000 = 23000
+        assert captured["20b"][0] == "23000"
+        # 23 = net = 29000 - 23000 = 6000
+        assert captured["23"][0] == "6000"
 
 
 # ===========================================================================

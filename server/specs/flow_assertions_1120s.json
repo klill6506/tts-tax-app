@@ -1,8 +1,8 @@
 {
   "export_version": "1.0",
-  "exported_at": "2026-03-30T23:42:14.293404+00:00",
+  "exported_at": "2026-03-31T23:55:00.000000+00:00",
   "entity_type": "1120S",
-  "assertion_count": 15,
+  "assertion_count": 20,
   "assertions": [
     {
       "assertion_id": "TI001",
@@ -338,6 +338,98 @@
         "description": "AMT disposal convention must match regular disposal convention"
       },
       "bug_reference": "Mar 30 2026 \u00e2\u20ac\u201d AMT not halved on disposal, showed $2,034 instead of $1,271",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA008",
+      "title": "8825 aggregate uses gross rents (rents_received), not net_rent",
+      "description": "Line 20a is total GROSS rental income. aggregate_rental_income must reference rents_received, not net_rent.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S",
+        "1065"
+      ],
+      "definition": {
+        "check": "source_contains",
+        "module": "apps.returns.compute",
+        "function": "aggregate_rental_income",
+        "expected_substring": "rents_received"
+      },
+      "bug_reference": "Mar 31 2026 \u2014 CC implemented 20a as positive-only net splits instead of gross income total",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA009",
+      "title": "8825 aggregate uses total_expenses for Line 20b",
+      "description": "Line 20b is total GROSS expenses. aggregate_rental_income must reference total_expenses.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S",
+        "1065"
+      ],
+      "definition": {
+        "check": "source_contains",
+        "module": "apps.returns.compute",
+        "function": "aggregate_rental_income",
+        "expected_substring": "total_expenses"
+      },
+      "bug_reference": "Mar 31 2026 \u2014 CC implemented 20b as negative-only net splits instead of expense total",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA010",
+      "title": "8825 Line 23 flows to K2",
+      "description": "aggregate_rental_income must write the net rental result to K2.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S",
+        "1065"
+      ],
+      "definition": {
+        "check": "must_write_to",
+        "module": "apps.returns.compute",
+        "function": "aggregate_rental_income",
+        "target_line": "K2"
+      },
+      "bug_reference": "Mar 31 2026 \u2014 K2 flow verified",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA011",
+      "title": "Schedule L Line 10b maps to col (a), not col (b)",
+      "description": "SCHED_L_4COL must map L10b to L10b_a (accum depr in col a of b-row), not L10b_b (NET column).",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "check": "source_contains",
+        "module": "apps.tts_forms.renderer",
+        "function": "render_tax_return",
+        "expected_substring": "\"L10b\": \"L10b_a\""
+      },
+      "bug_reference": "Mar 31 2026 \u2014 L10b was mapped to L10b_b (net column) instead of L10b_a (accum depr column)",
+      "status": "active"
+    },
+    {
+      "assertion_id": "FA012",
+      "title": "Total assets (L15a) uses NET depreciable (L10a - L10b)",
+      "description": "Line 15 total assets must use NET book value (gross minus accum depr), verified by formula.",
+      "assertion_type": "flow_assertion",
+      "entity_types": [
+        "1120S",
+        "1065",
+        "1120"
+      ],
+      "definition": {
+        "module": "apps.returns.compute",
+        "registry": "FORMULAS_1120S",
+        "source_line": "L10b",
+        "must_appear_in_formula": "L15a"
+      },
+      "bug_reference": "Preventive \u2014 if L10 columns are wrong, L15 could use wrong value",
       "status": "active"
     }
   ]

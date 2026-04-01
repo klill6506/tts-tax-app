@@ -151,6 +151,54 @@ No commercial Python-based tax preparation software exists. Every major competit
 (Lacerte, TaxWise, Drake, UltraTax CS, ProSeries) runs on legacy Microsoft stacks.
 An AI-native, modern-stack tax platform for professional preparers is an open field.
 
+## Rule Studio Integration — MANDATORY
+
+Rule Studio is deployed at: https://sherpa-tax-rule-studio.onrender.com
+
+**Before modifying ANY of these files, you MUST fetch the relevant spec from Rule Studio:**
+- `compute.py` — fetch the spec for whichever form's computation you're changing
+- `renderer.py` — fetch the spec for whichever form's rendering you're changing
+- `k1_allocator.py` — fetch Schedule K and K-1 specs
+- `depreciation_engine.py` — fetch Form 4562 spec
+- Any aggregate function — fetch the source form's spec
+
+**How to fetch a spec:**
+```
+curl -s https://sherpa-tax-rule-studio.onrender.com/api/forms/lookup/{form_number}/export/
+```
+
+Examples:
+- `curl -s .../api/forms/lookup/8825/export/` — Form 8825
+- `curl -s .../api/forms/lookup/1120S_SCHL/export/` — Schedule L
+- `curl -s .../api/forms/lookup/4797/export/` — Form 4797
+- `curl -s .../api/forms/lookup/1120S_SCHK/export/` — Schedule K
+
+**If the endpoint returns 404 (no spec exists):**
+STOP. Tell Ken that no Rule Studio spec exists for this form. Do NOT improvise the implementation.
+
+**If the endpoint is unreachable (Render cold start, network issue):**
+Check `server/specs/` for a cached JSON file. If no cached file exists, STOP and tell Ken.
+
+**Implement exactly what the spec says.** The spec defines:
+- `rules` — computation formulas and routing logic
+- `form_lines` / `line_map` — which line numbers exist and what they mean
+- `diagnostics` — error conditions to check
+- `tests` — expected inputs/outputs to verify against
+
+Do not reinterpret, simplify, or "improve" what the spec defines. If the spec seems wrong, flag it to Ken — do not silently change the implementation.
+
+## Flow Assertions — MANDATORY GATE
+After modifying computation code, run:
+```
+pytest tests/test_flow_assertions.py -v
+```
+All assertions must pass before committing. These assertions are exported from Rule Studio and validate inter-form number flows.
+
+To update assertions from Rule Studio:
+```
+curl -s https://sherpa-tax-rule-studio.onrender.com/api/flow-assertions/export/?entity_type=1120S > server/specs/flow_assertions_1120s.json
+```
+
 ## Development Rules
 - ✅ Can create and modify files freely
 - ❌ Ask before deleting files, bulk renames, or changes outside this repo

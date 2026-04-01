@@ -437,25 +437,54 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
 
     # Schedule L 4-column line translation.
     # Seed FormLine line_numbers use L10a/L10b/L10d/L10e but the AcroForm
-    # field map uses L10a_a/L10b_b/L10a_c/L10b_d (line + IRS column letter).
-    # Re-key so the renderer finds the correct AcroForm widget.
+    # field map uses L10a_a/L10b_a/L10a_c/L10b_c (line + IRS column letter).
+    # Gross assets → row "a" cols (a)/(c).  Contra (accum depr) → row "b" cols (a)/(c).
+    # NET book values are computed below and placed in row "b" cols (b)/(d).
     SCHED_L_4COL = {
         # Line 2: Trade notes / bad debts
         "L2a": "L2a_a", "L2d": "L2a_c",      # gross: BOY→col a, EOY→col c
-        "L2b": "L2b_b", "L2e": "L2b_d",      # contra: BOY→col b, EOY→col d
+        "L2b": "L2b_a", "L2e": "L2b_c",      # contra: BOY→col a, EOY→col c (of "b" row)
         # Line 10: Buildings & depreciable assets / accumulated depreciation
-        "L10a": "L10a_a", "L10d": "L10a_c",
-        "L10b": "L10b_b", "L10e": "L10b_d",
+        "L10a": "L10a_a", "L10d": "L10a_c",   # gross: BOY→col a, EOY→col c
+        "L10b": "L10b_a", "L10e": "L10b_c",   # accum depr: BOY→col a, EOY→col c
         # Line 11: Depletable assets / accumulated depletion
         "L11a": "L11a_a", "L11d": "L11a_c",
-        "L11b": "L11b_b", "L11e": "L11b_d",
+        "L11b": "L11b_a", "L11e": "L11b_c",   # accum depl: BOY→col a, EOY→col c
         # Line 13: Intangible assets / accumulated amortization
         "L13a": "L13a_a", "L13d": "L13a_c",
-        "L13b": "L13b_b", "L13e": "L13b_d",
+        "L13b": "L13b_a", "L13e": "L13b_c",   # accum amort: BOY→col a, EOY→col c
     }
     for old_key, new_key in SCHED_L_4COL.items():
         if old_key in field_values:
             field_values[new_key] = field_values.pop(old_key)
+
+    # Schedule L contra-asset lines: compute NET book values for columns (b)/(d)
+    # and negate contra amounts so they render in parentheses per IRS convention.
+    _SCHED_L_CONTRA = [
+        # (gross_a, contra_a, net_b, gross_c, contra_c, net_d)
+        ("L2a_a",  "L2b_a",  "L2b_b",  "L2a_c",  "L2b_c",  "L2b_d"),
+        ("L10a_a", "L10b_a", "L10b_b", "L10a_c", "L10b_c", "L10b_d"),
+        ("L11a_a", "L11b_a", "L11b_b", "L11a_c", "L11b_c", "L11b_d"),
+        ("L13a_a", "L13b_a", "L13b_b", "L13a_c", "L13b_c", "L13b_d"),
+    ]
+    for gross_a, contra_a, net_b, gross_c, contra_c, net_d in _SCHED_L_CONTRA:
+        gross_boy = _fv_decimal(gross_a)
+        contra_boy = _fv_decimal(contra_a)
+        gross_eoy = _fv_decimal(gross_c)
+        contra_eoy = _fv_decimal(contra_c)
+
+        # BOY net = gross - contra → col (b)
+        if gross_boy or contra_boy:
+            field_values[net_b] = (str(gross_boy - contra_boy), "currency")
+        # EOY net = gross - contra → col (d)
+        if gross_eoy or contra_eoy:
+            field_values[net_d] = (str(gross_eoy - contra_eoy), "currency")
+
+        # Negate contra values so format_currency renders parentheses
+        if contra_a in field_values and contra_boy:
+            field_values[contra_a] = (str(-contra_boy), "currency")
+        if contra_c in field_values and contra_eoy:
+            field_values[contra_c] = (str(-contra_eoy), "currency")
 
     # Build header data from the tax_year's entity/client
     header_data = _build_header_data(tax_return)
@@ -1118,23 +1147,20 @@ def render_8825(tax_return) -> bytes:
         total_income += prop_income
         total_expenses += prop_total_exp
 
-    # Summary lines — IRS Form 8825 Lines 20-21
-    # Line 20a: Combined net income from properties (positive nets only)
-    # Line 20b: Combined net loss from properties (negative nets only)
-    # Line 21: Net income (loss) = 20a + 20b (+ any 4797 rental gains)
-    total_net_income = sum(
-        (p.net_rent for p in properties if p.net_rent > 0), ZERO,
-    )
-    total_net_loss = sum(
-        (p.net_rent for p in properties if p.net_rent < 0), ZERO,
-    )
-    total_net = total_net_income + total_net_loss
-    if total_net_income != 0:
-        field_values["20a"] = (str(total_net_income), "currency")
-    if total_net_loss != 0:
-        field_values["20b"] = (str(total_net_loss), "currency")
-    if total_net != 0:
-        field_values["21"] = (str(total_net), "currency")
+    # Summary lines — IRS Form 8825 Lines 20a-23 (December 2025 revision)
+    # Line 20a: Total gross rents across all properties
+    # Line 20b: Total gross expenses across all properties
+    # Line 21: Form 4797 Part II Line 17 (rental dispositions) — manual input
+    # Line 22a: Pass-through rental from K-1s received — manual input
+    # Line 23: Net rental real estate income = 20a - 20b + 21 + 22a → K2
+    if total_income != 0:
+        field_values["20a"] = (str(total_income), "currency")
+    if total_expenses != 0:
+        field_values["20b"] = (str(total_expenses), "currency")
+    # Lines 21 and 22a are manual inputs — not computed here
+    net_rental = total_income - total_expenses
+    if net_rental != 0:
+        field_values["23"] = (str(net_rental), "currency")
 
     return render(
         form_id="f8825",

@@ -722,10 +722,13 @@ def aggregate_schedule_d(tax_return) -> None:
 
 def aggregate_rental_income(tax_return) -> None:
     """
-    Aggregate rental property net income/loss and flow to Schedule K Line 2.
+    Form 8825 summary Lines 20a-23 (IRS Rev. December 2025).
 
-    Data source: RentalProperty instances.
-    Per Form 8825 spec R003: K2 = sum(all net_rent).
+    20a = sum of gross rents (rents_received) across all properties
+    20b = sum of total expenses across all properties
+    21  = Form 4797 Part II Line 17 (rental real estate dispositions only)
+    22a = pass-through rental from K-1s received (manual input)
+    23  = 20a - 20b + 21 + 22a → Schedule K Line 2
     """
     from .models import RentalProperty
 
@@ -736,15 +739,46 @@ def aggregate_rental_income(tax_return) -> None:
     if not rentals.exists():
         return
 
-    total_net_rent = sum(
-        (r.net_rent for r in rentals),
+    # Line 20a: sum of ALL gross rental income
+    total_income = sum(
+        (r.rents_received or ZERO for r in rentals),
         ZERO,
     )
 
-    if total_net_rent != 0:
-        _set_field_value(
-            tax_return, "K2", str(total_net_rent.quantize(Decimal("0.01")))
+    # Line 20b: sum of ALL total expenses
+    total_expenses = sum(
+        (r.total_expenses or ZERO for r in rentals),
+        ZERO,
+    )
+
+    # Line 21: Form 4797 rental dispositions — read from stored value if exists
+    line_21 = ZERO
+    try:
+        fv = FormFieldValue.objects.get(
+            tax_return=tax_return,
+            form_line__line_number="8825_L21",
         )
+        line_21 = Decimal(fv.value) if fv.value else ZERO
+    except (FormFieldValue.DoesNotExist, InvalidOperation):
+        pass
+
+    # Line 22a: pass-through rental from K-1s received (manual input)
+    line_22a = ZERO
+    try:
+        fv = FormFieldValue.objects.get(
+            tax_return=tax_return,
+            form_line__line_number="8825_L22a",
+        )
+        line_22a = Decimal(fv.value) if fv.value else ZERO
+    except (FormFieldValue.DoesNotExist, InvalidOperation):
+        pass
+
+    # Line 23: Net rental real estate income → K Line 2
+    net_rental = (total_income - total_expenses + line_21 + line_22a).quantize(
+        Decimal("0.01")
+    )
+
+    _set_field_value(tax_return, "K2", str(net_rental))
 
 
 def aggregate_officer_compensation(tax_return) -> None:
