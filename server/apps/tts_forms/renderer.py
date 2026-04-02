@@ -2965,6 +2965,7 @@ def render_complete_return(
         "Form 8879-S": {1},      # page 2 is IRS instructions only
         "Form 1125-A": {1, 2},   # pages 2-3 are IRS instructions
         "Schedule F": {1},       # page 2 is Part III accrual method + activity codes
+        "GA Form 600S": {3, 4, 5, 6, 7},  # pages 4-8: Sched 9-13 (apportionment, NOL, credits — deferred)
     }
 
     def _append(pdf_bytes: bytes, form_name: str = "Unknown") -> None:

@@ -167,6 +167,9 @@ def fill_form(
             w_page, rect, font_size = pos
             if w_page != page_idx:
                 continue
+            # Per-field font size override from field map
+            if acro.font_size:
+                font_size = acro.font_size
 
             x0, y0_mu, x1, y1_mu = rect  # pymupdf: y0=top edge, y1=bottom edge
 

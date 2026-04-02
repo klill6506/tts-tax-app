@@ -38,6 +38,7 @@ class AcroField:
     acro_name: str
     field_type: Literal["text", "checkbox"] = "text"
     format: Literal["currency", "text", "boolean", "percentage", "integer"] = "text"
+    font_size: float | None = None  # Override widget font size (pts)
 
 
 # Type alias for field maps

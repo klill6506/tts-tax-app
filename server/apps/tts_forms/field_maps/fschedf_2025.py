@@ -29,7 +29,7 @@ HEADER_MAP: FieldMap = {
 FIELD_MAP: FieldMap = {
     # --- Header fields (Lines A-G) ---
     "FH_CROP":  AcroField(f"{_P1}.f1_3[0]"),                                             # A: Principal crop
-    "FH_CODE":  AcroField(f"{_P1}.CombField_LineB[0].f1_4[0]"),                           # B: Activity code
+    "FH_CODE":  AcroField(f"{_P1}.CombField_LineB[0].f1_4[0]", font_size=7),               # B: Activity code (small comb box)
     "FH_EIN":   AcroField(f"{_P1}.CombField_LineD[0].f1_5[0]"),                           # D: EIN
     # C: Accounting method checkboxes (Cash / Accrual)
     "FH_METHOD_CASH":    AcroField(f"{_P1}.LineC_ReadOrder[0].c1_1[0]", field_type="checkbox"),
