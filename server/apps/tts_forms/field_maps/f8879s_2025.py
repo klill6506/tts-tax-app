@@ -47,12 +47,12 @@ FIELD_MAP: FieldMap = {
     # Part II — Officer's PIN authorization
     "chk_authorize_ero": AcroField(f"{_P}.c1_1[0]", field_type="checkbox"),  # I authorize ERO
     "ero_firm_name": AcroField(f"{_P}.f1_11[0]"),           # ERO firm name
-    "officer_pin": AcroField(f"{_P}.CombField1[0].f1_12[0]"),  # Officer's 5-digit PIN
+    "officer_pin": AcroField(f"{_P}.CombField1[0].f1_12[0]", is_comb=True, max_chars=5),  # Officer's 5-digit PIN
     "chk_officer_enters": AcroField(f"{_P}.c1_1[1]", field_type="checkbox"),  # Officer enters PIN
 
     # Part III — ERO EFIN/PIN
     "ero_efin_pin": AcroField(f"{_P}.f1_13[0]"),            # 11-digit EFIN+PIN
 
     # Officer signature fields
-    "officer_date": AcroField(f"{_P}.CombField2[0].f1_14[0]"),  # Date
+    "officer_date": AcroField(f"{_P}.CombField2[0].f1_14[0]", is_comb=True, max_chars=10),  # Date MM/DD/YYYY
 }

@@ -39,6 +39,8 @@ class AcroField:
     field_type: Literal["text", "checkbox"] = "text"
     format: Literal["currency", "text", "boolean", "percentage", "integer"] = "text"
     font_size: float | None = None  # Override widget font size (pts)
+    is_comb: bool = False  # Draw one character per box (EIN, NAICS, PIN fields)
+    max_chars: int | None = None  # Number of boxes in the comb field
 
 
 # Type alias for field maps

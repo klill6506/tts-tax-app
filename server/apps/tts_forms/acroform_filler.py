@@ -189,7 +189,17 @@ def fill_form(
                 c.setFont(DEFAULT_FONT, font_size)
                 field_height = y1_mu - y0_mu
 
-                if "\n" in display_value:
+                if acro.is_comb and acro.max_chars:
+                    # COMB FIELD: Draw one character per box, evenly spaced
+                    field_width = x1 - x0
+                    char_width = field_width / acro.max_chars
+                    baseline_y = page_h - y1_mu + _FIELD_MARGIN
+
+                    for i, ch in enumerate(display_value[:acro.max_chars]):
+                        cell_center_x = x0 + (i * char_width) + (char_width / 2)
+                        c.drawCentredString(cell_center_x, baseline_y, ch)
+                    filled_count += 1
+                elif "\n" in display_value:
                     # Multi-line text: draw each line from top of field
                     lines = display_value.split("\n")
                     line_height = font_size * 1.2
