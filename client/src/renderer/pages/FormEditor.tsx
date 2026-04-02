@@ -140,6 +140,49 @@ interface DispositionRow {
   sort_order: number;
 }
 
+interface PartnerAllocationRow {
+  id: string;
+  category: string;
+  percentage: string;
+}
+
+interface PartnerRow {
+  id: string;
+  name: string;
+  ssn: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  partner_type: string;
+  is_domestic: boolean;
+  is_individual: boolean;
+  profit_pct: string;
+  loss_pct: string;
+  capital_pct: string;
+  profit_pct_boy: string;
+  loss_pct_boy: string;
+  capital_pct_boy: string;
+  gp_services: string;
+  gp_capital: string;
+  gp_total: string;
+  distributions: string;
+  liability_recourse: string;
+  liability_qnr: string;
+  liability_nonrecourse: string;
+  capital_account_boy: string;
+  capital_contributed: string;
+  current_year_increase: string;
+  withdrawals: string;
+  capital_account_eoy: string;
+  linked_client: string | null;
+  linked_client_name: string | null;
+  allocations: PartnerAllocationRow[];
+  is_active: boolean;
+  sort_order: number;
+}
+
 interface DepreciationAssetRow {
   id: string;
   asset_number: number;
@@ -242,6 +285,7 @@ interface TaxReturnData {
   tax_year_id: string;
   year: number;
   entity_name: string;
+  entity_type: string;
   entity_id: string;
   client_name: string;
   form_code: string;
@@ -282,6 +326,7 @@ interface TaxReturnData {
   other_deductions: OtherDeductionRow[];
   officers: OfficerRow[];
   shareholders: ShareholderRow[];
+  partners: PartnerRow[];
   rental_properties: RentalPropertyRow[];
   dispositions: DispositionRow[];
   depreciation_assets: DepreciationAssetRow[];
@@ -541,6 +586,25 @@ const GA_SECTION_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "sched_4", label: "Sched 4 — Tax Due", sections: ["sched_4"] },
 ];
 
+/** Partnership (1065) section tabs. */
+const PARTNERSHIP_TABS: { id: string; label: string; sections: string[] }[] = [
+  { id: "info", label: "Client Info", sections: [] },
+  { id: "admin", label: "Admin", sections: ["admin"] },
+  { id: "partners", label: "Partners", sections: [] },
+  { id: "allocations", label: "Allocations", sections: [] },
+  { id: "page1", label: "Income & Ded.", sections: ["page1_income", "sched_a", "page1_deductions"] },
+  { id: "sched_k", label: "Sched K", sections: ["sched_k"] },
+  { id: "balance_sheets", label: "Balance Sheet", sections: ["sched_l", "sched_m1", "sched_m2"] },
+  { id: "sched_b", label: "Sched B", sections: ["sched_b"] },
+  { id: "rental", label: "Rental (8825)", sections: [] },
+  { id: "dispositions", label: "Dispositions", sections: [] },
+  { id: "depreciation", label: "Depreciation", sections: [] },
+  { id: "schedule_f", label: "Schedule F", sections: ["sched_f"] },
+  { id: "tax_payments", label: "Extensions", sections: ["page1_tax"] },
+  { id: "prior_year", label: "PY Compare", sections: [] },
+  { id: "state", label: "State", sections: [] },
+];
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -668,6 +732,7 @@ export default function FormEditor() {
   }, [returnData]);
 
   const isStateReturn = returnData?.form_code === "GA-600S";
+  const isPartnership = returnData?.form_code === "1065";
 
   // State returns are hidden from the Return Manager list, so users
   // access them only via the federal return's State tab.  No redirect
@@ -676,13 +741,13 @@ export default function FormEditor() {
   const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
   const sectionTabs = useMemo(() => {
     if (isStateReturn) return GA_SECTION_TABS;
-    let tabs = SECTION_TABS;
+    let tabs = isPartnership ? PARTNERSHIP_TABS : SECTION_TABS;
     // Hide State tab on federal returns if no filing states configured
     if (!hasFilingStates) tabs = tabs.filter((t) => t.id !== "state");
     // Hide PY Compare tab if no prior year data
     if (!priorYear) tabs = tabs.filter((t) => t.id !== "prior_year");
     return tabs;
-  }, [isStateReturn, hasFilingStates, priorYear]);
+  }, [isStateReturn, isPartnership, hasFilingStates, priorYear]);
 
   // Reset tab when switching between federal/state returns
   useEffect(() => {
@@ -875,6 +940,18 @@ export default function FormEditor() {
             <ShareholdersSection
               taxReturnId={taxReturnId!}
               shareholders={returnData.shareholders || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "partners" ? (
+            <PartnersSection
+              taxReturnId={taxReturnId!}
+              partners={returnData.partners || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "allocations" ? (
+            <AllocationsSection
+              taxReturnId={taxReturnId!}
+              partners={returnData.partners || []}
               onRefresh={refreshReturn}
             />
           ) : activeTab === "page1" ? (
@@ -1367,7 +1444,7 @@ function InfoSection({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                    Date Incorporated
+                    {returnData.form_code === "1065" ? "Date Partnership Began" : "Date Incorporated"}
                   </label>
                   <DateInput
                     value={entity.date_incorporated || ""}
@@ -1379,7 +1456,7 @@ function InfoSection({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-tx-secondary">
-                    State Incorporated
+                    {returnData.form_code === "1065" ? "State Organized" : "State Incorporated"}
                   </label>
                   <input
                     type="text"
@@ -1480,6 +1557,21 @@ function InfoSection({
                   </div>
                 </div>
               </>
+            )}
+
+            {returnData.form_code === "1065" && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-tx-secondary">
+                  Number of Partners
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={numberOfShareholders}
+                  onChange={(e) => setNumberOfShareholders(e.target.value.replace(/[^0-9]/g, ""))}
+                  className={inputClass}
+                />
+              </div>
             )}
 
             <div>
@@ -2840,6 +2932,431 @@ function ShareholderLoansPanel({
       >
         Add Loan
       </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Partners Section (1065 partnerships)
+// ---------------------------------------------------------------------------
+
+const PARTNER_TYPES: Record<string, string> = {
+  general: "General Partner",
+  limited: "Limited Partner",
+  llc_member: "LLC Member-Manager",
+};
+
+const ALLOCATION_CATEGORIES: { value: string; label: string }[] = [
+  { value: "ordinary", label: "Ordinary income/loss" },
+  { value: "rental_re", label: "Net rental RE income/loss" },
+  { value: "other_rental", label: "Other rental income/loss" },
+  { value: "interest", label: "Interest income" },
+  { value: "dividends", label: "Dividends" },
+  { value: "royalties", label: "Royalties" },
+  { value: "st_capital", label: "Short-term capital gain/loss" },
+  { value: "lt_capital", label: "Long-term capital gain/loss" },
+  { value: "sec_1231", label: "Section 1231 gain/loss" },
+  { value: "sec_179", label: "Section 179 deduction" },
+  { value: "charitable", label: "Charitable contributions" },
+  { value: "distributions", label: "Distributions" },
+  { value: "capital", label: "Capital" },
+];
+
+function PartnersSection({
+  taxReturnId,
+  partners,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  partners: PartnerRow[];
+  onRefresh: () => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+
+  function formatSSN(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 9);
+    if (digits.length > 5) return digits.slice(0, 3) + "-" + digits.slice(3, 5) + "-" + digits.slice(5);
+    if (digits.length > 3) return digits.slice(0, 3) + "-" + digits.slice(3);
+    return digits;
+  }
+
+  async function addPartner() {
+    setAdding(true);
+    await post(`/tax-returns/${taxReturnId}/partners/`, {
+      name: "", ssn: "", partner_type: "general",
+      profit_pct: "0", loss_pct: "0", capital_pct: "0",
+      profit_pct_boy: "0", loss_pct_boy: "0", capital_pct_boy: "0",
+      distributions: "0", gp_services: "0", gp_capital: "0",
+    });
+    await onRefresh();
+    setAdding(false);
+  }
+
+  async function updateField(partnerId: string, field: string, value: string) {
+    await patch(`/tax-returns/${taxReturnId}/partners/${partnerId}/`, { [field]: value });
+    await onRefresh();
+  }
+
+  async function deletePartner(id: string) {
+    if (!confirm("Delete this partner?")) return;
+    await del(`/tax-returns/${taxReturnId}/partners/${id}/`);
+    await onRefresh();
+  }
+
+  const totals = partners.reduce(
+    (acc, p) => ({
+      profit: acc.profit + (parseFloat(p.profit_pct) || 0),
+      loss: acc.loss + (parseFloat(p.loss_pct) || 0),
+      capital: acc.capital + (parseFloat(p.capital_pct) || 0),
+    }),
+    { profit: 0, loss: 0, capital: 0 },
+  );
+
+  const pctOk = (v: number) => Math.abs(v - 100) < 0.0001;
+
+  const inputClass =
+    "w-full rounded-md border border-input-border bg-input px-2 py-1 text-sm text-tx shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-tx">Partners</h3>
+          <p className="text-xs text-tx-muted">
+            K-1 forms will be generated for each partner based on allocation percentages.
+          </p>
+        </div>
+        <button
+          onClick={addPartner}
+          disabled={adding}
+          className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-success-hover disabled:opacity-50"
+        >
+          Add Partner
+        </button>
+      </div>
+
+      {/* Ownership totals summary */}
+      {partners.length > 0 && (
+        <div className="flex gap-4 text-xs font-medium">
+          <span className={pctOk(totals.profit) ? "text-success" : "text-danger"}>
+            Profit: {totals.profit.toFixed(4)}%
+          </span>
+          <span className={pctOk(totals.loss) ? "text-success" : "text-danger"}>
+            Loss: {totals.loss.toFixed(4)}%
+          </span>
+          <span className={pctOk(totals.capital) ? "text-success" : "text-danger"}>
+            Capital: {totals.capital.toFixed(4)}%
+          </span>
+        </div>
+      )}
+
+      {partners.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+          No partners added yet. Add partners to enable K-1 generation.
+        </div>
+      )}
+
+      {partners.map((p) => {
+        const gpTotal = (parseFloat(p.gp_services) || 0) + (parseFloat(p.gp_capital) || 0);
+        const capEOY = (parseFloat(p.capital_account_boy) || 0) +
+          (parseFloat(p.capital_contributed) || 0) +
+          (parseFloat(p.current_year_increase) || 0) -
+          (parseFloat(p.withdrawals) || 0);
+
+        return (
+          <div key={p.id} className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 rounded-t-xl">
+              <span className="text-xs font-bold text-tx">{p.name || "(New Partner)"}</span>
+              <button onClick={() => deletePartner(p.id)} className="text-xs font-medium text-danger hover:underline">
+                Delete
+              </button>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              {/* Row 1: Identity */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                <div className="col-span-2">
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Name</label>
+                  <input type="text" defaultValue={p.name} onBlur={(e) => updateField(p.id, "name", e.target.value)} className={inputClass + " text-xs"} />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">SSN / TIN</label>
+                  <input type="text" defaultValue={p.ssn} onBlur={(e) => updateField(p.id, "ssn", e.target.value)}
+                    onChange={(e) => { e.target.value = formatSSN(e.target.value); }}
+                    className={inputClass + " text-xs"} placeholder="XXX-XX-XXXX" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Partner Type</label>
+                  <select defaultValue={p.partner_type} onChange={(e) => updateField(p.id, "partner_type", e.target.value)} className={inputClass + " text-xs"}>
+                    {Object.entries(PARTNER_TYPES).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end gap-3 pb-1">
+                  <label className="flex items-center gap-1 text-[10px] text-tx-muted cursor-pointer">
+                    <input type="checkbox" defaultChecked={p.is_domestic} onChange={(e) => updateField(p.id, "is_domestic", String(e.target.checked))} />
+                    Domestic
+                  </label>
+                  <label className="flex items-center gap-1 text-[10px] text-tx-muted cursor-pointer">
+                    <input type="checkbox" defaultChecked={p.is_individual} onChange={(e) => updateField(p.id, "is_individual", String(e.target.checked))} />
+                    Individual
+                  </label>
+                </div>
+              </div>
+
+              {/* Row 2: Address */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="col-span-2">
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Address</label>
+                  <input type="text" defaultValue={p.address_line1} onBlur={(e) => updateField(p.id, "address_line1", e.target.value)} className={inputClass + " text-xs"} />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">City</label>
+                  <input type="text" defaultValue={p.city} onBlur={(e) => updateField(p.id, "city", e.target.value)} className={inputClass + " text-xs"} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">State</label>
+                    <input type="text" defaultValue={p.state} onBlur={(e) => updateField(p.id, "state", e.target.value)} className={inputClass + " text-xs"} maxLength={2} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">ZIP</label>
+                    <input type="text" defaultValue={p.zip_code} onBlur={async (e) => {
+                      await updateField(p.id, "zip_code", e.target.value);
+                      const match = await lookupZip(e.target.value);
+                      if (match) {
+                        if (!p.city) await updateField(p.id, "city", match.city);
+                        if (!p.state) await updateField(p.id, "state", match.state);
+                      }
+                    }} className={inputClass + " text-xs"} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Ownership Percentages (BOY / EOY grid) */}
+              <div>
+                <label className="mb-1 block text-[10px] font-bold text-tx-muted uppercase tracking-wider">Ownership Percentages (K-1 Item J)</label>
+                <div className="grid grid-cols-3 gap-2 max-w-md">
+                  <div />
+                  <div className="text-center text-[10px] font-medium text-tx-muted">BOY</div>
+                  <div className="text-center text-[10px] font-medium text-tx-muted">EOY</div>
+
+                  <div className="text-[10px] text-tx-muted flex items-center">Profit %</div>
+                  <input type="text" defaultValue={p.profit_pct_boy} onBlur={(e) => updateField(p.id, "profit_pct_boy", e.target.value)} className={inputClass + " text-xs text-center"} />
+                  <input type="text" defaultValue={p.profit_pct} onBlur={(e) => updateField(p.id, "profit_pct", e.target.value)} className={inputClass + " text-xs text-center"} />
+
+                  <div className="text-[10px] text-tx-muted flex items-center">Loss %</div>
+                  <input type="text" defaultValue={p.loss_pct_boy} onBlur={(e) => updateField(p.id, "loss_pct_boy", e.target.value)} className={inputClass + " text-xs text-center"} />
+                  <input type="text" defaultValue={p.loss_pct} onBlur={(e) => updateField(p.id, "loss_pct", e.target.value)} className={inputClass + " text-xs text-center"} />
+
+                  <div className="text-[10px] text-tx-muted flex items-center">Capital %</div>
+                  <input type="text" defaultValue={p.capital_pct_boy} onBlur={(e) => updateField(p.id, "capital_pct_boy", e.target.value)} className={inputClass + " text-xs text-center"} />
+                  <input type="text" defaultValue={p.capital_pct} onBlur={(e) => updateField(p.id, "capital_pct", e.target.value)} className={inputClass + " text-xs text-center"} />
+                </div>
+              </div>
+
+              {/* Row 4: GP + Distributions */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">GP for Services</label>
+                  <CurrencyInput value={p.gp_services || "0"} onValueChange={(v) => updateField(p.id, "gp_services", v)} />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">GP for Capital</label>
+                  <CurrencyInput value={p.gp_capital || "0"} onValueChange={(v) => updateField(p.id, "gp_capital", v)} />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Total GP</label>
+                  <div className="rounded-md bg-surface-alt px-2 py-1 text-xs text-tx-muted tabular-nums">
+                    {gpTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Distributions</label>
+                  <CurrencyInput value={p.distributions || "0"} onValueChange={(v) => updateField(p.id, "distributions", v)} />
+                </div>
+              </div>
+
+              {/* Row 5: Liability Share (K-1 Item K) */}
+              <div>
+                <label className="mb-1 block text-[10px] font-bold text-tx-muted uppercase tracking-wider">Liability Share (K-1 Item K)</label>
+                <div className="grid grid-cols-3 gap-3 max-w-lg">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Recourse</label>
+                    <CurrencyInput value={p.liability_recourse || "0"} onValueChange={(v) => updateField(p.id, "liability_recourse", v)} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Qualified Nonrecourse</label>
+                    <CurrencyInput value={p.liability_qnr || "0"} onValueChange={(v) => updateField(p.id, "liability_qnr", v)} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Nonrecourse</label>
+                    <CurrencyInput value={p.liability_nonrecourse || "0"} onValueChange={(v) => updateField(p.id, "liability_nonrecourse", v)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 6: Capital Account (K-1 Item L) */}
+              <div>
+                <label className="mb-1 block text-[10px] font-bold text-tx-muted uppercase tracking-wider">Capital Account (K-1 Item L)</label>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 max-w-3xl">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">BOY Balance</label>
+                    <CurrencyInput value={p.capital_account_boy || "0"} onValueChange={(v) => updateField(p.id, "capital_account_boy", v)} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Capital Contributed</label>
+                    <CurrencyInput value={p.capital_contributed || "0"} onValueChange={(v) => updateField(p.id, "capital_contributed", v)} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Current Yr Increase</label>
+                    <div className="rounded-md bg-surface-alt px-2 py-1 text-xs text-tx-muted tabular-nums">
+                      {(parseFloat(p.current_year_increase) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">Withdrawals</label>
+                    <CurrencyInput value={p.withdrawals || "0"} onValueChange={(v) => updateField(p.id, "withdrawals", v)} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium text-tx-muted">EOY Balance</label>
+                    <div className="rounded-md bg-surface-alt px-2 py-1 text-xs text-tx-muted tabular-nums">
+                      {capEOY.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Allocations Section (1065 special allocations grid)
+// ---------------------------------------------------------------------------
+
+function AllocationsSection({
+  taxReturnId,
+  partners,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  partners: PartnerRow[];
+  onRefresh: () => Promise<void>;
+}) {
+  // Build grid: category -> partner_id -> percentage
+  // Default is profit_pct; override comes from partner.allocations[]
+  const grid = useMemo(() => {
+    const g: Record<string, Record<string, { value: string; isOverride: boolean; allocId?: string }>> = {};
+    for (const cat of ALLOCATION_CATEGORIES) {
+      g[cat.value] = {};
+      for (const p of partners) {
+        const defaultPct = p.profit_pct || "0";
+        const override = p.allocations?.find((a) => a.category === cat.value);
+        if (override) {
+          g[cat.value][p.id] = { value: override.percentage, isOverride: true, allocId: override.id };
+        } else {
+          g[cat.value][p.id] = { value: defaultPct, isOverride: false };
+        }
+      }
+    }
+    return g;
+  }, [partners]);
+
+  async function handleCellChange(category: string, partnerId: string, newValue: string) {
+    const partner = partners.find((p) => p.id === partnerId);
+    if (!partner) return;
+    const defaultPct = partner.profit_pct || "0";
+    const existing = partner.allocations?.find((a) => a.category === category);
+    const numVal = parseFloat(newValue);
+    if (isNaN(numVal)) return;
+
+    // If changed back to default, delete the override
+    if (Math.abs(numVal - parseFloat(defaultPct)) < 0.0001 && existing) {
+      await del(`/tax-returns/${taxReturnId}/partners/${partnerId}/allocations/${existing.id}/`);
+    } else if (existing) {
+      await patch(`/tax-returns/${taxReturnId}/partners/${partnerId}/allocations/${existing.id}/`, {
+        percentage: newValue,
+      });
+    } else if (Math.abs(numVal - parseFloat(defaultPct)) >= 0.0001) {
+      await post(`/tax-returns/${taxReturnId}/partners/${partnerId}/allocations/`, {
+        category,
+        percentage: newValue,
+      });
+    }
+    await onRefresh();
+  }
+
+  if (partners.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-tx-muted">
+        Add partners on the Partners tab first to configure special allocations.
+      </div>
+    );
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-input-border px-1.5 py-0.5 text-xs text-center tabular-nums shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus-ring";
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-bold text-tx">Special Allocations</h3>
+        <p className="text-xs text-tx-muted">
+          Override default profit % allocation per category. Cells matching the partner's profit % show as default (yellow). Overrides show as green.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-surface-alt border-b border-border">
+              <th className="sticky left-0 z-10 bg-surface-alt px-3 py-2 text-left font-medium text-tx-muted min-w-[200px]">Category</th>
+              {partners.map((p) => (
+                <th key={p.id} className="px-2 py-2 text-center font-medium text-tx-muted min-w-[100px]">
+                  <div>{p.name || "—"}</div>
+                  <div className="text-[10px] font-normal">({p.profit_pct}%)</div>
+                </th>
+              ))}
+              <th className="px-2 py-2 text-center font-medium text-tx-muted min-w-[80px]">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-subtle">
+            {ALLOCATION_CATEGORIES.map((cat) => {
+              const rowTotal = partners.reduce((sum, p) => {
+                const cell = grid[cat.value]?.[p.id];
+                return sum + (parseFloat(cell?.value || "0") || 0);
+              }, 0);
+              const rowOk = Math.abs(rowTotal - 100) < 0.0001;
+
+              return (
+                <tr key={cat.value} className="hover:bg-surface-alt/50">
+                  <td className="sticky left-0 z-10 bg-card px-3 py-1.5 text-tx font-medium">{cat.label}</td>
+                  {partners.map((p) => {
+                    const cell = grid[cat.value]?.[p.id];
+                    return (
+                      <td key={p.id} className="px-1.5 py-1">
+                        <input
+                          type="text"
+                          defaultValue={cell?.value || "0"}
+                          onBlur={(e) => handleCellChange(cat.value, p.id, e.target.value)}
+                          className={inputClass + (cell?.isOverride ? " bg-green-50 text-green-900" : " bg-amber-50 text-amber-900")}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className={`px-2 py-1.5 text-center font-medium tabular-nums ${rowOk ? "text-success" : "text-danger"}`}>
+                    {rowTotal.toFixed(4)}%
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
