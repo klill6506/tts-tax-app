@@ -120,6 +120,7 @@ const MENUS: MenuGroup[] = [
 
 const NAV_TABS = [
   { to: "/", label: "Return Manager", end: true },
+  { to: "/folders", label: "Folders" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -292,6 +293,39 @@ const THEME_PRESETS: ThemePreset[] = [
     fontHeadline: '"Newsreader", Georgia, serif',
     themeClass: "theme-editorial",
   },
+  {
+    name: "Charcoal & Gold",
+    id: "charcoal-gold",
+    swatch: "#D4AF37",
+    tokens: {
+      "--surface": "#f9f9f9",
+      "--surface-alt": "#f3f3f3",
+      "--card": "#ffffff",
+      "--card-hover": "#eeeeee",
+      "--zebra": "#f3f3f3",
+      "--nav": "#2C2C2C",
+      "--nav-active": "#3a3a3a",
+      "--nav-border": "#444748",
+      "--border": "#e2e2e2",
+      "--border-subtle": "#eeeeee",
+      "--input": "#ffffff",
+      "--input-border": "#c4c7c7",
+      "--tx": "#1a1c1c",
+      "--tx-secondary": "#444748",
+      "--tx-muted": "#747878",
+      "--tx-on-dark": "#e8e8e8",
+      "--primary": "#735c00",
+      "--primary-hover": "#584400",
+      "--primary-subtle": "#fff8e1",
+      "--primary-text": "#735c00",
+      "--accent": "#D4AF37",
+      "--accent-hover": "#b89530",
+      "--focus-ring": "#D4AF3740",
+    },
+    fontSans: "'Inter', system-ui, sans-serif",
+    fontHeadline: "'Manrope', system-ui, sans-serif",
+    themeClass: "theme-charcoal-gold",
+  },
 ];
 
 // All CSS custom properties that a theme preset can set
@@ -433,7 +467,7 @@ export default function AppShell() {
   const [showPalettes, setShowPalettes] = useState(false);
   const [activePreset, setActivePreset] = useState(() => {
     const saved = localStorage.getItem("sherpa-theme-preset");
-    return saved ?? "default";
+    return saved ?? "charcoal-gold";
   });
   const [activeBg, setActiveBg] = useState(() => {
     const saved = localStorage.getItem("sherpa-bg-palette");
@@ -462,8 +496,9 @@ export default function AppShell() {
   // Restore saved theme on mount — preset takes precedence over bg/accent
   useEffect(() => {
     const savedPreset = localStorage.getItem("sherpa-theme-preset");
-    if (savedPreset && savedPreset !== "default") {
-      const preset = THEME_PRESETS.find(p => p.id === savedPreset);
+    const presetId = savedPreset ?? "charcoal-gold"; // default to charcoal-gold for new users
+    if (presetId !== "default") {
+      const preset = THEME_PRESETS.find(p => p.id === presetId);
       if (preset) {
         applyThemePreset(preset);
         return;  // skip bg/accent restore when a preset is active

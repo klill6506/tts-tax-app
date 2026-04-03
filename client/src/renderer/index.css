@@ -263,3 +263,46 @@ table.zebra-table thead th {
   background-color: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+
+/* ---------------------------------------------------------------------------
+ * Charcoal & Gold theme
+ *
+ * Sharp corners, warm neutrals, gold accent. Based on Stitch export.
+ * Activated by adding .theme-charcoal-gold class to <html>
+ * --------------------------------------------------------------------------- */
+
+/* Global border-radius squash — max 2px everywhere */
+.theme-charcoal-gold,
+.theme-charcoal-gold * {
+  border-radius: 2px !important;
+}
+/* Exceptions: actual circular elements */
+.theme-charcoal-gold input[type="radio"],
+.theme-charcoal-gold input[type="checkbox"] {
+  border-radius: revert !important;
+}
+
+/* Headline typography */
+.theme-charcoal-gold h1,
+.theme-charcoal-gold h2,
+.theme-charcoal-gold h3,
+.theme-charcoal-gold h4 {
+  font-family: var(--font-headline);
+  letter-spacing: -0.5px;
+}
+
+/* Ghost borders on cards (nearly invisible, "felt not seen") */
+.theme-charcoal-gold .bg-card,
+.theme-charcoal-gold [class*="bg-card"] {
+  border: 0.5px solid rgba(196, 199, 199, 0.3);
+}
+
+/* Section dividers — very subtle */
+.theme-charcoal-gold .border-border-subtle {
+  border-color: #f3f3f3;
+}
+
+/* Field row separators */
+.theme-charcoal-gold .zebra-rows > * {
+  border-bottom: 1px solid #f3f3f3;
+}
