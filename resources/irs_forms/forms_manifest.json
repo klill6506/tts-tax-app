@@ -281,6 +281,19 @@
       "pages": 2,
       "has_acroform": true,
       "notes": "Schedule F (Form 1040) — farm income and expenses. 100 AcroForm fields. Page 2 is Part III accrual method + activity codes (skip for S-Corp cash method)."
+    },
+    {
+      "form_id": "f1040",
+      "form_code": "1040",
+      "title": "U.S. Individual Income Tax Return",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1040.pdf",
+      "revision_date": "2025",
+      "sha256": "",
+      "local_path": "2025/f1040.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "Form 1040 — Individual Income Tax Return. Rough draft skeleton. ~200 AcroForm fields."
     }
   ]
 }

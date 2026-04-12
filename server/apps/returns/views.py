@@ -22,6 +22,7 @@ from .models import (
     FormDefinition,
     FormFieldValue,
     FormLine,
+    InterestIncome,
     LineItemDetail,
     Officer,
     OtherDeduction,
@@ -33,6 +34,8 @@ from .models import (
     Shareholder,
     ShareholderLoan,
     TaxReturn,
+    Taxpayer,
+    W2Income,
 )
 from .serializers import (
     CreateReturnSerializer,
@@ -40,6 +43,7 @@ from .serializers import (
     DispositionSerializer,
     FormDefinitionListSerializer,
     FormDefinitionSerializer,
+    InterestIncomeSerializer,
     LineItemDetailSerializer,
     OfficerSerializer,
     OtherDeductionSerializer,
@@ -50,9 +54,11 @@ from .serializers import (
     RentalPropertySerializer,
     ShareholderLoanSerializer,
     ShareholderSerializer,
+    TaxpayerSerializer,
     TaxReturnListSerializer,
     TaxReturnSerializer,
     UpdateFieldsSerializer,
+    W2IncomeSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -288,6 +294,7 @@ ENTITY_FORM_MAP = {
     "scorp": "1120-S",
     "partnership": "1065",
     "ccorp": "1120",
+    "individual": "1040",
 }
 
 # Maps FormDefinition.code → the "Other deductions" FormLine mapping_key
@@ -2524,3 +2531,126 @@ class TaxReturnViewSet(
             },
             status=status.HTTP_201_CREATED,
         )
+
+    # ------------------------------------------------------------------
+    # Individual (1040) — Taxpayer CRUD
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "put", "patch"], url_path="taxpayer")
+    def taxpayer(self, request, pk=None):
+        """Get or update the Taxpayer record for this 1040 return."""
+        tax_return = self.get_object()
+
+        try:
+            tp = tax_return.taxpayer
+        except Taxpayer.DoesNotExist:
+            tp = None
+
+        if request.method == "GET":
+            if tp is None:
+                return Response({}, status=status.HTTP_200_OK)
+            return Response(TaxpayerSerializer(tp).data)
+
+        # PUT / PATCH — create or update
+        if tp is None:
+            ser = TaxpayerSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
+            ser.save(tax_return=tax_return)
+            return Response(ser.data, status=status.HTTP_201_CREATED)
+
+        ser = TaxpayerSerializer(tp, data=request.data, partial=(request.method == "PATCH"))
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Individual (1040) — W-2 Income CRUD
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="w2-incomes")
+    def w2_incomes(self, request, pk=None):
+        """List or create W-2 income entries."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = W2Income.objects.filter(tax_return=tax_return)
+            return Response(W2IncomeSerializer(qs, many=True).data)
+
+        ser = W2IncomeSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        self._recompute_1040(tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="w2-incomes/(?P<w2_id>[^/.]+)",
+    )
+    def w2_income_detail(self, request, pk=None, w2_id=None):
+        """Update or delete a single W-2 income entry."""
+        tax_return = self.get_object()
+        try:
+            w2 = W2Income.objects.get(id=w2_id, tax_return=tax_return)
+        except W2Income.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            w2.delete()
+            self._recompute_1040(tax_return)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = W2IncomeSerializer(w2, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        self._recompute_1040(tax_return)
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # Individual (1040) — Interest Income CRUD
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="interest-incomes")
+    def interest_incomes(self, request, pk=None):
+        """List or create interest income entries."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = InterestIncome.objects.filter(tax_return=tax_return)
+            return Response(InterestIncomeSerializer(qs, many=True).data)
+
+        ser = InterestIncomeSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        self._recompute_1040(tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="interest-incomes/(?P<int_id>[^/.]+)",
+    )
+    def interest_income_detail(self, request, pk=None, int_id=None):
+        """Update or delete a single interest income entry."""
+        tax_return = self.get_object()
+        try:
+            ii = InterestIncome.objects.get(id=int_id, tax_return=tax_return)
+        except InterestIncome.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            ii.delete()
+            self._recompute_1040(tax_return)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = InterestIncomeSerializer(ii, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        self._recompute_1040(tax_return)
+        return Response(ser.data)
+
+    def _recompute_1040(self, tax_return):
+        """Aggregate W-2 / interest totals into form fields, then run compute."""
+        from .compute import aggregate_1040_income
+        aggregate_1040_income(tax_return)
+        compute_return(tax_return)

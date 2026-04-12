@@ -1389,3 +1389,153 @@ class DepreciationAsset(models.Model):
 
     def __str__(self):
         return f"#{self.asset_number}: {self.description} ({self.group_label})"
+
+
+# ---------------------------------------------------------------------------
+# Individual (1040) Models
+# ---------------------------------------------------------------------------
+
+
+class FilingStatus(models.TextChoices):
+    SINGLE = "single", "Single"
+    MFJ = "mfj", "Married Filing Jointly"
+    MFS = "mfs", "Married Filing Separately"
+    HOH = "hoh", "Head of Household"
+    QSS = "qss", "Qualifying Surviving Spouse"
+
+
+class Taxpayer(models.Model):
+    """Individual taxpayer info linked to a 1040 return."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.OneToOneField(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="taxpayer",
+    )
+    filing_status = models.CharField(
+        max_length=10,
+        choices=FilingStatus.choices,
+        default=FilingStatus.SINGLE,
+    )
+    first_name = models.CharField(max_length=100, blank=True, default="")
+    middle_initial = models.CharField(max_length=1, blank=True, default="")
+    last_name = models.CharField(max_length=100, blank=True, default="")
+    ssn = models.CharField(
+        max_length=11, blank=True, default="",
+        help_text="SSN in XXX-XX-XXXX format.",
+    )
+    # Spouse (MFJ / MFS)
+    spouse_first_name = models.CharField(max_length=100, blank=True, default="")
+    spouse_middle_initial = models.CharField(max_length=1, blank=True, default="")
+    spouse_last_name = models.CharField(max_length=100, blank=True, default="")
+    spouse_ssn = models.CharField(
+        max_length=11, blank=True, default="",
+        help_text="Spouse SSN in XXX-XX-XXXX format.",
+    )
+    # Address
+    address_line1 = models.CharField(max_length=255, blank=True, default="")
+    address_line2 = models.CharField(max_length=255, blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    state = models.CharField(max_length=2, blank=True, default="")
+    zip_code = models.CharField(max_length=10, blank=True, default="")
+    # Other
+    date_of_birth = models.DateField(null=True, blank=True)
+    occupation = models.CharField(max_length=100, blank=True, default="")
+    spouse_occupation = models.CharField(max_length=100, blank=True, default="")
+    standard_deduction_override = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Override standard deduction. If blank, filing-status default is used.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+
+class W2Income(models.Model):
+    """A single W-2 wage statement on a 1040 return."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="w2_incomes",
+    )
+    employer_name = models.CharField(max_length=255)
+    employer_ein = models.CharField(max_length=20, blank=True, default="")
+    wages = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Box 1: Wages, tips, other compensation.",
+    )
+    federal_tax_withheld = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Box 2: Federal income tax withheld.",
+    )
+    social_security_wages = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 3: Social security wages.",
+    )
+    social_security_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 4: Social security tax withheld.",
+    )
+    medicare_wages = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 5: Medicare wages and tips.",
+    )
+    medicare_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 6: Medicare tax withheld.",
+    )
+    state_wages = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 16: State wages, tips, etc.",
+    )
+    state_tax_withheld = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 17: State income tax.",
+    )
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "employer_name"]
+
+    def __str__(self):
+        return f"W-2: {self.employer_name} — ${self.wages}"
+
+
+class InterestIncome(models.Model):
+    """A single 1099-INT interest income entry on a 1040 return."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="interest_incomes",
+    )
+    payer_name = models.CharField(max_length=255)
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="1099-INT Box 1: Interest income.",
+    )
+    is_tax_exempt = models.BooleanField(
+        default=False,
+        help_text="True if this is tax-exempt interest (Box 8).",
+    )
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "payer_name"]
+
+    def __str__(self):
+        return f"1099-INT: {self.payer_name} — ${self.amount}"

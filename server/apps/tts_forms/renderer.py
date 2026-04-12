@@ -104,7 +104,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 # AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
 ACROFORM_FORM_IDS: set[str] = {
     "f1120s", "f1120sk1", "f7004", "f8879s", "f8453s", "f1125a", "f8825", "f7203",
-    "f4797", "f1120ssd", "f8949", "f1125e", "f4562", "fschedf",
+    "f4797", "f1120ssd", "f8949", "f1125e", "f4562", "fschedf", "f1040",
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -384,6 +384,7 @@ def render_tax_return(tax_return, statement_items: dict | None = None) -> bytes:
         "1120-S": "f1120s",
         "1065": "f1065",
         "1120": "f1120",
+        "1040": "f1040",
         "4797": "f4797",
         "1120-S-SD": "f1120ssd",
         "8949": "f8949",
@@ -637,6 +638,59 @@ def _build_header_data(tax_return) -> dict[str, str]:
         header["chk_accounting_accrual"] = "X"
 
     # GA-600S now uses native rendering (ga600s_native.py) — no header needed here
+
+    # 1040 — individual taxpayer header data
+    form_code = tax_return.form_definition.code
+    if form_code == "1040":
+        try:
+            tp = tax_return.taxpayer
+            name_parts = [tp.first_name]
+            if tp.middle_initial:
+                name_parts.append(tp.middle_initial)
+            header["first_name"] = " ".join(name_parts)
+            header["last_name"] = tp.last_name
+            if tp.ssn:
+                header["ssn"] = tp.ssn
+            # Address from taxpayer (overrides entity)
+            if tp.address_line1:
+                header["address_line1"] = tp.address_line1
+            if tp.address_line2:
+                header["address_line2"] = tp.address_line2
+            if tp.city:
+                header["city"] = tp.city
+            if tp.state:
+                header["state"] = tp.state
+            if tp.zip_code:
+                header["zip_code"] = tp.zip_code
+            # Filing status checkboxes
+            fs = tp.filing_status
+            if fs == "single":
+                header["fs_single"] = "X"
+            elif fs == "mfj":
+                header["fs_mfj"] = "X"
+            elif fs == "mfs":
+                header["fs_mfs"] = "X"
+            elif fs == "hoh":
+                header["fs_hoh"] = "X"
+            elif fs == "qss":
+                header["fs_qss"] = "X"
+            # Spouse info (MFJ / MFS)
+            if fs in ("mfj", "mfs"):
+                if tp.spouse_first_name:
+                    sp_parts = [tp.spouse_first_name]
+                    if tp.spouse_middle_initial:
+                        sp_parts.append(tp.spouse_middle_initial)
+                    header["spouse_first_name"] = " ".join(sp_parts)
+                if tp.spouse_last_name:
+                    header["spouse_last_name"] = tp.spouse_last_name
+                if tp.spouse_ssn:
+                    header["spouse_ssn"] = tp.spouse_ssn
+            if tp.occupation:
+                header["occupation"] = tp.occupation
+            if tp.spouse_occupation:
+                header["spouse_occupation"] = tp.spouse_occupation
+        except Exception:
+            pass
 
     return header
 

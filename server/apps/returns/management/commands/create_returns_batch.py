@@ -45,6 +45,7 @@ ENTITY_FORM_MAP = {
     "scorp": "1120-S",
     "partnership": "1065",
     "ccorp": "1120",
+    "individual": "1040",
 }
 
 

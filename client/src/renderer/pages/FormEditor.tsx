@@ -234,6 +234,51 @@ interface DepreciationAssetRow {
   method_display: string;
 }
 
+interface TaxpayerData {
+  id: string;
+  filing_status: string;
+  first_name: string;
+  middle_initial: string;
+  last_name: string;
+  ssn: string;
+  spouse_first_name: string;
+  spouse_middle_initial: string;
+  spouse_last_name: string;
+  spouse_ssn: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  date_of_birth: string | null;
+  occupation: string;
+  spouse_occupation: string;
+  standard_deduction_override: string | null;
+}
+
+interface W2IncomeRow {
+  id: string;
+  employer_name: string;
+  employer_ein: string;
+  wages: string;
+  federal_tax_withheld: string;
+  social_security_wages: string | null;
+  social_security_tax: string | null;
+  medicare_wages: string | null;
+  medicare_tax: string | null;
+  state_wages: string | null;
+  state_tax_withheld: string | null;
+  order: number;
+}
+
+interface InterestIncomeRow {
+  id: string;
+  payer_name: string;
+  amount: string;
+  is_tax_exempt: boolean;
+  order: number;
+}
+
 interface EntityInfo {
   id: string;
   name: string;
@@ -331,6 +376,10 @@ interface TaxReturnData {
   dispositions: DispositionRow[];
   depreciation_assets: DepreciationAssetRow[];
   preparer_info: PreparerInfoData | null;
+  // Individual (1040)
+  taxpayer: TaxpayerData | null;
+  w2_incomes: W2IncomeRow[];
+  interest_incomes: InterestIncomeRow[];
   created_at: string;
   updated_at: string;
 }
@@ -605,6 +654,14 @@ const PARTNERSHIP_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "state", label: "State", sections: [] },
 ];
 
+/** Individual (1040) section tabs. */
+const INDIVIDUAL_TABS: { id: string; label: string; sections: string[] }[] = [
+  { id: "taxpayer_info", label: "Taxpayer Info", sections: [] },
+  { id: "w2_income", label: "W-2 Income", sections: [] },
+  { id: "interest_income", label: "Interest Income", sections: [] },
+  { id: "tax_summary", label: "Tax Summary", sections: [] },
+];
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -733,6 +790,7 @@ export default function FormEditor() {
 
   const isStateReturn = returnData?.form_code === "GA-600S";
   const isPartnership = returnData?.form_code === "1065";
+  const isIndividual = returnData?.form_code === "1040";
 
   // State returns are hidden from the Return Manager list, so users
   // access them only via the federal return's State tab.  No redirect
@@ -741,18 +799,19 @@ export default function FormEditor() {
   const hasFilingStates = (returnData?.filing_states || []).length > 0 || (returnData?.state_returns || []).length > 0;
   const sectionTabs = useMemo(() => {
     if (isStateReturn) return GA_SECTION_TABS;
+    if (isIndividual) return INDIVIDUAL_TABS;
     let tabs = isPartnership ? PARTNERSHIP_TABS : SECTION_TABS;
     // Hide State tab on federal returns if no filing states configured
     if (!hasFilingStates) tabs = tabs.filter((t) => t.id !== "state");
     // Hide PY Compare tab if no prior year data
     if (!priorYear) tabs = tabs.filter((t) => t.id !== "prior_year");
     return tabs;
-  }, [isStateReturn, isPartnership, hasFilingStates, priorYear]);
+  }, [isStateReturn, isIndividual, isPartnership, hasFilingStates, priorYear]);
 
   // Reset tab when switching between federal/state returns
   useEffect(() => {
-    setActiveTab("info");
-  }, [taxReturnId]);
+    setActiveTab(isIndividual ? "taxpayer_info" : "info");
+  }, [taxReturnId, isIndividual]);
 
   const activeTabDef = sectionTabs.find((t) => t.id === activeTab);
 
@@ -1030,6 +1089,26 @@ export default function FormEditor() {
               returnData={returnData}
               onRefresh={refreshReturn}
             />
+          ) : activeTab === "taxpayer_info" ? (
+            <TaxpayerInfoSection
+              taxReturnId={taxReturnId!}
+              taxpayer={returnData.taxpayer}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "w2_income" ? (
+            <W2IncomeSection
+              taxReturnId={taxReturnId!}
+              w2s={returnData.w2_incomes || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "interest_income" ? (
+            <InterestIncomeSection
+              taxReturnId={taxReturnId!}
+              interests={returnData.interest_incomes || []}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "tax_summary" ? (
+            <TaxSummarySection fieldValues={returnData.field_values || []} />
           ) : (
             <StandardSection
               sections={activeTabDef?.sections ?? []}
@@ -7182,6 +7261,332 @@ function DiagnosticsTab({ taxYearId }: { taxYearId: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Individual (1040) — Taxpayer Info Section
+// ---------------------------------------------------------------------------
+
+function TaxpayerInfoSection({
+  taxReturnId,
+  taxpayer,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  taxpayer: TaxpayerData | null;
+  onRefresh: () => void;
+}) {
+  const [form, setForm] = useState<Partial<TaxpayerData>>(taxpayer || {});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setForm(taxpayer || {}); }, [taxpayer]);
+
+  const handleChange = (field: string, value: string | null) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await patch(`/tax-returns/${taxReturnId}/taxpayer/`, form);
+    setSaving(false);
+    onRefresh();
+  };
+
+  const showSpouse = form.filing_status === "mfj" || form.filing_status === "mfs";
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h3 className="text-lg font-semibold text-tx-primary mb-4">Taxpayer Information</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Filing Status</label>
+            <select
+              value={form.filing_status || "single"}
+              onChange={(e) => handleChange("filing_status", e.target.value)}
+              className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-tx-primary"
+            >
+              <option value="single">Single</option>
+              <option value="mfj">Married Filing Jointly</option>
+              <option value="mfs">Married Filing Separately</option>
+              <option value="hoh">Head of Household</option>
+              <option value="qss">Qualifying Surviving Spouse</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">First Name</label>
+            <input value={form.first_name || ""} onChange={(e) => handleChange("first_name", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div className="w-20">
+            <label className="block text-xs font-medium text-tx-secondary mb-1">MI</label>
+            <input value={form.middle_initial || ""} maxLength={1} onChange={(e) => handleChange("middle_initial", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Last Name</label>
+            <input value={form.last_name || ""} onChange={(e) => handleChange("last_name", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4 mt-3">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">SSN</label>
+            <input value={form.ssn || ""} placeholder="XXX-XX-XXXX" onChange={(e) => handleChange("ssn", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Date of Birth</label>
+            <input type="date" value={form.date_of_birth || ""} onChange={(e) => handleChange("date_of_birth", e.target.value || null)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Occupation</label>
+            <input value={form.occupation || ""} onChange={(e) => handleChange("occupation", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+        </div>
+
+        {showSpouse && (
+          <>
+            <h4 className="text-sm font-semibold text-tx-primary mt-6 mb-3">Spouse Information</h4>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Spouse First Name</label>
+                <input value={form.spouse_first_name || ""} onChange={(e) => handleChange("spouse_first_name", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+              </div>
+              <div className="w-20">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">MI</label>
+                <input value={form.spouse_middle_initial || ""} maxLength={1} onChange={(e) => handleChange("spouse_middle_initial", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Spouse Last Name</label>
+                <input value={form.spouse_last_name || ""} onChange={(e) => handleChange("spouse_last_name", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Spouse SSN</label>
+                <input value={form.spouse_ssn || ""} placeholder="XXX-XX-XXXX" onChange={(e) => handleChange("spouse_ssn", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Spouse Occupation</label>
+                <input value={form.spouse_occupation || ""} onChange={(e) => handleChange("spouse_occupation", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+              </div>
+            </div>
+          </>
+        )}
+
+        <h4 className="text-sm font-semibold text-tx-primary mt-6 mb-3">Address</h4>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Street Address</label>
+            <input value={form.address_line1 || ""} onChange={(e) => handleChange("address_line1", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-tx-secondary mb-1">Apt/Suite</label>
+            <input value={form.address_line2 || ""} onChange={(e) => handleChange("address_line2", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4 mt-3">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">City</label>
+            <input value={form.city || ""} onChange={(e) => handleChange("city", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">State</label>
+            <input value={form.state || ""} maxLength={2} onChange={(e) => handleChange("state", e.target.value.toUpperCase())} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">ZIP Code</label>
+            <input value={form.zip_code || ""} onChange={(e) => handleChange("zip_code", e.target.value)} className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card text-green-600" />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+            {saving ? "Saving..." : "Save Taxpayer Info"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Individual (1040) — W-2 Income Section
+// ---------------------------------------------------------------------------
+
+function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string; w2s: W2IncomeRow[]; onRefresh: () => void }) {
+  const handleAdd = async () => {
+    await post(`/tax-returns/${taxReturnId}/w2-incomes/`, { employer_name: "New Employer", wages: "0.00", federal_tax_withheld: "0.00" });
+    onRefresh();
+  };
+  const handleUpdate = async (id: string, field: string, value: string) => {
+    await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, { [field]: value });
+    onRefresh();
+  };
+  const handleDelete = async (id: string) => {
+    await del(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`);
+    onRefresh();
+  };
+
+  const totalWages = w2s.reduce((sum, w) => sum + parseFloat(w.wages || "0"), 0);
+  const totalWithheld = w2s.reduce((sum, w) => sum + parseFloat(w.federal_tax_withheld || "0"), 0);
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-tx-primary">W-2 Wage Statements</h3>
+        <button onClick={handleAdd} className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90">+ Add W-2</button>
+      </div>
+      {w2s.length === 0 ? (
+        <p className="text-sm text-tx-muted italic">No W-2s entered. Click "+ Add W-2" to begin.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs text-tx-secondary">
+              <th className="text-left py-2 font-medium">Employer</th>
+              <th className="text-left py-2 font-medium">EIN</th>
+              <th className="text-right py-2 font-medium">Wages (Box 1)</th>
+              <th className="text-right py-2 font-medium">Fed Withheld (Box 2)</th>
+              <th className="py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {w2s.map((w2) => (
+              <tr key={w2.id} className="border-b border-border/50">
+                <td className="py-2"><input defaultValue={w2.employer_name} onBlur={(e) => handleUpdate(w2.id, "employer_name", e.target.value)} className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
+                <td className="py-2"><input defaultValue={w2.employer_ein} onBlur={(e) => handleUpdate(w2.id, "employer_ein", e.target.value)} className="w-28 border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
+                <td className="py-2"><input defaultValue={w2.wages} onBlur={(e) => handleUpdate(w2.id, "wages", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
+                <td className="py-2"><input defaultValue={w2.federal_tax_withheld} onBlur={(e) => handleUpdate(w2.id, "federal_tax_withheld", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
+                <td className="py-2 text-right"><button onClick={() => handleDelete(w2.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="font-semibold text-tx-primary">
+              <td className="py-2" colSpan={2}>Totals</td>
+              <td className="py-2 text-right">{totalWages.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+              <td className="py-2 text-right">{totalWithheld.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Individual (1040) — Interest Income Section
+// ---------------------------------------------------------------------------
+
+function InterestIncomeSection({ taxReturnId, interests, onRefresh }: { taxReturnId: string; interests: InterestIncomeRow[]; onRefresh: () => void }) {
+  const handleAdd = async () => {
+    await post(`/tax-returns/${taxReturnId}/interest-incomes/`, { payer_name: "New Payer", amount: "0.00", is_tax_exempt: false });
+    onRefresh();
+  };
+  const handleUpdate = async (id: string, field: string, value: string | boolean) => {
+    await patch(`/tax-returns/${taxReturnId}/interest-incomes/${id}/`, { [field]: value });
+    onRefresh();
+  };
+  const handleDelete = async (id: string) => {
+    await del(`/tax-returns/${taxReturnId}/interest-incomes/${id}/`);
+    onRefresh();
+  };
+
+  const taxableTotal = interests.filter((i) => !i.is_tax_exempt).reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0);
+  const exemptTotal = interests.filter((i) => i.is_tax_exempt).reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0);
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-tx-primary">Interest Income (1099-INT)</h3>
+        <button onClick={handleAdd} className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90">+ Add 1099-INT</button>
+      </div>
+      {interests.length === 0 ? (
+        <p className="text-sm text-tx-muted italic">No interest income entered.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs text-tx-secondary">
+              <th className="text-left py-2 font-medium">Payer</th>
+              <th className="text-right py-2 font-medium">Amount</th>
+              <th className="text-center py-2 font-medium">Tax-Exempt?</th>
+              <th className="py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {interests.map((ii) => (
+              <tr key={ii.id} className="border-b border-border/50">
+                <td className="py-2"><input defaultValue={ii.payer_name} onBlur={(e) => handleUpdate(ii.id, "payer_name", e.target.value)} className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
+                <td className="py-2"><input defaultValue={ii.amount} onBlur={(e) => handleUpdate(ii.id, "amount", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
+                <td className="py-2 text-center"><input type="checkbox" checked={ii.is_tax_exempt} onChange={(e) => handleUpdate(ii.id, "is_tax_exempt", e.target.checked)} className="rounded border-border" /></td>
+                <td className="py-2 text-right"><button onClick={() => handleDelete(ii.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="mt-4 flex gap-8 text-sm">
+        <div><span className="text-tx-secondary">Taxable:</span> <span className="font-semibold text-tx-primary">${taxableTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+        <div><span className="text-tx-secondary">Tax-Exempt:</span> <span className="font-semibold text-tx-primary">${exemptTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+      </div>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Individual (1040) — Tax Summary Section (read-only)
+// ---------------------------------------------------------------------------
+
+function TaxSummarySection({ fieldValues }: { fieldValues: FieldValue[] }) {
+  const fvMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const fv of fieldValues) map[fv.line_number] = fv.value;
+    return map;
+  }, [fieldValues]);
+
+  const fmt = (line: string) => {
+    const v = parseFloat(fvMap[line] || "0");
+    return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const rows: [string, string, string?][] = [
+    ["1a", "Total Wages (W-2s)"],
+    ["2b", "Taxable Interest"],
+    ["2a", "Tax-Exempt Interest"],
+    ["9", "Total Income"],
+    ["11", "Adjusted Gross Income (AGI)"],
+    ["12", "Standard Deduction"],
+    ["15", "Taxable Income"],
+    ["16", "Tax"],
+    ["24", "Total Tax"],
+    ["25a", "Federal Tax Withheld"],
+    ["33", "Total Payments"],
+    ["34", "Overpayment (Refund)", "text-success font-bold"],
+    ["37", "Amount You Owe", "text-danger font-bold"],
+  ];
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-6">
+      <h3 className="text-lg font-semibold text-tx-primary mb-4">Tax Summary</h3>
+      <table className="w-full text-sm">
+        <tbody>
+          {rows.map(([line, label, extraClass]) => {
+            const val = parseFloat(fvMap[line] || "0");
+            if ((line === "34" || line === "37") && val === 0) return null;
+            return (
+              <tr key={line} className="border-b border-border/30">
+                <td className="py-2 text-tx-muted w-16">Line {line}</td>
+                <td className="py-2 text-tx-primary">{label}</td>
+                <td className={`py-2 text-right font-mono ${extraClass || "text-yellow-600"}`}>${fmt(line)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
 // Save Status Indicator
 // ---------------------------------------------------------------------------
 

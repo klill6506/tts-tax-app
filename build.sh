@@ -29,6 +29,7 @@ echo "=== Seeding form definitions ==="
 poetry run python manage.py seed_1120s
 poetry run python manage.py seed_1065
 poetry run python manage.py seed_1120
+poetry run python manage.py seed_1040
 poetry run python manage.py seed_ga600s
 poetry run python manage.py seed_default_mapping
 poetry run python manage.py seed_1065_mapping

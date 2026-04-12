@@ -477,11 +477,142 @@ FORMULAS_GA600S: list[tuple[str, callable]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# 2025 Tax Brackets (IRS Rev. Proc. 2024-40 — ordinary income rates)
+# Keyed by tax_year → filing_status → list of (upper_bound, rate).
+# Upper bound is inclusive.  Last bracket uses Decimal("Infinity").
+# ---------------------------------------------------------------------------
+
+from decimal import ROUND_HALF_UP
+
+_INF = Decimal("999999999999")
+
+TAX_BRACKETS: dict[int, dict[str, list[tuple[Decimal, Decimal]]]] = {
+    2025: {
+        "single": [
+            (Decimal("11925"), Decimal("0.10")),
+            (Decimal("48475"), Decimal("0.12")),
+            (Decimal("103350"), Decimal("0.22")),
+            (Decimal("197300"), Decimal("0.24")),
+            (Decimal("250525"), Decimal("0.32")),
+            (Decimal("626350"), Decimal("0.35")),
+            (_INF, Decimal("0.37")),
+        ],
+        "mfj": [
+            (Decimal("23850"), Decimal("0.10")),
+            (Decimal("96950"), Decimal("0.12")),
+            (Decimal("206700"), Decimal("0.22")),
+            (Decimal("394600"), Decimal("0.24")),
+            (Decimal("501050"), Decimal("0.32")),
+            (Decimal("751600"), Decimal("0.35")),
+            (_INF, Decimal("0.37")),
+        ],
+        "mfs": [
+            (Decimal("11925"), Decimal("0.10")),
+            (Decimal("48475"), Decimal("0.12")),
+            (Decimal("103350"), Decimal("0.22")),
+            (Decimal("197300"), Decimal("0.24")),
+            (Decimal("250525"), Decimal("0.32")),
+            (Decimal("375800"), Decimal("0.35")),
+            (_INF, Decimal("0.37")),
+        ],
+        "hoh": [
+            (Decimal("17000"), Decimal("0.10")),
+            (Decimal("64850"), Decimal("0.12")),
+            (Decimal("103350"), Decimal("0.22")),
+            (Decimal("197300"), Decimal("0.24")),
+            (Decimal("250500"), Decimal("0.32")),
+            (Decimal("626350"), Decimal("0.35")),
+            (_INF, Decimal("0.37")),
+        ],
+        "qss": None,  # QSS uses MFJ brackets
+    },
+}
+
+STANDARD_DEDUCTION: dict[int, dict[str, Decimal]] = {
+    2025: {
+        "single": Decimal("15700"),
+        "mfj": Decimal("31400"),
+        "mfs": Decimal("15700"),
+        "hoh": Decimal("23500"),
+        "qss": Decimal("31400"),
+    },
+}
+
+
+def compute_tax_from_brackets(
+    taxable_income: Decimal,
+    filing_status: str,
+    tax_year: int = 2025,
+) -> Decimal:
+    """Compute federal income tax from ordinary rate brackets.
+
+    Returns tax amount rounded to the nearest cent.
+    """
+    if taxable_income <= 0:
+        return ZERO
+
+    brackets = TAX_BRACKETS.get(tax_year, {})
+    status_brackets = brackets.get(filing_status)
+    # QSS uses MFJ brackets
+    if status_brackets is None:
+        status_brackets = brackets.get("mfj", [])
+    if not status_brackets:
+        return ZERO
+
+    tax = ZERO
+    prev_upper = ZERO
+
+    for upper_bound, rate in status_brackets:
+        if taxable_income <= prev_upper:
+            break
+        taxable_in_bracket = min(taxable_income, upper_bound) - prev_upper
+        tax += taxable_in_bracket * rate
+        prev_upper = upper_bound
+
+    return tax.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+# ---------------------------------------------------------------------------
+# 1040 Formulas  (line_number, callable(values) -> Decimal)
+# These are evaluated by compute_return() via FORMULA_REGISTRY.
+# The aggregate_1040_income() function must run FIRST to populate
+# Lines 1a, 2a, 2b, 25a from the sub-models.
+# ---------------------------------------------------------------------------
+
+FORMULAS_1040: list[tuple[str, callable]] = [
+    # Line 1z = Line 1a (no other wage sources for now)
+    ("1z", lambda v: _d(v, "1a")),
+    # Line 9 = Total income = 1z + 2b + 8
+    ("9", lambda v: _sum(v, "1z", "2b", "8")),
+    # Line 11 = AGI = 9 - 10
+    ("11", lambda v: _d(v, "9") - _d(v, "10")),
+    # Line 12 = Standard deduction (set by aggregate_1040_income based on filing status)
+    # — kept as non-computed here; aggregate_1040_income writes it
+    # Line 14 = 12 + 13
+    ("14", lambda v: _sum(v, "12", "13")),
+    # Line 15 = Taxable income = max(0, 11 - 14)
+    ("15", lambda v: max(ZERO, _d(v, "11") - _d(v, "14"))),
+    # Line 16 = Tax — computed by _compute_1040_tax() after formulas run
+    # Line 24 = Total tax = Line 16 (no credits for now)
+    ("24", lambda v: _d(v, "16")),
+    # Line 25d = Total withholding = 25a (no 1099 withholding)
+    ("25d", lambda v: _d(v, "25a")),
+    # Line 33 = Total payments = 25d
+    ("33", lambda v: _d(v, "25d")),
+    # Line 34 = Overpayment = max(0, 33 - 24)
+    ("34", lambda v: max(ZERO, _d(v, "33") - _d(v, "24"))),
+    # Line 37 = Amount owed = max(0, 24 - 33)
+    ("37", lambda v: max(ZERO, _d(v, "24") - _d(v, "33"))),
+]
+
+
 # Registry by form code
 FORMULA_REGISTRY: dict[str, list[tuple[str, callable]]] = {
     "1120-S": FORMULAS_1120S,
     "1065": FORMULAS_1065,
     "1120": FORMULAS_1120,
+    "1040": FORMULAS_1040,
     "GA-600S": FORMULAS_GA600S,
 }
 
@@ -1045,6 +1176,84 @@ def compute_schedule_l(tax_return) -> None:
     )
 
 
+def aggregate_1040_income(tax_return) -> None:
+    """
+    Aggregate W-2 and interest income sub-models into form field values.
+
+    Must run before compute_return() so that formulas have the inputs.
+    Also writes Line 12 (standard deduction) based on filing status.
+    """
+    from .models import InterestIncome, Taxpayer, W2Income
+
+    # Sum W-2 wages → Line 1a
+    w2s = W2Income.objects.filter(tax_return=tax_return)
+    total_wages = sum((w.wages for w in w2s), ZERO)
+    total_withheld = sum((w.federal_tax_withheld for w in w2s), ZERO)
+    _set_field_value(tax_return, "1a", str(total_wages.quantize(Decimal("0.01"))))
+    _set_field_value(tax_return, "25a", str(total_withheld.quantize(Decimal("0.01"))))
+
+    # Sum interest income → Line 2a (tax-exempt), Line 2b (taxable)
+    interests = InterestIncome.objects.filter(tax_return=tax_return)
+    exempt_total = sum(
+        (i.amount for i in interests if i.is_tax_exempt), ZERO,
+    )
+    taxable_total = sum(
+        (i.amount for i in interests if not i.is_tax_exempt), ZERO,
+    )
+    _set_field_value(tax_return, "2a", str(exempt_total.quantize(Decimal("0.01"))))
+    _set_field_value(tax_return, "2b", str(taxable_total.quantize(Decimal("0.01"))))
+
+    # Standard deduction based on filing status (unless overridden)
+    tax_year = tax_return.tax_year.year
+    try:
+        tp = tax_return.taxpayer
+        filing_status = tp.filing_status
+        override = tp.standard_deduction_override
+    except Taxpayer.DoesNotExist:
+        filing_status = "single"
+        override = None
+
+    if override is not None:
+        std_ded = override
+    else:
+        year_deds = STANDARD_DEDUCTION.get(tax_year, STANDARD_DEDUCTION.get(2025, {}))
+        std_ded = year_deds.get(filing_status, Decimal("15700"))
+
+    _set_field_value(tax_return, "12", str(std_ded.quantize(Decimal("0.01"))))
+
+
+def _compute_1040_tax(tax_return, values: dict, fv_by_line: dict) -> int:
+    """
+    Compute Line 16 (tax from brackets) after formulas have set Line 15.
+
+    This runs as a post-formula step because the bracket lookup needs the
+    filing status from the Taxpayer model, not just line values.
+    Returns 1 if Line 16 was updated, 0 otherwise.
+    """
+    from .models import Taxpayer
+
+    taxable_income = values.get("15", ZERO)
+    tax_year = tax_return.tax_year.year
+
+    try:
+        tp = tax_return.taxpayer
+        filing_status = tp.filing_status
+    except Taxpayer.DoesNotExist:
+        filing_status = "single"
+
+    tax = compute_tax_from_brackets(taxable_income, filing_status, tax_year)
+    values["16"] = tax
+
+    fv = fv_by_line.get("16")
+    if fv:
+        new_val = str(tax)
+        if fv.value != new_val:
+            fv.value = new_val
+            fv.save(update_fields=["value", "updated_at"])
+            return 1
+    return 0
+
+
 def compute_return(tax_return) -> int:
     """
     Evaluate all computed fields on a tax return and save them.
@@ -1090,6 +1299,10 @@ def compute_return(tax_return) -> int:
             for ln in all_lines
         ])
 
+    # 1040: aggregate W-2 + interest income into form fields (after backfill)
+    if form_code == "1040":
+        aggregate_1040_income(tax_return)
+
     # Load all field values into a line_number → Decimal dict
     fvs = (
         FormFieldValue.objects.filter(tax_return=tax_return)
@@ -1132,5 +1345,25 @@ def compute_return(tax_return) -> int:
                 fv.value = new_val
                 fv.save(update_fields=["value", "updated_at"])
                 updated += 1
+
+    # 1040: compute tax from brackets (Line 16) after Line 15 is set,
+    # then re-run the downstream formulas (24, 34, 37) that depend on it.
+    if form_code == "1040":
+        updated += _compute_1040_tax(tax_return, values, fv_by_line)
+        # Re-evaluate downstream formulas that depend on Line 16
+        for line_number, formula_fn in formulas:
+            if line_number not in ("24", "33", "34", "37"):
+                continue
+            fv = fv_by_line.get(line_number)
+            if fv and fv.is_overridden:
+                continue
+            result = formula_fn(values).quantize(Decimal("0.01"))
+            values[line_number] = result
+            if fv:
+                new_val = str(result)
+                if fv.value != new_val:
+                    fv.value = new_val
+                    fv.save(update_fields=["value", "updated_at"])
+                    updated += 1
 
     return updated

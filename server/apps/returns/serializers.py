@@ -7,6 +7,7 @@ from .models import (
     FormFieldValue,
     FormLine,
     FormSection,
+    InterestIncome,
     LineItemDetail,
     Officer,
     OtherDeduction,
@@ -18,6 +19,8 @@ from .models import (
     Shareholder,
     ShareholderLoan,
     TaxReturn,
+    Taxpayer,
+    W2Income,
 )
 
 
@@ -473,6 +476,77 @@ class PartnerSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Individual (1040)
+# ---------------------------------------------------------------------------
+
+
+class TaxpayerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Taxpayer
+        fields = (
+            "id",
+            "filing_status",
+            "first_name",
+            "middle_initial",
+            "last_name",
+            "ssn",
+            "spouse_first_name",
+            "spouse_middle_initial",
+            "spouse_last_name",
+            "spouse_ssn",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "zip_code",
+            "date_of_birth",
+            "occupation",
+            "spouse_occupation",
+            "standard_deduction_override",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class W2IncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = W2Income
+        fields = (
+            "id",
+            "employer_name",
+            "employer_ein",
+            "wages",
+            "federal_tax_withheld",
+            "social_security_wages",
+            "social_security_tax",
+            "medicare_wages",
+            "medicare_tax",
+            "state_wages",
+            "state_tax_withheld",
+            "order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class InterestIncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterestIncome
+        fields = (
+            "id",
+            "payer_name",
+            "amount",
+            "is_tax_exempt",
+            "order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+# ---------------------------------------------------------------------------
 # Tax Return
 # ---------------------------------------------------------------------------
 
@@ -519,6 +593,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     dispositions = DispositionSerializer(many=True, read_only=True)
     depreciation_assets = DepreciationAssetSerializer(many=True, read_only=True)
     preparer_info = PreparerInfoSerializer(read_only=True)
+    # Individual (1040)
+    taxpayer = TaxpayerSerializer(read_only=True)
+    w2_incomes = W2IncomeSerializer(many=True, read_only=True)
+    interest_incomes = InterestIncomeSerializer(many=True, read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
     tax_year_id = serializers.UUIDField(source="tax_year.id", read_only=True)
     year = serializers.IntegerField(source="tax_year.year", read_only=True)
@@ -601,6 +679,10 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "dispositions",
             "depreciation_assets",
             "preparer_info",
+            # Individual (1040)
+            "taxpayer",
+            "w2_incomes",
+            "interest_incomes",
             "created_at",
             "updated_at",
         )
