@@ -1,4 +1,5 @@
 # TTS Tax App — Project Instructions
+*Last updated: 2026-04-24*
 
 ## Owner
 Ken — CPA, The Tax Shelter, Athens, Georgia. ~3,000 clients/year, ~9 preparers.
@@ -24,25 +25,41 @@ Local path: `D:\dev\tts-tax-app`
 | PDF Rendering | ReportLab + pypdf + pymupdf over official IRS templates |
 
 ## Project Rules (enforced)
-- **No real PII in dev** — use synthetic/fake data only
-- **No secrets in repo** — all credentials via `.env` (which is gitignored)
-- **Migrations required** — every model change needs a migration
-- **Tests required** — every ticket must include tests; tests must pass before merge
-- **Postgres only** — no SQLite fallback in settings
+- **No PII in committed code** — never put real SSNs, names, addresses, or other
+  client PII into source files, test fixtures, migrations, seed data, or git
+  history. Use synthetic/fake values for anything checked in.
+- **Dev environment shares the production DB.** `server/.env` points Django at the
+  Supabase project `tmqypsbmswishqkngbrl`, which is shared with the sherpa-1099
+  production app and already contains ~700 real clients (as of 2026-04-21). Treat
+  any DB write as a production operation. When importing new test data, prefer
+  sanitization (fake SSNs/names, real dollar amounts) over raw imports to limit
+  blast radius from dev-time mistakes. See Cowork memory `project_tts_dev_points_at_prod.md`
+  for full context.
+- **No secrets in repo** — all credentials via `.env` (which is gitignored).
+- **Migrations required** — every model change needs a migration.
+- **Tests required** — every ticket must include tests; tests must pass before merge.
+- **Postgres only** — no SQLite fallback in settings.
+- **RLS is enabled on all public-schema tables** (as of 2026-04-21, see
+  `server/apps/core/migrations/0001_enable_rls_on_public_tables.py`). Django connects
+  as the Postgres superuser role via the pooler and bypasses RLS, so ORM queries are
+  unaffected. If you add a new table that may be exposed via PostgREST or the
+  Supabase anon key, add a `tenant_isolation`-style policy. **Never write**
+  `USING (true)` or `WITH CHECK (true)` policies — Postgres OR's policies together,
+  so a single permissive policy silently defeats any other policy on the same table.
+
+## Session Startup
+  Always read `D:\dev\tts-tax-app\DECISIONS.md` at the start of each session.
+  Treat Architecture Decisions and Coding Standards as hard rules — never override without Ken's approval.
 
 ## How to Run
 
 ### Prerequisites
-- Docker Desktop (for Postgres)
 - Python 3.13+
 - Poetry
 - Node.js (for React client)
 
-### Start Postgres
-```powershell
-cd D:\dev\tts-tax-app
-docker compose up -d
-```
+The app connects directly to the shared Supabase Postgres project via
+`server/.env`. There is no local Postgres — Docker is no longer used.
 
 ### Start Django dev server
 ```powershell
@@ -77,7 +94,6 @@ poetry run pytest
 ## Directory Layout
 ```
 tts-tax-app/
-├── docker-compose.yml          # Postgres for dev
 ├── CLAUDE.md                   # This file (project-wide)
 ├── .claude/rules/              # Claude Code rules (auto-loaded)
 │   └── irs_form_rendering.md   # IRS form rendering skill
@@ -206,3 +222,17 @@ curl -s https://sherpa-tax-rule-studio.onrender.com/api/flow-assertions/export/?
 - Push to GitHub regularly — that's the backup strategy
 - Keep code readable — Ken is a CPA learning to code, not a career engineer
 - **Do NOT change the tech stack** (Django, React, Vite) without explicit discussion
+
+## Memory Files
+Four files track this project's state at the root:
+- `CLAUDE.md` — this file (project rules)
+- `MEMORY.md` — standing facts and context
+- `STATUS.md` — current state, what's next, blockers
+- `DECISIONS.md` — architectural decision log
+
+Historical memory is in `memory/` subfolder (including `DECISIONS.md` referenced
+above). Migration to root-level schema is pending — when it happens, `memory/DECISIONS.md`
+moves to `DECISIONS.md` at the project root.
+
+All four root files are mirrored to `G:\My Drive\kens-personal-life\apps\tts-tax-app\`
+by a background sync. Do not dual-write from within a CC session.
