@@ -62,3 +62,13 @@ NUL
 # Dev-artifact PDFs in subdirectories
 server/*.pdf
 *.pdf.bak
+
+# Ad-hoc dev scripts (use server/tests/ for real tests, server/scripts/ only for committed utilities)
+server/scripts/test_*.py
+server/scripts/debug_*.py
+server/scripts/check_*.py
+server/scripts/inspect_*.py
+server/scripts/verify_*.py
+server/scripts/extract_*.py
+server/scripts/fix_*.py
+server/scripts/kill_test_db*.py
