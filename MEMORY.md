@@ -1,5 +1,16 @@
 # TTS Tax App - Project Memory
 
+## 2026-04-28 — Cleanup Commits (Session B, 8 of 9 shipped)
+
+Pushed `a385720..ba7649d` to `origin/main`. Eight commits covering deletions, doc moves, .gitignore polish, and reference-data adds. See STATUS.md for the full per-commit table. Commit 4 (sherpa-1099 RLS SQL deletion) deferred pending preservation confirmation. Commits 10–14 (substantial code drift) remain in working tree.
+
+### Standing facts established this session
+- **`server/scripts/` hygiene rule**: ad-hoc throwaway scripts (test_*, debug_*, check_*, inspect_*, verify_*, extract_*, fix_*, kill_test_db*) are now gitignored by pattern. Real utilities go in `server/scripts/` (currently: `kill_sessions.py`, `run_dev.ps1`, `calibrate_coordinates.py`, `download_irs_templates.py`, `export_rule_studio.py`, `extract_field_maps.py` — all tracked). New utilities should live in `server/scripts/` with a non-throwaway name; experimental scripts should be deleted before commit or scoped to a feature branch.
+- **`.claude/settings.local.json` is no longer tracked.** It was previously committed in error. Now sits in `.gitignore`, file remains on disk for IDE use. Do not re-stage it.
+- **Canonical Form 4797 spec lives at `server/specs/form_4797_spec.json`.** The older root-level `4797_TY2025_v1_spec.json` (mentioned as "source of truth" in earlier MEMORY.md notes) was deleted in Commit 6 of this session — it had a different export schema and was superseded. The export script `server/scripts/export_rule_studio.py` writes to the canonical path.
+- **Four-file system in effect.** `CLAUDE.md`, `MEMORY.md`, `STATUS.md`, `DECISIONS.md` all live at repo root and are tracked in git. `memory/DECISIONS.md` was renamed to `DECISIONS.md` in Commit 5 (100% identical, no content drift). Background sync mirrors to `G:\My Drive\kens-personal-life\apps\tts-tax-app\`.
+- **`cowork_sessions.md` deleted** — superseded by the four-file system. Stale since 2026-03-22.
+
 ## 2026-04-21 — Supabase Security Audit (Cowork, 4 phases)
 
 - **Shared Supabase project**: `tmqypsbmswishqkngbrl` hosts both the tax app and sherpa-1099. Tax-app "dev" is pointed at this prod DB — ~709 real clients, 321 returns, ~92K form values as of audit time. Treat every dev-time DB write as production.
@@ -185,7 +196,7 @@ See details: `memory/pdf_rendering.md`
 - **Note**: Spec R018 says "K18 = Page1_Line21" which is a simplification — K18 actually = sum(K1-K10) - deductions. Code is correct, spec description is misleading.
 
 ## Form 4797 — REBUILT FROM RULE STUDIO SPEC (Mar 18)
-- **Source of truth**: `4797_TY2025_v1_spec.json` from Sherpa Tax Rule Studio
+- **Source of truth**: `server/specs/form_4797_spec.json` (exported from Sherpa Tax Rule Studio). Older root-level export `4797_TY2025_v1_spec.json` was removed 2026-04-28 in Cleanup Commit 6.
 - **Holding period**: Changed from days (≤365) to months (>12 = long-term) per spec R001
   - Uses `_holding_period_months()` helper in both compute.py and renderer.py
 - **§1245 vs §1250 routing**: New `_is_1250_property()` helper
