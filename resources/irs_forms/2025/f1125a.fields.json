@@ -1,0 +1,314 @@
+[
+  {
+    "page": 0,
+    "short_name": "f1_1",
+    "full_name": "topmostSubform[0].Page1[0].f1_1[0]",
+    "field_type": "Text",
+    "rect": [
+      36.0,
+      94.0,
+      460.0,
+      108.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_2",
+    "full_name": "topmostSubform[0].Page1[0].f1_2[0]",
+    "field_type": "Text",
+    "rect": [
+      460.8,
+      94.0,
+      576.0,
+      108.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_3",
+    "full_name": "topmostSubform[0].Page1[0].f1_3[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      108.0,
+      576.0,
+      120.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_5",
+    "full_name": "topmostSubform[0].Page1[0].f1_5[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      120.0,
+      576.0,
+      132.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_7",
+    "full_name": "topmostSubform[0].Page1[0].f1_7[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      132.0,
+      576.0,
+      144.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_9",
+    "full_name": "topmostSubform[0].Page1[0].f1_9[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      144.0,
+      576.0,
+      156.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_11",
+    "full_name": "topmostSubform[0].Page1[0].f1_11[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      156.0,
+      576.0,
+      168.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_13",
+    "full_name": "topmostSubform[0].Page1[0].f1_13[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      168.0,
+      576.0,
+      180.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_15",
+    "full_name": "topmostSubform[0].Page1[0].f1_15[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      180.0,
+      576.0,
+      192.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_17",
+    "full_name": "topmostSubform[0].Page1[0].f1_17[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      204.0,
+      576.0,
+      216.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "c1_1",
+    "full_name": "topmostSubform[0].Page1[0].c1_1[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      230.0,
+      87.2,
+      238.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_2",
+    "full_name": "topmostSubform[0].Page1[0].c1_2[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      242.0,
+      87.2,
+      250.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_3",
+    "full_name": "topmostSubform[0].Page1[0].c1_3[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      254.0,
+      87.2,
+      262.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "f1_19",
+    "full_name": "topmostSubform[0].Page1[0].f1_19[0]",
+    "field_type": "Text",
+    "rect": [
+      280.8,
+      252.0,
+      576.0,
+      264.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "c1_4",
+    "full_name": "topmostSubform[0].Page1[0].c1_4[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      278.0,
+      87.2,
+      286.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_5",
+    "full_name": "topmostSubform[0].Page1[0].c1_5[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      290.0,
+      87.2,
+      298.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_6",
+    "full_name": "topmostSubform[0].Page1[0].c1_6[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      79.2,
+      302.0,
+      87.2,
+      310.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_7",
+    "full_name": "topmostSubform[0].Page1[0].c1_7[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      540.4,
+      314.0,
+      548.4,
+      322.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_8",
+    "full_name": "topmostSubform[0].Page1[0].c1_8[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      540.4,
+      326.0,
+      548.4,
+      334.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "f1_20",
+    "full_name": "topmostSubform[0].Page1[0].f1_20[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      336.0,
+      576.0,
+      348.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "f1_22",
+    "full_name": "topmostSubform[0].Page1[0].f1_22[0]",
+    "field_type": "Text",
+    "rect": [
+      504.0,
+      348.0,
+      576.0,
+      360.0
+    ]
+  },
+  {
+    "page": 0,
+    "short_name": "c1_9",
+    "full_name": "topmostSubform[0].Page1[0].c1_9[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      496.8,
+      362.0,
+      504.8,
+      370.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_9",
+    "full_name": "topmostSubform[0].Page1[0].c1_9[1]",
+    "field_type": "CheckBox",
+    "rect": [
+      540.0,
+      362.0,
+      548.0,
+      370.0
+    ],
+    "on_state": "No"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_10",
+    "full_name": "topmostSubform[0].Page1[0].c1_10[0]",
+    "field_type": "CheckBox",
+    "rect": [
+      496.8,
+      386.0,
+      504.8,
+      394.0
+    ],
+    "on_state": "Yes"
+  },
+  {
+    "page": 0,
+    "short_name": "c1_10",
+    "full_name": "topmostSubform[0].Page1[0].c1_10[1]",
+    "field_type": "CheckBox",
+    "rect": [
+      540.0,
+      386.0,
+      548.0,
+      394.0
+    ],
+    "on_state": "No"
+  }
+]

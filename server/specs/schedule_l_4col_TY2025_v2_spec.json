@@ -1,0 +1,375 @@
+{
+  "export_version": "1.0",
+  "exported_at": "2026-03-31T12:00:00.000000+00:00",
+  "metadata": {
+    "form_number": "1120S_SCHL",
+    "form_title": "Schedule L (Form 1120-S) — Balance Sheet per Books",
+    "jurisdiction": "FED",
+    "entity_types": ["1120S"],
+    "tax_year": 2025,
+    "version": 2,
+    "status": "draft",
+    "change_notes": "v2: Added 4-column rendering rules for Lines 10 and 13. Previous spec treated 'buildings net' as a single fact — now separates gross cost, accumulated depreciation, and computed net book value. Added rules for auto-computing EOY from depreciation worksheet. Fixes bug where accumulated depreciation was rendering in net columns (b/d) instead of gross sub-columns (a/c)."
+  },
+  "facts": [
+    {"fact_key": "l10a_gross_boy", "label": "L10a Buildings & depreciable assets — gross cost (BOY)", "data_type": "decimal", "required": false, "sort_order": 1, "notes": "Historical cost of all buildings, equipment, vehicles, furniture, etc. Goes in Column (a) of Line 10a row."},
+    {"fact_key": "l10b_accum_depr_boy", "label": "L10b Less accumulated depreciation (BOY)", "data_type": "decimal", "required": false, "sort_order": 2, "notes": "Total accumulated depreciation for all depreciable assets at BOY. Goes in Column (a) of the 'Less accumulated depreciation' row."},
+    {"fact_key": "l10b_net_boy", "label": "L10 Net depreciable assets (BOY)", "data_type": "decimal", "required": false, "sort_order": 3, "notes": "COMPUTED: l10a_gross_boy - l10b_accum_depr_boy. Goes in Column (b) of the 'Less accumulated depreciation' row."},
+    {"fact_key": "l10a_gross_eoy", "label": "L10a Buildings & depreciable assets — gross cost (EOY)", "data_type": "decimal", "required": false, "sort_order": 4, "notes": "Historical cost at EOY. Auto-computed from depreciation worksheet: BOY gross + additions - dispositions cost. Goes in Column (c) of Line 10a row."},
+    {"fact_key": "l10b_accum_depr_eoy", "label": "L10b Less accumulated depreciation (EOY)", "data_type": "decimal", "required": false, "sort_order": 5, "notes": "Total accumulated depreciation at EOY. Auto-computed from depreciation worksheet: BOY accum + current year depr - disposed accum depr. Goes in Column (c) of the 'Less accumulated depreciation' row."},
+    {"fact_key": "l10b_net_eoy", "label": "L10 Net depreciable assets (EOY)", "data_type": "decimal", "required": false, "sort_order": 6, "notes": "COMPUTED: l10a_gross_eoy - l10b_accum_depr_eoy. Goes in Column (d) of the 'Less accumulated depreciation' row."},
+    {"fact_key": "l13a_gross_boy", "label": "L13a Intangible assets — gross cost (BOY)", "data_type": "decimal", "required": false, "sort_order": 10, "notes": "Amortizable intangible assets at cost. Column (a) of Line 13a row."},
+    {"fact_key": "l13b_accum_amort_boy", "label": "L13b Less accumulated amortization (BOY)", "data_type": "decimal", "required": false, "sort_order": 11, "notes": "Column (a) of the 'Less accumulated amortization' row."},
+    {"fact_key": "l13b_net_boy", "label": "L13 Net intangible assets (BOY)", "data_type": "decimal", "required": false, "sort_order": 12, "notes": "COMPUTED: l13a_gross_boy - l13b_accum_amort_boy. Column (b) of the 'Less accumulated amortization' row."},
+    {"fact_key": "l13a_gross_eoy", "label": "L13a Intangible assets — gross cost (EOY)", "data_type": "decimal", "required": false, "sort_order": 13, "notes": "Column (c) of Line 13a row."},
+    {"fact_key": "l13b_accum_amort_eoy", "label": "L13b Less accumulated amortization (EOY)", "data_type": "decimal", "required": false, "sort_order": 14, "notes": "Column (c) of the 'Less accumulated amortization' row."},
+    {"fact_key": "l13b_net_eoy", "label": "L13 Net intangible assets (EOY)", "data_type": "decimal", "required": false, "sort_order": 15, "notes": "COMPUTED: l13a_gross_eoy - l13b_accum_amort_eoy. Column (d) of the 'Less accumulated amortization' row."}
+  ],
+  "rules": [
+    {
+      "rule_id": "R010",
+      "title": "4-column rendering layout for Line 10 (depreciable assets)",
+      "description": "CRITICAL RENDERING RULE: Schedule L uses a 4-column layout. For Lines 10a/10b (and 13a/13b), the columns have special semantics:\n\n  Line 10a (Buildings & depreciable assets):\n    Column (a) = BOY gross cost\n    Column (b) = GREYED OUT — not used for this row\n    Column (c) = EOY gross cost\n    Column (d) = GREYED OUT — not used for this row\n\n  Line 10b (Less accumulated depreciation):\n    Column (a) = BOY accumulated depreciation (in parentheses)\n    Column (b) = BOY NET book value (L10a col a MINUS L10b col a)\n    Column (c) = EOY accumulated depreciation (in parentheses)\n    Column (d) = EOY NET book value (L10a col c MINUS L10b col c)\n\nThe same pattern applies to Lines 13a/13b (intangible assets / accumulated amortization).\n\nPrevious bug: accumulated depreciation was being placed in columns (b) and (d), where the NET values should go. Columns (a) and (c) on the depreciation row were left empty.",
+      "rule_type": "rendering",
+      "formula": "L10b_col_a = accum_depr_boy; L10b_col_b = L10a_col_a - L10b_col_a; L10b_col_c = accum_depr_eoy; L10b_col_d = L10a_col_c - L10b_col_c",
+      "inputs": ["l10a_gross_boy", "l10b_accum_depr_boy", "l10a_gross_eoy", "l10b_accum_depr_eoy"],
+      "outputs": ["l10b_net_boy", "l10b_net_eoy"],
+      "precedence": 1,
+      "sort_order": 1,
+      "notes": "This is the bug that was incorrectly 'verified as correct' on Mar 30. The translation map was mapping L10b → col (b) and L10e → col (d), but it should map accumulated depreciation to cols (a)/(c) and compute nets for cols (b)/(d).",
+      "authorities": [
+        {
+          "source_code": "IRS_2025_1120S_SCHL",
+          "citation": "Form 1120-S Schedule L (2025)",
+          "source_type": "official_form",
+          "support_level": "primary",
+          "relevance_note": "Schedule L form layout: Line 10a 'Buildings and other depreciable assets' with 4-column structure"
+        },
+        {
+          "source_code": "TAXSLAYER_SCHL_GUIDE",
+          "citation": "TaxSlayer Pro — Form 1120-S Schedule L",
+          "source_type": "professional_guidance",
+          "support_level": "secondary",
+          "relevance_note": "Confirms: gross on 10a cols (a)&(c), accumulated depreciation on Line 10 cols (a)&(c), NET on 10b cols (b)&(d)"
+        }
+      ]
+    },
+    {
+      "rule_id": "R011",
+      "title": "Net book value = gross cost minus accumulated depreciation",
+      "description": "The net book value for columns (b) and (d) is ALWAYS computed, never directly entered. BOY net = L10a col(a) - L10b col(a). EOY net = L10a col(c) - L10b col(c).",
+      "rule_type": "calculation",
+      "formula": "l10b_net_boy = l10a_gross_boy - l10b_accum_depr_boy; l10b_net_eoy = l10a_gross_eoy - l10b_accum_depr_eoy",
+      "inputs": ["l10a_gross_boy", "l10b_accum_depr_boy", "l10a_gross_eoy", "l10b_accum_depr_eoy"],
+      "outputs": ["l10b_net_boy", "l10b_net_eoy"],
+      "precedence": 2,
+      "sort_order": 2,
+      "authorities": [
+        {
+          "source_code": "TAXSLAYER_SCHL_GUIDE",
+          "citation": "TaxSlayer Pro — Form 1120-S Schedule L",
+          "source_type": "professional_guidance",
+          "support_level": "primary",
+          "relevance_note": "'The net amount (Building and Other Depreciable Assets Less the Accumulated Depreciation) is reported on Line 10b, Columns (b) & (d)'"
+        }
+      ]
+    },
+    {
+      "rule_id": "R012",
+      "title": "EOY gross cost auto-computed from depreciation worksheet",
+      "description": "EOY gross cost = BOY gross cost + cost basis of assets placed in service during year - cost basis of assets disposed during year. This auto-populates from the depreciation worksheet.",
+      "rule_type": "calculation",
+      "formula": "l10a_gross_eoy = l10a_gross_boy + sum(cost_basis where date_acquired in tax_year AND group != 'Land') - sum(cost_basis where date_sold in tax_year AND group != 'Land')",
+      "inputs": ["l10a_gross_boy", "depreciation_worksheet_additions", "depreciation_worksheet_dispositions"],
+      "outputs": ["l10a_gross_eoy"],
+      "precedence": 3,
+      "sort_order": 3,
+      "notes": "Land is excluded — it goes on Line 12, not Line 10. Intangibles go on Line 13, not Line 10."
+    },
+    {
+      "rule_id": "R013",
+      "title": "EOY accumulated depreciation auto-computed from depreciation worksheet",
+      "description": "EOY accumulated depreciation = BOY accumulated depreciation + current year depreciation (all assets) - accumulated depreciation of disposed assets.",
+      "rule_type": "calculation",
+      "formula": "l10b_accum_depr_eoy = l10b_accum_depr_boy + sum(current_depreciation for non-disposed assets) + sum(prior_depreciation + current_depreciation for disposed assets) - sum(prior_depreciation + current_depreciation for disposed assets)",
+      "inputs": ["l10b_accum_depr_boy", "depreciation_worksheet_current_year", "depreciation_worksheet_disposed_accum"],
+      "outputs": ["l10b_accum_depr_eoy"],
+      "precedence": 4,
+      "sort_order": 4,
+      "notes": "Simplified: EOY accum = sum of (prior_depr + current_depr) for all assets still held at EOY. The compute_schedule_l() function already does this by querying the depreciation worksheet."
+    },
+    {
+      "rule_id": "R014",
+      "title": "Same 4-column pattern for Line 13 (intangible assets)",
+      "description": "Identical rendering layout to Line 10: Line 13a gross in cols (a)/(c), Line 13b accumulated amortization in cols (a)/(c), NET in cols (b)/(d).",
+      "rule_type": "rendering",
+      "formula": "L13b_col_a = accum_amort_boy; L13b_col_b = L13a_col_a - L13b_col_a; L13b_col_c = accum_amort_eoy; L13b_col_d = L13a_col_c - L13b_col_c",
+      "inputs": ["l13a_gross_boy", "l13b_accum_amort_boy", "l13a_gross_eoy", "l13b_accum_amort_eoy"],
+      "outputs": ["l13b_net_boy", "l13b_net_eoy"],
+      "precedence": 5,
+      "sort_order": 5,
+      "authorities": [
+        {
+          "source_code": "TAXSLAYER_SCHL_GUIDE",
+          "citation": "TaxSlayer Pro — Form 1120-S Schedule L",
+          "source_type": "professional_guidance",
+          "support_level": "primary",
+          "relevance_note": "'The beginning and ending balances for intangible assets are reported on Line 13a, Columns (a) & (c). Less Accumulated Amortization on Line 13b Columns (a) & (c). Net on Line 13b Columns (b) & (d).'"
+        }
+      ]
+    },
+    {
+      "rule_id": "R015",
+      "title": "Accumulated depreciation shown in parentheses",
+      "description": "On the IRS form, the 'Less accumulated depreciation' row shows amounts in parentheses in columns (a) and (c). The renderer must add parentheses around these values. The net values in columns (b) and (d) are NOT in parentheses.",
+      "rule_type": "rendering",
+      "formula": "display(L10b_col_a) = '(' + value + ')'; display(L10b_col_c) = '(' + value + ')'",
+      "inputs": ["l10b_accum_depr_boy", "l10b_accum_depr_eoy"],
+      "outputs": [],
+      "precedence": 0,
+      "sort_order": 6
+    },
+    {
+      "rule_id": "R016",
+      "title": "Net book value flows to Line 15 (total assets)",
+      "description": "The NET depreciable assets (columns b/d) — not the gross — flow into the total assets calculation on Line 15. L15 = L1 + (L2a - L2b) + L3 + ... + L10_net + L11 + L12 + L13_net + L14.",
+      "rule_type": "calculation",
+      "formula": "l15 includes l10b_net (not l10a_gross) and l13b_net (not l13a_gross)",
+      "inputs": ["l10b_net_boy", "l10b_net_eoy", "l13b_net_boy", "l13b_net_eoy"],
+      "outputs": ["l15_total_assets_boy", "l15_total_assets_eoy"],
+      "precedence": 10,
+      "sort_order": 10,
+      "notes": "This is critical — if the total assets formula uses the gross amount instead of the net, the balance sheet will be wrong."
+    }
+  ],
+  "form_lines": [
+    {"line_number": "L10a", "description": "Buildings and other depreciable assets (gross cost)", "line_type": "input", "sort_order": 1,
+     "notes": "4-COLUMN RULE: Col (a) = BOY gross cost. Col (c) = EOY gross cost. Cols (b) and (d) are GREYED OUT on this row."},
+    {"line_number": "L10b", "description": "Less accumulated depreciation", "line_type": "calculated", "source_rules": ["R010", "R011"], "sort_order": 2,
+     "notes": "4-COLUMN RULE: Col (a) = BOY accum depr (in parens). Col (b) = BOY NET (gross - accum). Col (c) = EOY accum depr (in parens). Col (d) = EOY NET (gross - accum)."},
+    {"line_number": "L13a", "description": "Intangible assets (amortizable only, gross)", "line_type": "input", "sort_order": 3,
+     "notes": "Same 4-column pattern as L10a. Cols (b)/(d) greyed out."},
+    {"line_number": "L13b", "description": "Less accumulated amortization", "line_type": "calculated", "source_rules": ["R014"], "sort_order": 4,
+     "notes": "Same 4-column pattern as L10b. Col (a)/(c) = accum amort. Col (b)/(d) = net."}
+  ],
+  "diagnostics": [
+    {"diagnostic_id": "D010", "title": "Depreciation worksheet does not tie to Schedule L", "severity": "error",
+     "condition": "l10a_gross_eoy != sum(cost_basis from depreciation worksheet, excluding land and intangibles) OR l10b_accum_depr_eoy != sum(prior_depr + current_depr from depreciation worksheet, excluding land and intangibles)",
+     "message": "Schedule L Line 10 EOY amounts do not match the depreciation worksheet totals. Verify all assets are included and no land/intangibles are on Line 10."},
+    {"diagnostic_id": "D011", "title": "Accumulated depreciation exceeds gross cost", "severity": "error",
+     "condition": "l10b_accum_depr_eoy > l10a_gross_eoy",
+     "message": "Accumulated depreciation ($l10b_accum_depr_eoy) exceeds gross cost ($l10a_gross_eoy). This should not happen — verify depreciation calculations."},
+    {"diagnostic_id": "D012", "title": "Net book value in wrong column", "severity": "error",
+     "condition": "rendered_L10b_col_b != (l10a_gross_boy - l10b_accum_depr_boy) OR rendered_L10b_col_d != (l10a_gross_eoy - l10b_accum_depr_eoy)",
+     "message": "NET book value (gross minus accum depr) must be in columns (b) and (d). Accumulated depreciation amounts must be in columns (a) and (c). Verify the translation map."},
+    {"diagnostic_id": "D013", "title": "BOY gross doesn't match prior year EOY gross", "severity": "warning",
+     "condition": "l10a_gross_boy != prior_year_l10a_gross_eoy",
+     "message": "BOY gross depreciable assets doesn't match prior year EOY. Unless there was a restatement, these should match."}
+  ],
+  "tests": [
+    {
+      "scenario_name": "Basic rendering — BOY and EOY with depreciation",
+      "scenario_type": "normal",
+      "inputs": {
+        "l10a_gross_boy": 100000,
+        "l10b_accum_depr_boy": 30000,
+        "l10a_gross_eoy": 100000,
+        "l10b_accum_depr_eoy": 40000
+      },
+      "expected_outputs": {
+        "L10a_col_a": 100000,
+        "L10a_col_b": "greyed_out",
+        "L10a_col_c": 100000,
+        "L10a_col_d": "greyed_out",
+        "L10b_col_a": "(30,000)",
+        "L10b_col_b": 70000,
+        "L10b_col_c": "(40,000)",
+        "L10b_col_d": 60000
+      },
+      "sort_order": 1,
+      "notes": "Verifies the 4-column layout. NET = gross - accum. Accum shown in parentheses."
+    },
+    {
+      "scenario_name": "Asset addition during year changes EOY gross",
+      "scenario_type": "normal",
+      "inputs": {
+        "l10a_gross_boy": 30500,
+        "l10b_accum_depr_boy": 20000,
+        "new_asset_cost": 300000,
+        "current_year_depreciation_new": 1994,
+        "current_year_depreciation_existing": 0
+      },
+      "expected_outputs": {
+        "l10a_gross_eoy": 330500,
+        "l10b_accum_depr_eoy": 21994,
+        "L10a_col_a": 30500,
+        "L10b_col_a": "(20,000)",
+        "L10b_col_b": 10500,
+        "L10a_col_c": 330500,
+        "L10b_col_c": "(21,994)",
+        "L10b_col_d": 308506
+      },
+      "sort_order": 2,
+      "notes": "This matches Ken's actual data from the screenshot. BOY: 30500 gross, 20000 accum, 10500 net. EOY: 330500 gross (30500+300000), 21994 accum (20000+1994), 308506 net."
+    },
+    {
+      "scenario_name": "Fully depreciated asset — net is zero",
+      "scenario_type": "edge",
+      "inputs": {
+        "l10a_gross_boy": 50000,
+        "l10b_accum_depr_boy": 50000
+      },
+      "expected_outputs": {
+        "L10b_col_b": 0,
+        "L10b_col_a": "(50,000)"
+      },
+      "sort_order": 3,
+      "notes": "Fully depreciated: gross = accum, net = 0. Both gross and accum should still appear."
+    },
+    {
+      "scenario_name": "Section 179 asset — fully expensed in year 1",
+      "scenario_type": "edge",
+      "inputs": {
+        "l10a_gross_boy": 0,
+        "l10b_accum_depr_boy": 0,
+        "new_asset_cost": 17000,
+        "section_179_expense": 17000
+      },
+      "expected_outputs": {
+        "l10a_gross_eoy": 17000,
+        "l10b_accum_depr_eoy": 17000,
+        "L10b_col_d": 0
+      },
+      "sort_order": 4,
+      "notes": "Per IRS guidance: §179 assets go on L10a at cost, accumulated depreciation = cost, net = $0."
+    },
+    {
+      "scenario_name": "Intangibles follow same 4-column pattern",
+      "scenario_type": "normal",
+      "inputs": {
+        "l13a_gross_boy": 75000,
+        "l13b_accum_amort_boy": 25000,
+        "l13a_gross_eoy": 75000,
+        "l13b_accum_amort_eoy": 30000
+      },
+      "expected_outputs": {
+        "L13a_col_a": 75000,
+        "L13a_col_c": 75000,
+        "L13b_col_a": "(25,000)",
+        "L13b_col_b": 50000,
+        "L13b_col_c": "(30,000)",
+        "L13b_col_d": 45000
+      },
+      "sort_order": 5,
+      "notes": "Line 13 uses identical layout to Line 10."
+    },
+    {
+      "scenario_name": "Total assets uses NET, not gross",
+      "scenario_type": "normal",
+      "inputs": {
+        "l1_cash_eoy": 50000,
+        "l10a_gross_eoy": 300000,
+        "l10b_accum_depr_eoy": 100000,
+        "l12_land_eoy": 75000
+      },
+      "expected_outputs": {
+        "l10b_net_eoy": 200000,
+        "l15_total_assets_eoy": 325000
+      },
+      "sort_order": 6,
+      "notes": "L15 = 50000 (cash) + 200000 (net depreciable = 300000 - 100000) + 75000 (land) = 325000. NOT 50000 + 300000 + 75000 = 425000."
+    }
+  ],
+  "authority_sources": [
+    {
+      "source_code": "IRS_2025_1120S_SCHL",
+      "source_type": "official_form",
+      "source_rank": "primary_official",
+      "jurisdiction_code": "FED",
+      "title": "Schedule L (Form 1120-S) — Balance Sheets per Books (2025)",
+      "citation": "Form 1120-S Schedule L (2025)",
+      "issuer": "IRS",
+      "current_status": "active",
+      "is_substantive_authority": true,
+      "trust_score": 10.0,
+      "topics": ["balance_sheet", "schedule_l", "1120s"],
+      "excerpts": [
+        {
+          "excerpt_label": "4-column layout structure",
+          "excerpt_text": "Schedule L uses two pairs of columns: (a)/(b) for beginning of tax year and (c)/(d) for end of tax year. For lines with sub-lines (10a/10b, 11a/11b, 13a/13b), columns (a) and (c) contain the gross or sub-amounts, while columns (b) and (d) contain the net totals.",
+          "summary_text": "Cols (a)/(c) = sub-amounts (gross, accumulated depr). Cols (b)/(d) = net totals.",
+          "is_key_excerpt": true
+        }
+      ]
+    },
+    {
+      "source_code": "TAXSLAYER_SCHL_GUIDE",
+      "source_type": "professional_guidance",
+      "source_rank": "secondary",
+      "jurisdiction_code": "FED",
+      "title": "TaxSlayer Pro — Form 1120-S Schedule L Balance Sheet per Books",
+      "citation": "TaxSlayer Pro Knowledge Base — Schedule L",
+      "issuer": "TaxSlayer",
+      "current_status": "active",
+      "is_substantive_authority": false,
+      "trust_score": 7.0,
+      "topics": ["balance_sheet", "schedule_l", "1120s", "depreciable_assets"],
+      "excerpts": [
+        {
+          "excerpt_label": "Line 10a/10b column placement",
+          "excerpt_text": "The beginning and ending Building and Other Depreciable Asset amounts are reported on Line 10a, Columns (a) & (c) of Schedule L. The beginning and ending Accumulated Depreciation amounts are reported on Line 10, Columns (a) & (c) of Schedule L. The net amount (Building and Other Depreciable Assets Less the Accumulated Depreciation) is reported on Line 10b, Columns (b) & (d) of Schedule L.",
+          "summary_text": "Gross on 10a cols (a)&(c). Accum depr on Line 10 cols (a)&(c). Net on 10b cols (b)&(d).",
+          "is_key_excerpt": true
+        },
+        {
+          "excerpt_label": "Line 13a/13b column placement",
+          "excerpt_text": "The beginning and ending balances for intangible assets are reported on Line 13a, Columns (a) & (c) of Schedule L. Less Accumulated Amortization amounts are reported on Line 13b, Columns (a) & (c). The Net Amount is reported on Line 13b, Columns (b) & (d).",
+          "summary_text": "Same pattern as Line 10: gross in (a)/(c), accum in (a)/(c), net in (b)/(d).",
+          "is_key_excerpt": true
+        }
+      ]
+    }
+  ],
+  "implementation_notes": {
+    "renderer_translation_map": {
+      "description": "The SCHED_L_4COL translation map in renderer.py must be updated. Currently it maps: L10a→col_a, L10b→col_b, L10d→col_c, L10e→col_d. This is WRONG for the depreciation row.",
+      "correct_mapping": {
+        "L10a_row": {
+          "col_a": "l10a_gross_boy (BOY gross cost)",
+          "col_b": "NOT USED (greyed out on IRS form)",
+          "col_c": "l10a_gross_eoy (EOY gross cost)",
+          "col_d": "NOT USED (greyed out on IRS form)"
+        },
+        "L10b_row": {
+          "col_a": "l10b_accum_depr_boy (BOY accumulated depreciation, in parentheses)",
+          "col_b": "l10b_net_boy = l10a_gross_boy - l10b_accum_depr_boy (BOY NET)",
+          "col_c": "l10b_accum_depr_eoy (EOY accumulated depreciation, in parentheses)",
+          "col_d": "l10b_net_eoy = l10a_gross_eoy - l10b_accum_depr_eoy (EOY NET)"
+        },
+        "L13a_row": {
+          "col_a": "l13a_gross_boy",
+          "col_b": "NOT USED",
+          "col_c": "l13a_gross_eoy",
+          "col_d": "NOT USED"
+        },
+        "L13b_row": {
+          "col_a": "l13b_accum_amort_boy (in parentheses)",
+          "col_b": "l13b_net_boy = l13a_gross_boy - l13b_accum_amort_boy",
+          "col_c": "l13b_accum_amort_eoy (in parentheses)",
+          "col_d": "l13b_net_eoy = l13a_gross_eoy - l13b_accum_amort_eoy"
+        }
+      }
+    },
+    "field_key_mapping": {
+      "description": "The tts-tax-app uses field keys L10a, L10b, L10d, L10e for the 4-column lines. These need to be remapped or renamed to separate gross, accumulated, and net values.",
+      "suggested_keys": {
+        "L10a": "BOY gross cost (col a)",
+        "L10b": "BOY accumulated depreciation (col a on accum row) — CURRENTLY WRONG, going to col b",
+        "L10d": "EOY gross cost (col c)",
+        "L10e": "EOY accumulated depreciation (col c on accum row) — CURRENTLY WRONG, going to col d",
+        "L10b_net": "BOY net book value (col b on accum row) — NEW, needs to be computed",
+        "L10e_net": "EOY net book value (col d on accum row) — NEW, needs to be computed"
+      }
+    }
+  }
+}
