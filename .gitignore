@@ -23,9 +23,6 @@ dist/
 dist-web/
 out/
 
-# Docker
-# (docker-compose.yml IS committed)
-
 # OS / IDE
 .DS_Store
 Thumbs.db
@@ -72,3 +69,10 @@ server/scripts/verify_*.py
 server/scripts/extract_*.py
 server/scripts/fix_*.py
 server/scripts/kill_test_db*.py
+
+# Reference design artifacts (not source-of-truth)
+/Gemini Stitch/
+/Line by Line Adjustments/
+
+# IDE local state
+.claude/settings.local.json
