@@ -42,3 +42,23 @@ resources/irs_forms/2025/i*.pdf
 
 # Electron client local env
 client/.env.local
+
+# Data files — never commit client-bearing artifacts
+# All client data lives in Supabase; local working files belong in D:\tax-test-data\
+# NOTE: *.csv and *.xlsx are unscoped (ignored anywhere in tree). If a future
+# test fixture needs to be tracked, add a ! exception (e.g. !server/tests/fixtures/sample.csv)
+# or use `git add -f`.
+*.csv
+*.xlsx
+*.xls
+/*.pdf
+/Lacerte Export/
+/tax-test-data/
+/lacerte_pdfs/
+
+# Shell artifacts
+NUL
+
+# Dev-artifact PDFs in subdirectories
+server/*.pdf
+*.pdf.bak
