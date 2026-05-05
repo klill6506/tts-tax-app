@@ -4,9 +4,22 @@
 2026-05-05
 
 ## Currently in progress
-- (none — Session E completed the Lacerte demographics import; Session F (favicon) starting next)
+- (stub — populate at end of active-work sessions)
 
-## Last session recap (2026-05-05 Session E) — Lacerte client-list import (real, --commit)
+## Last session recap (2026-05-05 Session F) — TTS favicon
+- **Goal:** Replace the default empty favicon with a TTS wordmark using the project's brand colors.
+- **One commit shipped:** `5d8eb1a` (`feat(client): add TTS favicon — blue-800 background, white mark`). Pushed to `origin/main`.
+- **Files changed:** `client/src/renderer/public/favicon.svg` (new, 426 B) and `client/src/renderer/index.html` (+1 line — `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`).
+- **Design choices:**
+  - Background `#1e40af` (Tailwind blue-800, the documented brand color in CLAUDE.md "Blue-800 nav, white cards").
+  - Wordmark "TTS" in white, weight 800, font stack `Manrope, "Segoe UI", system-ui, …` (Manrope preferred but unreliable — favicons load before web fonts — so the system-ui fallback is the realistic primary).
+  - 32×32 viewBox, 2px corner radius, scales cleanly to 16×16.
+  - Initially drafted in Charcoal & Gold (the default theme); switched to blue/white after eyeball review since blue is the documented brand color across the app.
+- **Vite path note:** the project's Vite `root` is `client/src/renderer/`, so the convention public dir is `client/src/renderer/public/` (not `client/public/`). No `vite.config.ts` change needed — Vite copies it to `dist-web/` on build.
+- **Smoke test:** spun up `vite` dev server, `GET /favicon.svg` returned `200 OK` + `Content-Type: image/svg+xml` + matching body, and the served `/` HTML contained the new `<link>` tag. Both background tasks stopped cleanly.
+- Browser favicon caches aggressively — Ctrl+Shift+R on the dashboard to see the new icon.
+
+## Previous session recap (2026-05-05 Session E) — Lacerte client-list import (real, --commit)
 - **Goal:** Promote Session D's validated dry-run to a real import. `--commit --no-sanitize` against the same 86-KB Lacerte PDF.
 - **Single commit this session:** the memory update at the end. Working tree was clean throughout.
 - **Importer summary:** `Imported: created=13, updated=109, nochange=0, errors=0` — exact match to Session D's prediction.
@@ -18,44 +31,10 @@
 - **One soft anomaly:** importer processed 122 records, but only 121 Taxpayer rows resulted. Source PDF has 122 distinct SSNs (no duplicates), so the collision happened during upsert. Most likely cause: two records share the same `Client.name` (the third-fallback lookup after `Taxpayer.ssn` and `Entity.ein` both miss); two distinct people with identical "LAST, FIRST [M]" name strings would collide on the third lookup, share an Entity, and produce one Taxpayer for both. Doesn't affect the user-visible count (Individual tab shows 121); flagged for awareness, not investigated further this session.
 - **Diagnostic artifacts:** `D:\tax-test-data\_session_e_logs\` (`step2_real_import.log` with REAL PII; `verify.py`, `dashboard_counts.py`, `dup_check.py` — counts only, no PII output). Keep until Session D's parser-fix session lands; delete after.
 
-## Previous session recap (2026-05-05 Session D) — Lacerte importer dry-run against real PDF
-- **Goal:** Diagnostic-only run of the Lacerte client-list importer against the real Lacerte custom-report PDF (`D:\tax-test-data\lacerte_pdfs\2025 Custom Reports - Ken's client list.pdf`, 86,070 B). No DB writes, no code edits. The synthetic ReportLab fixtures the parser tests use never exercised real-PDF column geometry.
-- **No commits this session except the memory update at the end.** Working tree was clean throughout.
-
-### Numbers
-| Metric | Value |
-|---|---|
-| Records parsed | 122 |
-| Parser-emitted warnings | 0 |
-| Records with all expected fields filled | 115 |
-| Records with at least one structural defect | 7 |
-| Importer errors | 0 |
-| Filing-status split | 82 mfj / 40 single (HOH and MFS not inferred — known limitation) |
-| `--no-sanitize` dry-run summary | `created=13, updated=109, nochange=0, errors=0` (transaction rolled back) |
-
-### Field-extraction quality (across all 122 records)
-| Field | Filled | Notes |
-|---|---|---|
-| `tp_ssn`, `tp_dob`, `street`, `city`, `preparer` | 122 / 122 | 100% |
-| `state`, `zip` | 120 / 122 | 2 records affected by Anomaly 1 |
-| `tp_email` | 52 / 122 | 39% mfj, 50% single — typical for older client lists, not a bug |
-| `sp_dob` | 82 / 82 mfj | 100% of mfj records |
-| `sp_ssn` | 81 / 82 mfj | 1 record asymmetric (sp_dob present, no sp_ssn) |
-| `sp_first_name` | 78 / 82 mfj | 4 records affected by Anomaly 2 |
-
-### Two bounded parser bugs identified
-1. **Anomaly 1 — address wrap drops state and zip.** When a right-page address wraps to two visual lines, `_bucket_rows` pairs the wrong y-bucket; street and city extract from one line, state and zip from a different (paired) line. Affects 2 / 122 records.
-2. **Anomaly 2 — spouse names dropped when not in LNF "AND" structure.** `LEFT_COLUMNS["sp_first"]` and `LEFT_COLUMNS["sp_last"]` are defined in the parser but **never read**. Spouse names live in dedicated columns on the left page, but the parser only reads them out of the LNF "AND ..." form. When Lacerte writes spouse names in the dedicated columns instead, the parser silently drops them. Affects 4 / 122 records (2 with `AND` in LNF that fails the regex, 2 with no `AND` where dedicated columns hold the data).
-
-A 3rd minor anomaly — 1 record with `sp_dob` extracted but no `sp_ssn` and no `sp_first_name` — is plausibly the Anomaly 1 root cause hitting spouse columns instead of address columns, or a real edge case (deceased spouse / no SSN on file). Not separately actionable.
-
-### Notes & quirks from this session
-- **Parser is silent on every error path.** `rec.warnings` exists and gets populated for malformed SSN/DOB, but the management command never prints it. None of those code paths fired on the real PDF (zero malformed SSNs, zero unparseable DOBs), so we'd never know if they were broken either. Worth surfacing warnings in a `--verbose` flag sometime.
-- **Importer change-log shows `filing_status: FilingStatus.SINGLE -> 'mfj'`** — model default is the `FilingStatus` enum but the importer assigns a string. Cosmetic, not functional.
-- **`LEFT_COLUMNS["sp_first"]` and `["sp_last"]` are dead code** — the parser docstring even mentions the columns exist in the report layout. Removing them or actually using them are both fine; mixed state is what produced Anomaly 2.
-- Diagnostic artifacts (logs + ad-hoc Python) live at `D:\tax-test-data\_session_d_logs\` outside the repo. Keep until the parser-fix session lands; delete afterward.
+> Session D (parser dry-run, 2026-05-05) detail lives in MEMORY.md — the field-quality table, the two bounded-bug write-ups, and the diagnostic-artifact location. One-liner in "Recently completed" below.
 
 ## Recently completed
+- **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`. Two files: `client/src/renderer/public/favicon.svg` (new) + `client/src/renderer/index.html` (+1 link tag).
 - **2026-05-05 (Session E)** — Lacerte client-list import (real, `--commit --no-sanitize`). 121 individual TaxReturns now in DB for TY 2025. `created=13, updated=109, errors=0`. No code changes; memory update only.
 - **2026-05-05 (Session D)** — Lacerte importer dry-run against real PDF. 122 records parsed; 95–100% field accuracy; 2 bounded parser bugs identified for a future targeted-fix session. No commits except memory update. Working tree clean throughout.
 - **2026-05-05 (Session C)** — Code-drift commits 10–14 + Phase 0. 6 commits pushed to origin/main.

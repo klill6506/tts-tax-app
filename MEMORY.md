@@ -1,5 +1,17 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-05 — TTS favicon (Session F, single-commit)
+
+Replaced the default empty favicon with a TTS wordmark. One commit shipped: `5d8eb1a` (`feat(client): add TTS favicon — blue-800 background, white mark`).
+
+### Standing facts established this session
+
+- **Favicon lives at `client/src/renderer/public/favicon.svg`** and is referenced by `client/src/renderer/index.html` via `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`.
+- **Vite's public dir for this project is `client/src/renderer/public/`**, not `client/public/` — the project's `vite.config.ts` sets `root: "src/renderer"`, so Vite's default `publicDir` resolves there. Files placed there are served at `/` in dev and copied to `dist-web/` on build. Future static assets (icons, robots.txt, OG images, etc.) should go in this same dir.
+- **Brand colors used:** background `#1e40af` (Tailwind blue-800, the documented brand color in CLAUDE.md "Blue-800 nav"); wordmark white. Initially drafted in Charcoal & Gold (the default theme), but switched to blue/white at Ken's request — blue is the documented brand color across the app and stays consistent regardless of which theme preset is active.
+- **Favicons cannot rely on web fonts.** The browser fetches and renders the favicon SVG before the host page's Google Fonts (Manrope, Inter, etc.) load. The font stack inside `favicon.svg` lists Manrope first as a hopeful preference, but the realistic primary is `"Segoe UI", system-ui, -apple-system, sans-serif`. Future SVG icons in the same dir should follow the same pattern (web-font-first wishful, system-font fallback expected to be what actually renders).
+- **Browsers cache favicons aggressively** — Ctrl+Shift+R needed to see changes after a deploy.
+
 ## 2026-05-05 — Lacerte client-list import (Session E, real --commit run)
 
 Promoted Session D's validated dry-run to a real import. Same PDF, same flags except `--commit` was added. Importer reported `created=13, updated=109, nochange=0, errors=0` — exact match to the dry-run prediction. No code changes; only the memory update was committed.
