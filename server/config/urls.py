@@ -34,6 +34,7 @@ urlpatterns = [
     path("api/v1/", include("apps.returns.urls")),
     path("api/v1/", include("apps.firms.urls")),
     path("api/v1/", include("apps.ai_help.urls")),
+    path("api/v1/", include("apps.documents.urls")),
 ]
 
 # In production, serve the SPA for any non-API route (HashRouter only needs /)

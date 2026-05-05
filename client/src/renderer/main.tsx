@@ -16,6 +16,8 @@ import FormPreview from "./pages/FormPreview";
 import ReturnManager from "./pages/ReturnManager";
 import PreparerManager from "./pages/PreparerManager";
 import PrintPackageManager from "./pages/PrintPackageManager";
+import ClientFolders from "./pages/ClientFolders";
+import FolderDetail from "./pages/FolderDetail";
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -42,6 +44,10 @@ function AppRoutes() {
 
         {/* Entity Detail — tax years, TB, returns */}
         <Route path="/clients/:clientId/entities/:entityId" element={<EntityDetail />} />
+
+        {/* Client Folders (document management) */}
+        <Route path="/folders" element={<ClientFolders />} />
+        <Route path="/folders/:entityId" element={<FolderDetail />} />
 
         {/* Admin */}
         <Route path="/admin/preparers" element={<PreparerManager />} />
