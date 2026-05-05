@@ -1,5 +1,23 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-05 — Lacerte client-list import (Session E, real --commit run)
+
+Promoted Session D's validated dry-run to a real import. Same PDF, same flags except `--commit` was added. Importer reported `created=13, updated=109, nochange=0, errors=0` — exact match to the dry-run prediction. No code changes; only the memory update was committed.
+
+### Standing facts established this session
+
+- **Production database now has 121 individual taxpayer demographic rows for tax_year=2025** scoped to The Tax Shelter firm. Counts agree across Django ORM and Supabase MCP (direct SQL): `returns_taxpayer=121`, `clients_entity WHERE entity_type='individual'=690` (mostly pre-existing from S-corp / partnership relations), 1040 TaxReturns for 2025 = 121.
+- **Return Manager dashboard's "Individual" tab will show 121.** Verified by replicating `TaxReturnViewSet.list()`'s entity-type aggregation against the live DB. Not browser-verified — data + API layers both produce 121, so any UI discrepancy would be a separate frontend issue, not an import issue.
+- **Importer count vs. Taxpayer-row count off by one (122 records → 121 Taxpayers).** Source PDF has 122 distinct SSNs (verified — no duplicate-SSN collisions), so the collision happened in the importer's third-fallback lookup: `Client.name` exact match. Two distinct people with the same `"LAST, FIRST [M]"` name string fall through to that lookup and end up sharing an Entity, then a TaxReturn, then a Taxpayer (via `get_or_create(tax_return=...)`). Side effect: the second person's data overwrites the first's. **Worth tightening the upsert later** (e.g., disambiguate by city/state in the Client.name fallback, or skip the Client.name lookup entirely when both Taxpayer.ssn and Entity.ein miss). Not blocking development.
+- **Importer change-log shows `filing_status: FilingStatus.SINGLE -> 'mfj'`** — the model default is the `FilingStatus` enum but the importer assigns a string. Cosmetic, not functional. Same observation as Session D.
+- **Diagnostic artifacts at `D:\tax-test-data\_session_e_logs\`**:
+  - `step2_real_import.log` — REAL-PII commit run output (do not share)
+  - `verify.py` — Django ORM counts (no PII)
+  - `dashboard_counts.py` — replication of `TaxReturnViewSet.list()` counts (no PII)
+  - `dup_check.py` — SSN-uniqueness audit (no PII)
+
+  Keep until the parser-fix session lands; safe to delete after.
+
 ## 2026-05-05 — Lacerte parser real-PDF dry-run (Session D, diagnostic only)
 
 First real-data run of the Lacerte client-list importer, against `D:\tax-test-data\lacerte_pdfs\2025 Custom Reports - Ken's client list.pdf` (86,070 B, 8 pages, ~30 minutes after Session C). Pure diagnostic — no DB writes, no code edits, no commits except the memory update. Working tree was clean throughout. See STATUS.md for the full per-anomaly breakdown.

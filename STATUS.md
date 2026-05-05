@@ -4,9 +4,21 @@
 2026-05-05
 
 ## Currently in progress
-- **Lacerte parser targeted fixes** (Anomaly 1: address y-bucket wrap drops state/zip; Anomaly 2: spouse-name fallback when LNF lacks "AND") + synthetic-fixture coverage for both. ~1–2 hour scope. Diagnostic from Session D documents the bugs precisely; both are bounded and do not require touching the LNF regex or column boundaries.
+- (none — Session E completed the Lacerte demographics import; Session F (favicon) starting next)
 
-## Last session recap (2026-05-05 Session D) — Lacerte importer dry-run against real PDF
+## Last session recap (2026-05-05 Session E) — Lacerte client-list import (real, --commit)
+- **Goal:** Promote Session D's validated dry-run to a real import. `--commit --no-sanitize` against the same 86-KB Lacerte PDF.
+- **Single commit this session:** the memory update at the end. Working tree was clean throughout.
+- **Importer summary:** `Imported: created=13, updated=109, nochange=0, errors=0` — exact match to Session D's prediction.
+- **Verification (data + API + Supabase MCP all agree):**
+  - 121 `returns_taxpayer` rows globally
+  - 121 individual TaxReturns for tax_year=2025 (firm-scoped)
+  - 690 individual entities firm-wide (most pre-existing from S-corp / partnership relations)
+  - Return Manager dashboard "Individual" tab count: **121** — confirmed by replicating `TaxReturnViewSet.list()`'s aggregation. The data layer + API layer both produce 121 individual returns; a browser refresh of the Return Manager will show the same.
+- **One soft anomaly:** importer processed 122 records, but only 121 Taxpayer rows resulted. Source PDF has 122 distinct SSNs (no duplicates), so the collision happened during upsert. Most likely cause: two records share the same `Client.name` (the third-fallback lookup after `Taxpayer.ssn` and `Entity.ein` both miss); two distinct people with identical "LAST, FIRST [M]" name strings would collide on the third lookup, share an Entity, and produce one Taxpayer for both. Doesn't affect the user-visible count (Individual tab shows 121); flagged for awareness, not investigated further this session.
+- **Diagnostic artifacts:** `D:\tax-test-data\_session_e_logs\` (`step2_real_import.log` with REAL PII; `verify.py`, `dashboard_counts.py`, `dup_check.py` — counts only, no PII output). Keep until Session D's parser-fix session lands; delete after.
+
+## Previous session recap (2026-05-05 Session D) — Lacerte importer dry-run against real PDF
 - **Goal:** Diagnostic-only run of the Lacerte client-list importer against the real Lacerte custom-report PDF (`D:\tax-test-data\lacerte_pdfs\2025 Custom Reports - Ken's client list.pdf`, 86,070 B). No DB writes, no code edits. The synthetic ReportLab fixtures the parser tests use never exercised real-PDF column geometry.
 - **No commits this session except the memory update at the end.** Working tree was clean throughout.
 
@@ -44,6 +56,7 @@ A 3rd minor anomaly — 1 record with `sp_dob` extracted but no `sp_ssn` and no 
 - Diagnostic artifacts (logs + ad-hoc Python) live at `D:\tax-test-data\_session_d_logs\` outside the repo. Keep until the parser-fix session lands; delete afterward.
 
 ## Recently completed
+- **2026-05-05 (Session E)** — Lacerte client-list import (real, `--commit --no-sanitize`). 121 individual TaxReturns now in DB for TY 2025. `created=13, updated=109, errors=0`. No code changes; memory update only.
 - **2026-05-05 (Session D)** — Lacerte importer dry-run against real PDF. 122 records parsed; 95–100% field accuracy; 2 bounded parser bugs identified for a future targeted-fix session. No commits except memory update. Working tree clean throughout.
 - **2026-05-05 (Session C)** — Code-drift commits 10–14 + Phase 0. 6 commits pushed to origin/main.
 - **2026-04-28 (Session B)** — Cleanup commits 1, 2, 3, 5, 6, 7, 8, 9 (Commit 4 deferred). 8 commits pushed to origin/main as `a385720..ba7649d`.
