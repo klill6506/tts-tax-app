@@ -39,10 +39,11 @@ SPA_DIR = Path(BASE_DIR).parent / "client" / "dist-web"  # noqa: F405
 if SPA_DIR.exists():
     WHITENOISE_ROOT = str(SPA_DIR)
 
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+# Override staticfiles for WhiteNoise; keep Supabase default backend from base.py
+if "STORAGES" not in dir():
+    STORAGES = {}  # noqa: F841
+STORAGES["staticfiles"] = {
+    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
 }
 
 # ---------------------------------------------------------------------------

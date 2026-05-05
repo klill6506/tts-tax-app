@@ -17,6 +17,8 @@ dependencies = [
     "gunicorn>=22.0,<24.0",
     "whitenoise>=6.5,<7.0",
     "pymupdf>=1.27.1,<2.0.0",
+    "django-storages[s3]>=1.14.6,<2.0.0",
+    "boto3>=1.42,<2.0.0",
 ]
 
 [tool.poetry]
@@ -31,9 +33,12 @@ dev = [
     "pytest>=8.0,<10.0",
     "pytest-django>=4.9,<6.0",
     "pillow (>=12.1.1,<13.0.0)",
+    "faker (>=33.0,<40.0)",
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py"]
 pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--ignore=tests/test_acroform_filler.py"

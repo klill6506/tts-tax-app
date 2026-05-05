@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "apps.returns",
     "apps.tts_forms",
     "apps.ai_help",
+    "storages",
+    "apps.documents",
 ]
 
 # ---------------------------------------------------------------------------
@@ -113,6 +115,41 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # IRS PDF templates directory (repo root / resources / irs_forms)
 IRS_FORMS_DIR = BASE_DIR.parent / "resources" / "irs_forms"
+
+# ---------------------------------------------------------------------------
+# Supabase Storage (S3-compatible) for document management
+# ---------------------------------------------------------------------------
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "tax-documents")
+
+_PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0] if SUPABASE_URL else ""
+
+# Only configure S3 backend if credentials exist; otherwise use local filesystem
+if os.getenv("SUPABASE_S3_ACCESS_KEY"):
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "bucket_name": SUPABASE_STORAGE_BUCKET,
+                "endpoint_url": f"https://{_PROJECT_REF}.supabase.co/storage/v1/s3" if _PROJECT_REF else "",
+                "access_key": os.getenv("SUPABASE_S3_ACCESS_KEY", ""),
+                "secret_key": os.getenv("SUPABASE_S3_SECRET_KEY", ""),
+                "region_name": "us-east-1",
+                "default_acl": "private",
+                "addressing_style": "path",
+                "signature_version": "s3v4",
+                "querystring_auth": True,
+                "file_overwrite": False,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+# Max upload size: 25 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
