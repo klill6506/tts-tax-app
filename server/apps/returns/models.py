@@ -1441,6 +1441,7 @@ class Taxpayer(models.Model):
     zip_code = models.CharField(max_length=10, blank=True, default="")
     # Other
     date_of_birth = models.DateField(null=True, blank=True)
+    spouse_date_of_birth = models.DateField(null=True, blank=True)
     occupation = models.CharField(max_length=100, blank=True, default="")
     spouse_occupation = models.CharField(max_length=100, blank=True, default="")
     standard_deduction_override = models.DecimalField(
