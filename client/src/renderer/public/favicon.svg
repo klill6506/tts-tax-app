@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="2" fill="#1e40af"/>
+  <text x="16" y="16"
+        font-family="Manrope, 'Segoe UI', system-ui, -apple-system, sans-serif"
+        font-weight="800"
+        font-size="14"
+        letter-spacing="-0.6"
+        fill="#ffffff"
+        text-anchor="middle"
+        dominant-baseline="central">TTS</text>
+</svg>
