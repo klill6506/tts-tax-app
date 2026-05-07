@@ -1,42 +1,65 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-05
+2026-05-07
 
 ## Currently in progress
-- (stub — populate at end of active-work sessions)
+- **1040 UI work** — partially started by Session G. The W-2 entry surface is now production-shaped (employer name + EIN + Box b address + Box 15 + autofill). Remaining surface area: taxpayer info tab (real fields), interest income tab (form expanded), W-2 boxes 3–6 / 12 / 13 / 14 / 18–20, dependent UI. Backend models for the missing W-2 boxes already exist (boxes 3–6 nullable on `W2Income`); rest is frontend wiring + new fields.
 
-## Last session recap (2026-05-05 Session F) — TTS favicon
-- **Goal:** Replace the default empty favicon with a TTS wordmark using the project's brand colors.
-- **One commit shipped:** `5d8eb1a` (`feat(client): add TTS favicon — blue-800 background, white mark`). Pushed to `origin/main`.
-- **Files changed:** `client/src/renderer/public/favicon.svg` (new, 426 B) and `client/src/renderer/index.html` (+1 line — `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`).
-- **Design choices:**
-  - Background `#1e40af` (Tailwind blue-800, the documented brand color in CLAUDE.md "Blue-800 nav, white cards").
-  - Wordmark "TTS" in white, weight 800, font stack `Manrope, "Segoe UI", system-ui, …` (Manrope preferred but unreliable — favicons load before web fonts — so the system-ui fallback is the realistic primary).
-  - 32×32 viewBox, 2px corner radius, scales cleanly to 16×16.
-  - Initially drafted in Charcoal & Gold (the default theme); switched to blue/white after eyeball review since blue is the documented brand color across the app.
-- **Vite path note:** the project's Vite `root` is `client/src/renderer/`, so the convention public dir is `client/src/renderer/public/` (not `client/public/`). No `vite.config.ts` change needed — Vite copies it to `dist-web/` on build.
-- **Smoke test:** spun up `vite` dev server, `GET /favicon.svg` returned `200 OK` + `Content-Type: image/svg+xml` + matching body, and the served `/` HTML contained the new `<link>` tag. Both background tasks stopped cleanly.
-- Browser favicon caches aggressively — Ctrl+Shift+R on the dashboard to see the new icon.
+## Last session recap (2026-05-07 Session G) — EIN/Employer database + W-2 autofill
+- **Goal:** Build a federal-EIN-keyed Employer database, bulk-import 3,832 employers from a TaxWise CSV export, and wire EIN-based autofill into the W-2 entry UI on the 1040 module. Plus: a learning loop that promotes user-typed W-2 employers into the central database for future autofill.
+- **Range pushed to origin/main:** `911b014..<HEAD>` (5 new commits).
 
-## Previous session recap (2026-05-05 Session E) — Lacerte client-list import (real, --commit)
-- **Goal:** Promote Session D's validated dry-run to a real import. `--commit --no-sanitize` against the same 86-KB Lacerte PDF.
-- **Single commit this session:** the memory update at the end. Working tree was clean throughout.
-- **Importer summary:** `Imported: created=13, updated=109, nochange=0, errors=0` — exact match to Session D's prediction.
-- **Verification (data + API + Supabase MCP all agree):**
-  - 121 `returns_taxpayer` rows globally
-  - 121 individual TaxReturns for tax_year=2025 (firm-scoped)
-  - 690 individual entities firm-wide (most pre-existing from S-corp / partnership relations)
-  - Return Manager dashboard "Individual" tab count: **121** — confirmed by replicating `TaxReturnViewSet.list()`'s aggregation. The data layer + API layer both produce 121 individual returns; a browser refresh of the Return Manager will show the same.
-- **One soft anomaly:** importer processed 122 records, but only 121 Taxpayer rows resulted. Source PDF has 122 distinct SSNs (no duplicates), so the collision happened during upsert. Most likely cause: two records share the same `Client.name` (the third-fallback lookup after `Taxpayer.ssn` and `Entity.ein` both miss); two distinct people with identical "LAST, FIRST [M]" name strings would collide on the third lookup, share an Entity, and produce one Taxpayer for both. Doesn't affect the user-visible count (Individual tab shows 121); flagged for awareness, not investigated further this session.
-- **Diagnostic artifacts:** `D:\tax-test-data\_session_e_logs\` (`step2_real_import.log` with REAL PII; `verify.py`, `dashboard_counts.py`, `dup_check.py` — counts only, no PII output). Keep until Session D's parser-fix session lands; delete after.
+| # | SHA | Phase | Message |
+|---|-----|-------|---|
+| 1 | `edc2ecb` | 1–3 | feat(employers): Employer + EmployerStateAccount models, bulk import command, parser utilities |
+| 2 | `3f4c450` | 6 | feat(employers): GET /api/v1/employers/lookup/ autofill endpoint |
+| 3 | `e56e993` | 7a | feat(w2): employer-snapshot + Box 15 fields with learning loop on save |
+| 4 | `7914389` | 7b | feat(client): EIN autofill on W-2 entry — populates employer name/address from EIN database |
+| 5 | (next) | 8 | chore(memory): update STATUS.md and MEMORY.md after Session G |
 
-> Session D (parser dry-run, 2026-05-05) detail lives in MEMORY.md — the field-quality table, the two bounded-bug write-ups, and the diagnostic-artifact location. One-liner in "Recently completed" below.
+### Numbers
+| Metric | Value |
+|---|---|
+| `employers_employer` rows after real import | **3,828** ✅ (3,832 CSV − 4 malformed-EIN errors = 3,828) |
+| Real-import error rate | 0.10% (4 / 3,832) |
+| Records flagged with `parse_warning` | 223 (5.8%) — line-2 detection 197, unparseable city/state/zip 16, etc. |
+| `employers_employerstateaccount` rows | 0 (state IDs accumulate via learning loop only) |
+| Pytest across the session | **71 / 71 passing** (32 parser + 14 import + 13 API/autofill-flow + 12 W-2 learning) |
+| New TypeScript errors | 0 (verified via stash + tsc) |
+
+### Schema
+- New app: `apps.employers`. Two models — `Employer` (1 row per EIN, universal across firms) and `EmployerStateAccount` (1 row per `(employer, state)`, many states per employer for the TaxWise-bug case where Acme has GA + SC + TN accounts).
+- RLS enabled on both new tables in migration 0001 to match the April 21 audit policy (default-deny, no policies; Django superuser bypasses).
+- W2Income migration 0034 adds 6 fields: `employer_street/city/state/zip` (snapshot — frozen at entry time per tax-law historical-accuracy requirement) plus `state_box15` and `state_id_number` (Box 15).
+
+### Autofill flow
+- `GET /api/v1/employers/lookup/?ein=<value>` returns 200 with full employer payload + nested state_accounts; 404 if not found; 400 if EIN malformed; 401/403 if unauthenticated. Permission: `IsFirmMember`.
+- W-2 entry component (`FormEditor.tsx` `W2IncomeSection`) was rewritten as a card-per-W-2 layout with three rows: identity+amounts / address / Box 15. EIN-onBlur fires the lookup; Box-15-state-onBlur uses cached `state_accounts` (no extra API call). Yellow text on autofilled fields per CLAUDE.md color convention; red border on EIN input when lookup returns 400; green text on user-entered. Yellow indicator is session-scoped (resets on page reload — persistent yellow tracking is a future polish).
+
+### Learning loop
+- `apps/employers/learning.py::sync_w2_to_employer_db` is called from the W-2 viewset on create + update.
+- Idempotent: `get_or_create` for both Employer and EmployerStateAccount. **Never** overwrites existing rows (so verified=true canonical rows from the bulk import stay untouched).
+- Best-effort by contract: helper has internal try/except, view has outer try/except. A learning-loop failure can never roll back the W-2 save.
+
+### Notes & quirks from this session
+- **Source CSV path mismatch.** The plan referenced `EIN_Database.csv` (underscore); actual file at `EIN Database.csv` (space). Used the actual filename.
+- **RLS-enable RunSQL** added to the new app's `0001_initial` migration without explicit pre-approval — judgment call based on the April 21 audit policy. Flagged at Checkpoint 1; Ken approved by saying "yes" to proceed.
+- **Test-DB pooler stickiness** required a couple of MCP-driven kills mid-session (Supavisor reconnects fast). Documented; tied to the long-pending test-DB strategy decision.
+- **Address line-2 false-positive risk.** The "starts with number under 100" heuristic likely catches some legitimate addresses like "50 Main St" — but it's only a `parse_warning` flag, not a rejection. Preparers can review later.
+- **Snapshot semantics.** W2Income.employer_* fields are frozen at entry time. If Acme moves their HQ in 2027, the 2025 W-2 record stays correct. Autofill writes initial values; user edits are independent thereafter.
+- **`source` field semantics.** `source="taxwise_import"` for the 3,828 bulk-imported rows, `source="user_entered"` for everything created via the learning loop. Today both default to `verified=False` — a future polish session could let preparers mark records verified after first review.
+
+## Previous session recap (2026-05-05 Session F) — TTS favicon
+- **Commit:** `5d8eb1a`. New SVG at `client/src/renderer/public/favicon.svg`, `<link>` tag added to `index.html`. Blue-800 background, white "TTS" wordmark, scales cleanly to 16×16. Smoke-tested via vite dev server.
+
+> Sessions D + E (Lacerte parser dry-run + real import) detail lives in MEMORY.md.
 
 ## Recently completed
-- **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`. Two files: `client/src/renderer/public/favicon.svg` (new) + `client/src/renderer/index.html` (+1 link tag).
+- **2026-05-07 (Session G)** — EIN/Employer database + W-2 autofill. 5 commits pushed. 3,828 employers in DB; W-2 entry UI now autofills name+address from EIN; learning loop promotes user-typed employers and state-IDs.
+- **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`.
 - **2026-05-05 (Session E)** — Lacerte client-list import (real, `--commit --no-sanitize`). 121 individual TaxReturns now in DB for TY 2025. `created=13, updated=109, errors=0`. No code changes; memory update only.
-- **2026-05-05 (Session D)** — Lacerte importer dry-run against real PDF. 122 records parsed; 95–100% field accuracy; 2 bounded parser bugs identified for a future targeted-fix session. No commits except memory update. Working tree clean throughout.
+- **2026-05-05 (Session D)** — Lacerte importer dry-run against real PDF. 122 records parsed; 95–100% field accuracy; 2 bounded parser bugs identified for a future targeted-fix session. No commits except memory update.
 - **2026-05-05 (Session C)** — Code-drift commits 10–14 + Phase 0. 6 commits pushed to origin/main.
 - **2026-04-28 (Session B)** — Cleanup commits 1, 2, 3, 5, 6, 7, 8, 9 (Commit 4 deferred). 8 commits pushed to origin/main as `a385720..ba7649d`.
 - **2026-04-28 (Session A)** — PII extraction; 295 files + ~448.9 MiB moved to `D:\tax-test-data\`; `.gitignore` hardened. Janitorial only — no commits, no push.
@@ -45,19 +68,22 @@
 - **2026-04-12** — 1040 rough draft (individual return skeleton) — commit `509f79e`.
 
 ## Suggested next sessions
-1. **1040 UI work** — taxpayer info / W-2 / interest tabs are skeleton-only. Now that demographics can be imported and the parser is validated as good-enough, the data-entry surface is the actual bottleneck for using a 1040. **This is the highest-value next session.**
-2. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
+1. **1040 UI — finish the entry surface.** Taxpayer info tab (real fields, not placeholders), W-2 boxes 3–6 / 12 / 13 / 14 / 18–20, interest income tab beyond a payer + amount, dependents UI. Most of the backend exists (`W2Income` already has nullable boxes 3–6; `Taxpayer` has a full field surface). Pure frontend wiring with maybe 1–2 small model additions.
+2. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
+3. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
+4. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
    - Read `LEFT_COLUMNS["sp_first"]` and `["sp_last"]` as fallback when `_parse_name_lnf` returns empty spouse parts.
    - When right-page state OR zip are empty but street/city are populated, scan one y-bucket below for the missing values.
-   Add corresponding test cases to the synthetic fixture (one row per fix). Re-run Session D's diagnostic afterward to confirm anomaly counts drop.
-3. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
-4. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in the appropriate `tax-documents/<firm>/<entity>/<year>/` path. Hook lives in `renderer.render_complete_return()`.
-5. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function. Pattern to mirror: `test_lacerte_clientlist_parser.py` (synthetic ReportLab PDF) and the documents app test approach.
-6. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run reminds us this isn't ideal. Three options documented in `config/settings/test.py` docstring; decision still pending.
+5. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
+6. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
+7. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
+8. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
 
 ## Known issues / blockers
-- **Lacerte parser — 2 bounded bugs documented** (Anomalies 1 and 2 above). 7 / 122 records have minor field gaps. Usable as-is for development data; targeted fixes queued as suggested-next-session #2.
-- **Documents app — Supabase Storage not yet wired in prod**. Code is conditional on `SUPABASE_S3_ACCESS_KEY`; without it Django falls back to local FS. Needs bucket + keys before the docs UI is usable on Render.
-- **Partnership importer has no automated test** — TODO in commit body of `8a27ade`. Refactor needed (extract row-parser, add synthetic xlsx fixture).
-- **Test-DB teardown warning** — every pytest run reports `OperationalError('database "test_postgres" is being accessed by other users')`. The conftest hook handles it post-run, but it's noisy. Permanent fix tied to the test-DB strategy decision above.
+- **Lacerte parser — 2 bounded bugs documented** (Anomalies 1 and 2). 7 / 122 records have minor field gaps. Usable as-is for development data; targeted fixes queued as next-session #4.
+- **Documents app — Supabase Storage not yet wired in prod.** Code is conditional on `SUPABASE_S3_ACCESS_KEY`; without it Django falls back to local FS.
+- **Employer database — 4 malformed-EIN rows from the TaxWise CSV silently dropped on import.** Logged as errors in the import summary but not preserved. If those 4 employers ever get a W-2 typed in, the learning loop will create a clean record for them.
+- **Partnership importer has no automated test** — TODO in commit body of `8a27ade`.
+- **Test-DB teardown warning + pooler stickiness** — known intermittent issue; mid-session manual `pg_terminate_backend` may be required. Permanent fix tied to test-DB strategy decision.
+- **Yellow autofill indicator is session-scoped only.** Across page reloads, the W-2 entry UI loses the yellow markers (autofilled fields render as green like user-entered ones). Persistent autofill-state tracking is a future polish.
 - Empty `Lacerte Export\` dir shell at repo root persists (locked by Explorer/SearchIndexer; resolves on reboot). Invisible to git.
