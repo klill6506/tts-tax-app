@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.ai_help",
     "storages",
     "apps.documents",
+    "apps.employers",
 ]
 
 # ---------------------------------------------------------------------------
