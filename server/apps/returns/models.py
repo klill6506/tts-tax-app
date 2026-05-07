@@ -1502,6 +1502,26 @@ class W2Income(models.Model):
         max_digits=15, decimal_places=2, null=True, blank=True,
         help_text="Box 17: State income tax.",
     )
+    # Employer address SNAPSHOT — frozen at W-2 entry time so the historical
+    # record stays accurate if the employer's address changes in later years.
+    # Autofilled from apps.employers.Employer when the EIN matches; otherwise
+    # user-typed (which then seeds a new Employer row via the learning loop).
+    employer_street = models.CharField(max_length=255, blank=True, default="")
+    employer_city = models.CharField(max_length=100, blank=True, default="")
+    employer_state = models.CharField(max_length=2, blank=True, default="")
+    employer_zip = models.CharField(max_length=10, blank=True, default="")
+    # Box 15 — state of the state-tax line. The state code lives here; the
+    # employer's state ID for that state is autofilled from
+    # EmployerStateAccount when the (employer, state) pair is known, or
+    # creates a new EmployerStateAccount row on save when not.
+    state_box15 = models.CharField(
+        max_length=2, blank=True, default="",
+        help_text="Box 15: State code (2-letter).",
+    )
+    state_id_number = models.CharField(
+        max_length=30, blank=True, default="",
+        help_text="Box 15: Employer's state ID number.",
+    )
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

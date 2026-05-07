@@ -2570,6 +2570,8 @@ class TaxReturnViewSet(
     @action(detail=True, methods=["get", "post"], url_path="w2-incomes")
     def w2_incomes(self, request, pk=None):
         """List or create W-2 income entries."""
+        from apps.employers.learning import sync_w2_to_employer_db
+
         tax_return = self.get_object()
 
         if request.method == "GET":
@@ -2579,6 +2581,10 @@ class TaxReturnViewSet(
         ser = W2IncomeSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         ser.save(tax_return=tax_return)
+        try:
+            sync_w2_to_employer_db(ser.instance)
+        except Exception:  # noqa: BLE001 — learning loop is best-effort
+            pass
         self._recompute_1040(tax_return)
         return Response(ser.data, status=status.HTTP_201_CREATED)
 
@@ -2589,6 +2595,8 @@ class TaxReturnViewSet(
     )
     def w2_income_detail(self, request, pk=None, w2_id=None):
         """Update or delete a single W-2 income entry."""
+        from apps.employers.learning import sync_w2_to_employer_db
+
         tax_return = self.get_object()
         try:
             w2 = W2Income.objects.get(id=w2_id, tax_return=tax_return)
@@ -2603,6 +2611,10 @@ class TaxReturnViewSet(
         ser = W2IncomeSerializer(w2, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
+        try:
+            sync_w2_to_employer_db(ser.instance)
+        except Exception:  # noqa: BLE001 — learning loop is best-effort
+            pass
         self._recompute_1040(tax_return)
         return Response(ser.data)
 
