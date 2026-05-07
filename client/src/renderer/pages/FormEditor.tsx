@@ -260,6 +260,12 @@ interface W2IncomeRow {
   id: string;
   employer_name: string;
   employer_ein: string;
+  // Snapshot fields — frozen at W-2 entry time per tax-law
+  // historical-accuracy requirement.
+  employer_street: string;
+  employer_city: string;
+  employer_state: string;
+  employer_zip: string;
   wages: string;
   federal_tax_withheld: string;
   social_security_wages: string | null;
@@ -268,7 +274,28 @@ interface W2IncomeRow {
   medicare_tax: string | null;
   state_wages: string | null;
   state_tax_withheld: string | null;
+  // Box 15
+  state_box15: string;
+  state_id_number: string;
   order: number;
+}
+
+interface EmployerStateAccountAutofill {
+  state: string;
+  state_id_number: string;
+  verified: boolean;
+}
+
+interface EmployerLookupResult {
+  ein: string;
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  source: string;
+  verified: boolean;
+  state_accounts: EmployerStateAccountAutofill[];
 }
 
 interface InterestIncomeRow {
@@ -7411,61 +7438,274 @@ function TaxpayerInfoSection({
 // ---------------------------------------------------------------------------
 
 function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string; w2s: W2IncomeRow[]; onRefresh: () => void }) {
+  // Per-W-2 cache of state_accounts from the most recent EIN lookup, used
+  // to autofill state_id_number when the preparer enters Box 15 state.
+  const [stateAccountsByW2, setStateAccountsByW2] = useState<Record<string, EmployerStateAccountAutofill[]>>({});
+  // Ephemeral set of "{w2.id}.{field}" keys that were autofilled in this
+  // session — drives the yellow-text indicator per CLAUDE.md color
+  // convention (yellow = value pulled from another source).
+  const [autofilledKeys, setAutofilledKeys] = useState<Set<string>>(new Set());
+  // Per-W-2 EIN error indicator (red border on the EIN input when the
+  // lookup endpoint returns 400 = malformed EIN).
+  const [einErrors, setEinErrors] = useState<Record<string, boolean>>({});
+
+  const fieldKey = (id: string, field: string) => `${id}.${field}`;
+  const isAutofilled = (id: string, field: string) => autofilledKeys.has(fieldKey(id, field));
+
+  const markAutofilled = (id: string, fields: string[]) => {
+    setAutofilledKeys((prev) => {
+      const next = new Set(prev);
+      fields.forEach((f) => next.add(fieldKey(id, f)));
+      return next;
+    });
+  };
+
+  const clearAutofilled = (id: string, field: string) => {
+    setAutofilledKeys((prev) => {
+      if (!prev.has(fieldKey(id, field))) return prev;
+      const next = new Set(prev);
+      next.delete(fieldKey(id, field));
+      return next;
+    });
+  };
+
   const handleAdd = async () => {
-    await post(`/tax-returns/${taxReturnId}/w2-incomes/`, { employer_name: "New Employer", wages: "0.00", federal_tax_withheld: "0.00" });
+    await post(`/tax-returns/${taxReturnId}/w2-incomes/`, {
+      employer_name: "New Employer",
+      wages: "0.00",
+      federal_tax_withheld: "0.00",
+    });
     onRefresh();
   };
+
   const handleUpdate = async (id: string, field: string, value: string) => {
+    clearAutofilled(id, field);
     await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, { [field]: value });
     onRefresh();
   };
+
   const handleDelete = async (id: string) => {
     await del(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`);
+    onRefresh();
+  };
+
+  // EIN-onBlur autofill: GET /api/v1/employers/lookup/?ein=X
+  //   200 → PATCH name/street/city/state/zip from the response, mark them
+  //         autofilled (yellow), cache state_accounts for Box 15 lookup.
+  //   400 → mark the EIN input red (malformed).
+  //   404 → leave fields blank for manual entry; learning loop will create
+  //         a new Employer record on save.
+  const handleEinBlur = async (id: string, einValue: string) => {
+    setEinErrors((prev) => ({ ...prev, [id]: false }));
+    // Always persist the EIN value the user typed.
+    clearAutofilled(id, "employer_ein");
+    await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, { employer_ein: einValue });
+    if (!einValue.trim()) {
+      setStateAccountsByW2((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      onRefresh();
+      return;
+    }
+    const resp = await get(`/employers/lookup/?ein=${encodeURIComponent(einValue)}`);
+    if (resp.status === 400) {
+      setEinErrors((prev) => ({ ...prev, [id]: true }));
+      onRefresh();
+      return;
+    }
+    if (resp.status !== 200) {
+      // 404 — no autofill, just refresh
+      setStateAccountsByW2((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      onRefresh();
+      return;
+    }
+    const data = resp.data as EmployerLookupResult;
+    await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, {
+      employer_name: data.name,
+      employer_street: data.street,
+      employer_city: data.city,
+      employer_state: data.state,
+      employer_zip: data.zip,
+    });
+    setStateAccountsByW2((prev) => ({ ...prev, [id]: data.state_accounts }));
+    markAutofilled(id, [
+      "employer_name", "employer_street", "employer_city",
+      "employer_state", "employer_zip",
+    ]);
+    onRefresh();
+  };
+
+  // Box-15-state-onBlur autofill: cached state_accounts → state_id_number.
+  // No new API call — uses the snapshot from the EIN lookup.
+  const handleBox15StateBlur = async (id: string, stateValue: string) => {
+    clearAutofilled(id, "state_box15");
+    await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, {
+      state_box15: stateValue.toUpperCase(),
+    });
+    if (!stateValue.trim()) {
+      onRefresh();
+      return;
+    }
+    const accounts = stateAccountsByW2[id] || [];
+    const match = accounts.find((a) => a.state === stateValue.toUpperCase());
+    if (match) {
+      await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, {
+        state_id_number: match.state_id_number,
+      });
+      markAutofilled(id, ["state_id_number"]);
+    }
     onRefresh();
   };
 
   const totalWages = w2s.reduce((sum, w) => sum + parseFloat(w.wages || "0"), 0);
   const totalWithheld = w2s.reduce((sum, w) => sum + parseFloat(w.federal_tax_withheld || "0"), 0);
 
+  // Color: yellow for autofilled (per CLAUDE.md), green for user-entered.
+  // Red border for EIN inputs flagged by the lookup endpoint as malformed.
+  const inputCls = (id: string, field: string) =>
+    `w-full border border-border rounded px-2 py-1 text-sm bg-card ${
+      isAutofilled(id, field) ? "text-yellow-600" : "text-green-600"
+    }`;
+  const einInputCls = (id: string) =>
+    `w-full rounded px-2 py-1 text-sm bg-card border ${
+      einErrors[id] ? "border-danger" : "border-border"
+    } ${isAutofilled(id, "employer_ein") ? "text-yellow-600" : "text-green-600"}`;
+
   return (
     <div className="bg-card rounded-lg border border-border p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-tx-primary">W-2 Wage Statements</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-tx-primary">W-2 Wage Statements</h3>
+          <p className="text-xs text-tx-muted mt-1">
+            Type an EIN and tab out — name + address autofill from the
+            employer database (yellow = pulled from DB, green = entered manually).
+          </p>
+        </div>
         <button onClick={handleAdd} className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90">+ Add W-2</button>
       </div>
       {w2s.length === 0 ? (
         <p className="text-sm text-tx-muted italic">No W-2s entered. Click "+ Add W-2" to begin.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs text-tx-secondary">
-              <th className="text-left py-2 font-medium">Employer</th>
-              <th className="text-left py-2 font-medium">EIN</th>
-              <th className="text-right py-2 font-medium">Wages (Box 1)</th>
-              <th className="text-right py-2 font-medium">Fed Withheld (Box 2)</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {w2s.map((w2) => (
-              <tr key={w2.id} className="border-b border-border/50">
-                <td className="py-2"><input defaultValue={w2.employer_name} onBlur={(e) => handleUpdate(w2.id, "employer_name", e.target.value)} className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
-                <td className="py-2"><input defaultValue={w2.employer_ein} onBlur={(e) => handleUpdate(w2.id, "employer_ein", e.target.value)} className="w-28 border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
-                <td className="py-2"><input defaultValue={w2.wages} onBlur={(e) => handleUpdate(w2.id, "wages", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
-                <td className="py-2"><input defaultValue={w2.federal_tax_withheld} onBlur={(e) => handleUpdate(w2.id, "federal_tax_withheld", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
-                <td className="py-2 text-right"><button onClick={() => handleDelete(w2.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button></td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="font-semibold text-tx-primary">
-              <td className="py-2" colSpan={2}>Totals</td>
-              <td className="py-2 text-right">{totalWages.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 text-right">{totalWithheld.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+        <div className="space-y-4">
+          {w2s.map((w2) => (
+            <div key={w2.id} className="border border-border rounded-lg p-4 bg-surface-alt">
+              {/* Row 1: identity + amounts */}
+              <div className="grid grid-cols-12 gap-2 mb-2">
+                <div className="col-span-4">
+                  <label className="text-xs text-tx-secondary block mb-1">Employer name</label>
+                  <input
+                    key={`name-${w2.id}-${w2.employer_name}`}
+                    defaultValue={w2.employer_name}
+                    onBlur={(e) => handleUpdate(w2.id, "employer_name", e.target.value)}
+                    className={inputCls(w2.id, "employer_name")}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-tx-secondary block mb-1">EIN (Box b)</label>
+                  <input
+                    key={`ein-${w2.id}-${w2.employer_ein}`}
+                    defaultValue={w2.employer_ein}
+                    onBlur={(e) => handleEinBlur(w2.id, e.target.value)}
+                    placeholder="XX-XXXXXXX"
+                    className={einInputCls(w2.id)}
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="text-xs text-tx-secondary block mb-1">Wages (Box 1)</label>
+                  <input
+                    defaultValue={w2.wages}
+                    onBlur={(e) => handleUpdate(w2.id, "wages", e.target.value)}
+                    className={inputCls(w2.id, "wages") + " text-right"}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-tx-secondary block mb-1">Fed Withheld (Box 2)</label>
+                  <input
+                    defaultValue={w2.federal_tax_withheld}
+                    onBlur={(e) => handleUpdate(w2.id, "federal_tax_withheld", e.target.value)}
+                    className={inputCls(w2.id, "federal_tax_withheld") + " text-right"}
+                  />
+                </div>
+                <div className="col-span-1 flex items-end justify-end pb-1">
+                  <button onClick={() => handleDelete(w2.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button>
+                </div>
+              </div>
+              {/* Row 2: address (Box c) */}
+              <div className="grid grid-cols-12 gap-2 mb-2">
+                <div className="col-span-5">
+                  <label className="text-xs text-tx-secondary block mb-1">Street (Box c)</label>
+                  <input
+                    key={`street-${w2.id}-${w2.employer_street}`}
+                    defaultValue={w2.employer_street}
+                    onBlur={(e) => handleUpdate(w2.id, "employer_street", e.target.value)}
+                    className={inputCls(w2.id, "employer_street")}
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="text-xs text-tx-secondary block mb-1">City</label>
+                  <input
+                    key={`city-${w2.id}-${w2.employer_city}`}
+                    defaultValue={w2.employer_city}
+                    onBlur={(e) => handleUpdate(w2.id, "employer_city", e.target.value)}
+                    className={inputCls(w2.id, "employer_city")}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-tx-secondary block mb-1">State</label>
+                  <input
+                    key={`state-${w2.id}-${w2.employer_state}`}
+                    defaultValue={w2.employer_state}
+                    onBlur={(e) => handleUpdate(w2.id, "employer_state", e.target.value)}
+                    maxLength={2}
+                    className={inputCls(w2.id, "employer_state") + " uppercase"}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-tx-secondary block mb-1">ZIP</label>
+                  <input
+                    key={`zip-${w2.id}-${w2.employer_zip}`}
+                    defaultValue={w2.employer_zip}
+                    onBlur={(e) => handleUpdate(w2.id, "employer_zip", e.target.value)}
+                    className={inputCls(w2.id, "employer_zip")}
+                  />
+                </div>
+              </div>
+              {/* Row 3: Box 15 */}
+              <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-2">
+                  <label className="text-xs text-tx-secondary block mb-1">Box 15 State</label>
+                  <input
+                    key={`box15-${w2.id}-${w2.state_box15}`}
+                    defaultValue={w2.state_box15}
+                    onBlur={(e) => handleBox15StateBlur(w2.id, e.target.value)}
+                    maxLength={2}
+                    className={inputCls(w2.id, "state_box15") + " uppercase"}
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="text-xs text-tx-secondary block mb-1">State ID number</label>
+                  <input
+                    key={`stateid-${w2.id}-${w2.state_id_number}`}
+                    defaultValue={w2.state_id_number}
+                    onBlur={(e) => handleUpdate(w2.id, "state_id_number", e.target.value)}
+                    className={inputCls(w2.id, "state_id_number")}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+          {/* Totals footer */}
+          <div className="flex justify-end gap-6 text-sm font-semibold text-tx-primary pt-2 border-t border-border">
+            <div>Total Wages: <span className="ml-2">{totalWages.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+            <div>Total Fed Withheld: <span className="ml-2">{totalWithheld.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+          </div>
+        </div>
       )}
     </div>
   );
