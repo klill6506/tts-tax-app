@@ -1523,21 +1523,51 @@ class W2Income(models.Model):
         help_text="Box 15: Employer's state ID number.",
     )
     # Box 7
-    social_security_tips = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    social_security_tips = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 7: Social security tips.",
+    )
     # Box 8
-    allocated_tips = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    allocated_tips = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 8: Allocated tips.",
+    )
     # Box 10
-    dependent_care_benefits = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    dependent_care_benefits = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 10: Dependent care benefits.",
+    )
     # Box 11
-    nonqualified_plans = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    nonqualified_plans = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 11: Nonqualified plans.",
+    )
     # Box 13 — three independent checkboxes
-    statutory_employee = models.BooleanField(default=False)
-    retirement_plan = models.BooleanField(default=False)
-    third_party_sick_pay = models.BooleanField(default=False)
+    statutory_employee = models.BooleanField(
+        default=False,
+        help_text="Box 13: Statutory employee.",
+    )
+    retirement_plan = models.BooleanField(
+        default=False,
+        help_text="Box 13: Retirement plan.",
+    )
+    third_party_sick_pay = models.BooleanField(
+        default=False,
+        help_text="Box 13: Third-party sick pay.",
+    )
     # Box 18-20 — single locality (most W-2s only have one)
-    local_wages = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    local_income_tax = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    locality_name = models.CharField(max_length=50, blank=True, default="")
+    local_wages = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 18: Local wages, tips, etc.",
+    )
+    local_income_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Box 19: Local income tax.",
+    )
+    locality_name = models.CharField(
+        max_length=50, blank=True, default="",
+        help_text="Box 20: Locality name.",
+    )
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

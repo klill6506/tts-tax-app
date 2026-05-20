@@ -7853,7 +7853,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.social_security_wages || ""}
                     onBlur={(e) => handleUpdate(w2.id, "social_security_wages", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "social_security_wages") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7861,7 +7861,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.social_security_tax || ""}
                     onBlur={(e) => handleUpdate(w2.id, "social_security_tax", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "social_security_tax") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7869,7 +7869,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.medicare_wages || ""}
                     onBlur={(e) => handleUpdate(w2.id, "medicare_wages", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "medicare_wages") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7877,7 +7877,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.medicare_tax || ""}
                     onBlur={(e) => handleUpdate(w2.id, "medicare_tax", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "medicare_tax") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7885,7 +7885,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.social_security_tips || ""}
                     onBlur={(e) => handleUpdate(w2.id, "social_security_tips", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "social_security_tips") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7893,7 +7893,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.allocated_tips || ""}
                     onBlur={(e) => handleUpdate(w2.id, "allocated_tips", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "allocated_tips") + " text-right"}
                   />
                 </div>
               </div>
@@ -7953,7 +7953,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                         <input
                           defaultValue={w2.dependent_care_benefits || ""}
                           onBlur={(e) => handleUpdate(w2.id, "dependent_care_benefits", e.target.value || null)}
-                          className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                          className={inputCls(w2.id, "dependent_care_benefits") + " text-right"}
                         />
                       </div>
                       <div>
@@ -7961,7 +7961,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                         <input
                           defaultValue={w2.nonqualified_plans || ""}
                           onBlur={(e) => handleUpdate(w2.id, "nonqualified_plans", e.target.value || null)}
-                          className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                          className={inputCls(w2.id, "nonqualified_plans") + " text-right"}
                         />
                       </div>
                       <div className="col-span-2">
@@ -8026,7 +8026,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.local_wages || ""}
                     onBlur={(e) => handleUpdate(w2.id, "local_wages", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "local_wages") + " text-right"}
                   />
                 </div>
                 <div>
@@ -8034,7 +8034,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.local_income_tax || ""}
                     onBlur={(e) => handleUpdate(w2.id, "local_income_tax", e.target.value || null)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "local_income_tax") + " text-right"}
                   />
                 </div>
                 <div className="col-span-2">
@@ -8042,7 +8042,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.locality_name || ""}
                     onBlur={(e) => handleUpdate(w2.id, "locality_name", e.target.value)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                    className={inputCls(w2.id, "locality_name")}
                   />
                 </div>
               </div>
