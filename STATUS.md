@@ -4,12 +4,12 @@
 2026-05-20
 
 ## Currently in progress
-- **1040 entry surface complete** as of Session H (2026-05-20). Branch `claude/reverent-wescoff-950afe` is unmerged — ready to merge to main when Ken signs off. Remaining 1040 work for future sessions: itemized deductions, Schedules C / D / E, AMT, credits (CTC/ACTC compute, EITC, etc.). All deferred — not in scope for Session H.
+- Nothing in progress. Session H landed on main 2026-05-20.
 
 ## Last session recap (2026-05-20 Session H) — 1040 entry surface completion
 
 - **Goal:** Finish the 1040 individual return entry surface — Dependents (net-new), full 1099-INT box surface, full W-2 box surface (Box 3-6 wire-up + 7-11 + 13 + 18-20 flat + Box 12/14 coded sub-models), and surface `standard_deduction_override`.
-- **Branch:** `claude/reverent-wescoff-950afe` — **11 commits**, base `c634c38`, head `5493f7a`. Not yet merged to main.
+- **Branch:** `claude/reverent-wescoff-950afe` — **13 commits**, base `c634c38`, head `a0baa1f`. **Merged fast-forward to main on 2026-05-20.**
 - **Spec / plan:** `docs/superpowers/specs/2026-05-19-1040-entry-surface-design.md` + `docs/superpowers/plans/2026-05-19-1040-entry-surface.md`.
 
 | # | SHA | Message |
@@ -25,6 +25,8 @@
 | 9 | `7630146` | feat(1040): W2Box12Entry + W2Box14Entry models + nested endpoints + UI |
 | 10 | `a321320` | fix(1040): prefetch box entries + firm-scoping test + Box 14 blank |
 | 11 | `5493f7a` | feat(1040): surface standard_deduction_override in Taxpayer Info |
+| 12 | `732162d` | chore(memory): update STATUS.md + MEMORY.md after 1040 entry surface session |
+| 13 | `a0baa1f` | fix(1040): Taxpayer save triggers recompute + interest footer includes Box 3 |
 
 ### Numbers
 | Metric | Value |
@@ -98,7 +100,7 @@
 > Sessions D + E (Lacerte parser dry-run + real import) detail lives in MEMORY.md.
 
 ## Recently completed
-- **2026-05-20 (Session H)** — 1040 entry surface completion. 11 commits on `claude/reverent-wescoff-950afe` (unmerged). 3 new models (Dependent, W2Box12Entry, W2Box14Entry). 6 migrations. ~30 new tests across 4 files. Branch ready for review/merge.
+- **2026-05-20 (Session H)** — 1040 entry surface completion. 13 commits merged to main fast-forward from `claude/reverent-wescoff-950afe`. 3 new models (Dependent, W2Box12Entry, W2Box14Entry). 6 migrations (0035-0040). ~30 new tests across 4 files. Full backend + UI for Dependents, full 17-box 1099-INT, full W-2 box surface (including Box 12/14 sub-models), and `standard_deduction_override` polish.
 - **2026-05-07 (Session G)** — EIN/Employer database + W-2 autofill. 5 commits pushed. 3,828 employers in DB; W-2 entry UI now autofills name+address from EIN; learning loop promotes user-typed employers and state-IDs.
 - **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`.
 - **2026-05-05 (Session E)** — Lacerte client-list import (real, `--commit --no-sanitize`). 121 individual TaxReturns now in DB for TY 2025. `created=13, updated=109, errors=0`. No code changes; memory update only.
@@ -111,17 +113,17 @@
 - **2026-04-12** — 1040 rough draft (individual return skeleton) — commit `509f79e`.
 
 ## Suggested next sessions
-1. **Merge `claude/reverent-wescoff-950afe` to main.** Branch has 11 commits implementing the 1040 entry surface. Run `npm run build` + `pytest tests/test_dependents.py tests/test_interest_income_expansion.py tests/test_w2_expansion.py tests/test_w2_box_entries.py -v` one more time before fast-forward merging.
-2. **1040 — CTC/ACTC compute wiring.** Dependents model + UI persist `qualifies_ctc` / `qualifies_odc` flags via serializer, but `compute.py` does not yet calculate Line 19 (CTC) or Line 28 (ACTC). Add formulas to `FORMULAS_1040` and the bracket-aware reduction at higher AGI.
-3. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
-4. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
-5. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
+1. **1040 — CTC/ACTC compute wiring.** Dependents model + UI persist `qualifies_ctc` / `qualifies_odc` flags via serializer, but `compute.py` does not yet calculate Line 19 (CTC) or Line 28 (ACTC). Add formulas to `FORMULAS_1040` and the bracket-aware reduction at higher AGI.
+2. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
+3. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
+4. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
    - Read `LEFT_COLUMNS["sp_first"]` and `["sp_last"]` as fallback when `_parse_name_lnf` returns empty spouse parts.
    - When right-page state OR zip are empty but street/city are populated, scan one y-bucket below for the missing values.
-6. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
-7. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
-8. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
-9. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
+5. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
+6. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
+7. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
+8. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
+9. **N+1 cleanup on retrieve serializer.** Pre-existing — `w2_incomes` and `interest_incomes` are not in the `prefetch_related` list on `TaxReturnViewSet.get_queryset()` retrieve branch. One-line fix; final review flagged it but it pre-dated this branch and wasn't blocking.
 
 ## Known issues / blockers
 - **Lacerte parser — 2 bounded bugs documented** (Anomalies 1 and 2). 7 / 122 records have minor field gaps. Usable as-is for development data; targeted fixes queued as next-session #4.
