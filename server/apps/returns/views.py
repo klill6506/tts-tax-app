@@ -755,6 +755,7 @@ class TaxReturnViewSet(
                 "rental_properties",
                 "dispositions",
                 "preparer_info",
+                "dependents",
             )
         # Exclude state returns from list view
         if self.action == "list":

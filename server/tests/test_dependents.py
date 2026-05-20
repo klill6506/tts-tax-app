@@ -91,6 +91,16 @@ class TestDependentModel:
         )
         assert dep.compute_qualifies_ctc(2025) is False
 
+    def test_ctc_override_true_forces_odc_false(self, tax_return_2025):
+        """When ctc_override=True and odc_override=None, ODC delegation returns False."""
+        dep = Dependent.objects.create(
+            tax_return=tax_return_2025,
+            date_of_birth=date(2000, 1, 1),  # would otherwise be ODC-eligible
+            ctc_override=True,
+        )
+        assert dep.compute_qualifies_ctc(2025) is True
+        assert dep.compute_qualifies_odc(2025) is False
+
 
 @pytest.mark.django_db
 class TestDependentCRUD:
@@ -100,7 +110,7 @@ class TestDependentCRUD:
             {
                 "first_name": "Alex",
                 "last_name": "Doe",
-                "ssn": "123-45-6789",
+                "ssn": "999-99-9999",
                 "relationship": "Son",
                 "date_of_birth": "2015-06-01",
             },
