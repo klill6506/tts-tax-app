@@ -21,6 +21,8 @@ from .models import (
     ShareholderLoan,
     TaxReturn,
     Taxpayer,
+    W2Box12Entry,
+    W2Box14Entry,
     W2Income,
 )
 
@@ -510,7 +512,24 @@ class TaxpayerSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class W2Box12EntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = W2Box12Entry
+        fields = ("id", "code", "amount", "order", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class W2Box14EntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = W2Box14Entry
+        fields = ("id", "description", "amount", "order", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
 class W2IncomeSerializer(serializers.ModelSerializer):
+    box_12_entries = W2Box12EntrySerializer(many=True, read_only=True)
+    box_14_entries = W2Box14EntrySerializer(many=True, read_only=True)
+
     class Meta:
         model = W2Income
         fields = (
@@ -544,6 +563,8 @@ class W2IncomeSerializer(serializers.ModelSerializer):
             "order",
             "created_at",
             "updated_at",
+            "box_12_entries",
+            "box_14_entries",
         )
         read_only_fields = ("id", "created_at", "updated_at")
 

@@ -1395,6 +1395,38 @@ class DepreciationAsset(models.Model):
 # Individual (1040) Models
 # ---------------------------------------------------------------------------
 
+BOX_12_CODES = [
+    ("A", "A — Uncollected SS tax on tips"),
+    ("B", "B — Uncollected Medicare tax on tips"),
+    ("C", "C — Taxable cost of GTL > $50K"),
+    ("D", "D — 401(k) elective deferrals"),
+    ("E", "E — 403(b) elective deferrals"),
+    ("F", "F — 408(k)(6) elective deferrals"),
+    ("G", "G — 457(b) elective deferrals"),
+    ("H", "H — 501(c)(18)(D) elective deferrals"),
+    ("J", "J — Nontaxable sick pay"),
+    ("K", "K — 20% excise tax on excess golden parachute"),
+    ("L", "L — Substantiated employee business expense reimbursements"),
+    ("M", "M — Uncollected SS tax on GTL"),
+    ("N", "N — Uncollected Medicare tax on GTL"),
+    ("P", "P — Excludable moving expense reimbursements (active duty)"),
+    ("Q", "Q — Nontaxable combat pay"),
+    ("R", "R — Employer contributions to Archer MSA"),
+    ("S", "S — Employee salary reduction contributions to SIMPLE"),
+    ("T", "T — Adoption benefits"),
+    ("V", "V — Income from exercise of nonstatutory stock options"),
+    ("W", "W — Employer contributions to HSA"),
+    ("Y", "Y — Deferrals under 409A nonqualified deferred comp plan"),
+    ("Z", "Z — Income under 409A"),
+    ("AA", "AA — Designated Roth contributions under 401(k)"),
+    ("BB", "BB — Designated Roth contributions under 403(b)"),
+    ("DD", "DD — Cost of employer-sponsored health coverage"),
+    ("EE", "EE — Designated Roth contributions under 457(b)"),
+    ("FF", "FF — Permitted benefits under QSEHRA"),
+    ("GG", "GG — Income from qualified equity grants"),
+    ("HH", "HH — Aggregate deferrals under section 83(i) elections"),
+]
+
 
 class FilingStatus(models.TextChoices):
     SINGLE = "single", "Single"
@@ -1709,3 +1741,47 @@ class Dependent(models.Model):
         if not self.date_of_birth:
             return False
         return not self.compute_qualifies_ctc(tax_year)
+
+
+class W2Box12Entry(models.Model):
+    """One Box 12 code+amount entry on a W-2."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    w2_income = models.ForeignKey(
+        "W2Income",
+        on_delete=models.CASCADE,
+        related_name="box_12_entries",
+    )
+    code = models.CharField(max_length=2, choices=BOX_12_CODES)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"Box 12 {self.code}: ${self.amount}"
+
+
+class W2Box14Entry(models.Model):
+    """One Box 14 description+amount entry on a W-2 (preparer-discretion free text)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    w2_income = models.ForeignKey(
+        "W2Income",
+        on_delete=models.CASCADE,
+        related_name="box_14_entries",
+    )
+    description = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"Box 14 {self.description}: ${self.amount}"

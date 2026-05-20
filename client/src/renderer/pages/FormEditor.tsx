@@ -256,6 +256,9 @@ interface TaxpayerData {
   standard_deduction_override: string | null;
 }
 
+type W2Box12EntryRow = { id: string; code: string; amount: string; order: number };
+type W2Box14EntryRow = { id: string; description: string; amount: string; order: number };
+
 interface W2IncomeRow {
   id: string;
   employer_name: string;
@@ -294,6 +297,9 @@ interface W2IncomeRow {
   local_income_tax: string | null;
   locality_name: string;
   order: number;
+  // Box 12 + Box 14 nested entries
+  box_12_entries: W2Box12EntryRow[];
+  box_14_entries: W2Box14EntryRow[];
 }
 
 interface EmployerStateAccountAutofill {
@@ -740,6 +746,38 @@ const INDIVIDUAL_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "w2_income", label: "W-2 Income", sections: [] },
   { id: "interest_income", label: "Interest Income", sections: [] },
   { id: "tax_summary", label: "Tax Summary", sections: [] },
+];
+
+const BOX_12_CODES: { value: string; label: string }[] = [
+  { value: "A", label: "A — Uncollected SS tax on tips" },
+  { value: "B", label: "B — Uncollected Medicare tax on tips" },
+  { value: "C", label: "C — Taxable cost of GTL > $50K" },
+  { value: "D", label: "D — 401(k) elective deferrals" },
+  { value: "E", label: "E — 403(b) elective deferrals" },
+  { value: "F", label: "F — 408(k)(6) elective deferrals" },
+  { value: "G", label: "G — 457(b) elective deferrals" },
+  { value: "H", label: "H — 501(c)(18)(D) elective deferrals" },
+  { value: "J", label: "J — Nontaxable sick pay" },
+  { value: "K", label: "K — 20% excise tax (golden parachute)" },
+  { value: "L", label: "L — Reimbursed business expenses" },
+  { value: "M", label: "M — Uncollected SS tax on GTL" },
+  { value: "N", label: "N — Uncollected Medicare tax on GTL" },
+  { value: "P", label: "P — Moving expense (active duty)" },
+  { value: "Q", label: "Q — Nontaxable combat pay" },
+  { value: "R", label: "R — Archer MSA" },
+  { value: "S", label: "S — SIMPLE salary reduction" },
+  { value: "T", label: "T — Adoption benefits" },
+  { value: "V", label: "V — Nonstatutory stock option income" },
+  { value: "W", label: "W — HSA employer contributions" },
+  { value: "Y", label: "Y — 409A deferrals" },
+  { value: "Z", label: "Z — 409A income" },
+  { value: "AA", label: "AA — Roth 401(k)" },
+  { value: "BB", label: "BB — Roth 403(b)" },
+  { value: "DD", label: "DD — Cost of employer health coverage" },
+  { value: "EE", label: "EE — Roth 457(b)" },
+  { value: "FF", label: "FF — QSEHRA benefits" },
+  { value: "GG", label: "GG — Qualified equity grants" },
+  { value: "HH", label: "HH — 83(i) aggregate deferrals" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -7943,7 +7981,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   onClick={() => toggleExtras(w2.id)}
                   className="text-xs text-tx-secondary hover:text-tx-primary"
                 >
-                  {expandedExtras.has(w2.id) ? "▾ Hide less-common boxes" : "▸ Show less-common boxes (Box 10, 11, 13)"}
+                  {expandedExtras.has(w2.id) ? "▾ Hide less-common boxes" : "▸ Show less-common boxes (Box 10, 11, 13, 14)"}
                 </button>
                 {expandedExtras.has(w2.id) && (
                   <div className="mt-3 space-y-3">
@@ -7993,6 +8031,124 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                           </label>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Box 12 — coded entries */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-tx-secondary">Box 12 — Coded Entries</label>
+                        <button
+                          onClick={async () => {
+                            await post(
+                              `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-12-entries/`,
+                              { code: "D", amount: "0.00" },
+                            );
+                            onRefresh();
+                          }}
+                          className="text-xs text-success hover:text-success/80"
+                        >
+                          + Add Box 12 Code
+                        </button>
+                      </div>
+                      {(w2.box_12_entries || []).length > 4 && (
+                        <div className="text-xs text-warning mb-1">
+                          ⚠ IRS Form W-2 only has 4 Box 12 slots.
+                        </div>
+                      )}
+                      {(w2.box_12_entries || []).map((entry) => (
+                        <div key={entry.id} className="grid grid-cols-12 gap-2 mb-1">
+                          <select
+                            defaultValue={entry.code}
+                            onChange={async (e) => {
+                              await patch(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-12-entries/${entry.id}/`,
+                                { code: e.target.value },
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-7 border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                          >
+                            {BOX_12_CODES.map((c) => (
+                              <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            defaultValue={entry.amount}
+                            onBlur={async (e) => {
+                              await patch(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-12-entries/${entry.id}/`,
+                                { amount: e.target.value },
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-4 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                          />
+                          <button
+                            onClick={async () => {
+                              await del(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-12-entries/${entry.id}/`,
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-1 text-danger hover:text-danger/70 text-xs"
+                          >Del</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Box 14 — free-text entries */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-tx-secondary">Box 14 — Other</label>
+                        <button
+                          onClick={async () => {
+                            await post(
+                              `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-14-entries/`,
+                              { description: "", amount: "0.00" },
+                            );
+                            onRefresh();
+                          }}
+                          className="text-xs text-success hover:text-success/80"
+                        >
+                          + Add Box 14 Entry
+                        </button>
+                      </div>
+                      {(w2.box_14_entries || []).map((entry) => (
+                        <div key={entry.id} className="grid grid-cols-12 gap-2 mb-1">
+                          <input
+                            defaultValue={entry.description}
+                            placeholder="e.g. UNION DUES"
+                            onBlur={async (e) => {
+                              await patch(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-14-entries/${entry.id}/`,
+                                { description: e.target.value },
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-7 border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                          />
+                          <input
+                            defaultValue={entry.amount}
+                            onBlur={async (e) => {
+                              await patch(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-14-entries/${entry.id}/`,
+                                { amount: e.target.value },
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-4 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                          />
+                          <button
+                            onClick={async () => {
+                              await del(
+                                `/tax-returns/${taxReturnId}/w2-incomes/${w2.id}/box-14-entries/${entry.id}/`,
+                              );
+                              onRefresh();
+                            }}
+                            className="col-span-1 text-danger hover:text-danger/70 text-xs"
+                          >Del</button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

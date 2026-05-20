@@ -36,6 +36,8 @@ from .models import (
     ShareholderLoan,
     TaxReturn,
     Taxpayer,
+    W2Box12Entry,
+    W2Box14Entry,
     W2Income,
 )
 from .serializers import (
@@ -60,6 +62,8 @@ from .serializers import (
     TaxReturnListSerializer,
     TaxReturnSerializer,
     UpdateFieldsSerializer,
+    W2Box12EntrySerializer,
+    W2Box14EntrySerializer,
     W2IncomeSerializer,
 )
 
@@ -2706,6 +2710,102 @@ class TaxReturnViewSet(
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         ser = DependentSerializer(dep, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # W-2 Box 12 entries (nested under a W-2)
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="w2-incomes/(?P<w2_id>[^/.]+)/box-12-entries",
+    )
+    def w2_box_12_entries(self, request, pk=None, w2_id=None):
+        tax_return = self.get_object()
+        try:
+            w2 = W2Income.objects.get(id=w2_id, tax_return=tax_return)
+        except W2Income.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "GET":
+            qs = W2Box12Entry.objects.filter(w2_income=w2)
+            return Response(W2Box12EntrySerializer(qs, many=True).data)
+
+        ser = W2Box12EntrySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(w2_income=w2)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="w2-incomes/(?P<w2_id>[^/.]+)/box-12-entries/(?P<entry_id>[^/.]+)",
+    )
+    def w2_box_12_entry_detail(self, request, pk=None, w2_id=None, entry_id=None):
+        tax_return = self.get_object()
+        try:
+            entry = W2Box12Entry.objects.get(
+                id=entry_id, w2_income__id=w2_id, w2_income__tax_return=tax_return,
+            )
+        except W2Box12Entry.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            entry.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = W2Box12EntrySerializer(entry, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    # ------------------------------------------------------------------
+    # W-2 Box 14 entries (nested under a W-2)
+    # ------------------------------------------------------------------
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="w2-incomes/(?P<w2_id>[^/.]+)/box-14-entries",
+    )
+    def w2_box_14_entries(self, request, pk=None, w2_id=None):
+        tax_return = self.get_object()
+        try:
+            w2 = W2Income.objects.get(id=w2_id, tax_return=tax_return)
+        except W2Income.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "GET":
+            qs = W2Box14Entry.objects.filter(w2_income=w2)
+            return Response(W2Box14EntrySerializer(qs, many=True).data)
+
+        ser = W2Box14EntrySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(w2_income=w2)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="w2-incomes/(?P<w2_id>[^/.]+)/box-14-entries/(?P<entry_id>[^/.]+)",
+    )
+    def w2_box_14_entry_detail(self, request, pk=None, w2_id=None, entry_id=None):
+        tax_return = self.get_object()
+        try:
+            entry = W2Box14Entry.objects.get(
+                id=entry_id, w2_income__id=w2_id, w2_income__tax_return=tax_return,
+            )
+        except W2Box14Entry.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            entry.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = W2Box14EntrySerializer(entry, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
