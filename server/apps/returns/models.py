@@ -1547,6 +1547,18 @@ class InterestIncome(models.Model):
         max_digits=15, decimal_places=2, default=0,
         help_text="1099-INT Box 1: Interest income.",
     )
+    early_withdrawal_penalty = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="1099-INT Box 2: Early withdrawal penalty (flows to Schedule 1, Line 18).",
+    )
+    treasury_interest = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="1099-INT Box 3: Interest on U.S. Treasury obligations (taxable; flows to Line 2b).",
+    )
+    federal_tax_withheld = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="1099-INT Box 4: Federal income tax withheld (flows to Line 25b).",
+    )
     is_tax_exempt = models.BooleanField(
         default=False,
         help_text="True if this is tax-exempt interest (Box 8).",

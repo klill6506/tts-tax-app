@@ -596,7 +596,13 @@ FORMULAS_1040: list[tuple[str, callable]] = [
     # Line 16 = Tax — computed by _compute_1040_tax() after formulas run
     # Line 24 = Total tax = Line 16 (no credits for now)
     ("24", lambda v: _d(v, "16")),
-    # Line 25d = Total withholding = 25a (no 1099 withholding)
+    # Line 25d = Total withholding = 25a
+    # NOTE: 1099 withholding (Form 1040 Line 25b) is intentionally omitted
+    # for now — Line 25b is not in the 1040 seed yet, so the
+    # `federal_tax_withheld` value captured on InterestIncome (Box 4) is
+    # not yet aggregated. When 25b is added to seed_1040.py and populated
+    # from InterestIncome.federal_tax_withheld in aggregate_1040_income(),
+    # update this formula to: lambda v: _sum(v, "25a", "25b", "25c").
     ("25d", lambda v: _d(v, "25a")),
     # Line 33 = Total payments = 25d
     ("33", lambda v: _d(v, "25d")),
@@ -1193,15 +1199,29 @@ def aggregate_1040_income(tax_return) -> None:
     _set_field_value(tax_return, "25a", str(total_withheld.quantize(Decimal("0.01"))))
 
     # Sum interest income → Line 2a (tax-exempt), Line 2b (taxable)
+    # Line 2b combines 1099-INT Box 1 (interest income) + Box 3 (U.S. Treasury
+    # interest). Treasury interest is federally taxable; state taxability is
+    # handled separately on the state return.
     interests = InterestIncome.objects.filter(tax_return=tax_return)
     exempt_total = sum(
         (i.amount for i in interests if i.is_tax_exempt), ZERO,
     )
     taxable_total = sum(
-        (i.amount for i in interests if not i.is_tax_exempt), ZERO,
+        (i.amount + i.treasury_interest for i in interests if not i.is_tax_exempt),
+        ZERO,
     )
     _set_field_value(tax_return, "2a", str(exempt_total.quantize(Decimal("0.01"))))
     _set_field_value(tax_return, "2b", str(taxable_total.quantize(Decimal("0.01"))))
+
+    # NOTE: Box 2 (early_withdrawal_penalty) and Box 4 (federal_tax_withheld)
+    # are captured on InterestIncome but NOT yet wired to form lines:
+    #   - Box 2 flows to Schedule 1, Line 18 — no Schedule 1 lines exist in
+    #     the 1040 seed yet (seed_1040.py). When Schedule 1 is seeded, sum
+    #     `early_withdrawal_penalty` across interests and write to that line.
+    #   - Box 4 flows to Form 1040 Line 25b — Line 25b is not in the seed yet
+    #     (only 25a for W-2 withholding and 25d total exist). When 25b is
+    #     added, sum `federal_tax_withheld` across interests and write there,
+    #     then update the FORMULAS_1040 Line 25d formula to include 25b.
 
     # Standard deduction based on filing status (unless overridden)
     tax_year = tax_return.tax_year.year
