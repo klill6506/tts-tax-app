@@ -277,6 +277,22 @@ interface W2IncomeRow {
   // Box 15
   state_box15: string;
   state_id_number: string;
+  // Box 7
+  social_security_tips: string | null;
+  // Box 8
+  allocated_tips: string | null;
+  // Box 10
+  dependent_care_benefits: string | null;
+  // Box 11
+  nonqualified_plans: string | null;
+  // Box 13
+  statutory_employee: boolean;
+  retirement_plan: boolean;
+  third_party_sick_pay: boolean;
+  // Box 18-20
+  local_wages: string | null;
+  local_income_tax: string | null;
+  locality_name: string;
   order: number;
 }
 
@@ -7631,6 +7647,16 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
   // Per-W-2 EIN error indicator (red border on the EIN input when the
   // lookup endpoint returns 400 = malformed EIN).
   const [einErrors, setEinErrors] = useState<Record<string, boolean>>({});
+  // Per-W-2 expand state for less-common boxes (Box 10, 11, 13, 14).
+  const [expandedExtras, setExpandedExtras] = useState<Set<string>>(new Set());
+  const toggleExtras = (id: string) => {
+    setExpandedExtras((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const fieldKey = (id: string, field: string) => `${id}.${field}`;
   const isAutofilled = (id: string, field: string) => autofilledKeys.has(fieldKey(id, field));
@@ -7661,7 +7687,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
     onRefresh();
   };
 
-  const handleUpdate = async (id: string, field: string, value: string) => {
+  const handleUpdate = async (id: string, field: string, value: string | boolean | null) => {
     clearAutofilled(id, field);
     await patch(`/tax-returns/${taxReturnId}/w2-incomes/${id}/`, { [field]: value });
     onRefresh();
@@ -7778,9 +7804,9 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
         <div className="space-y-4">
           {w2s.map((w2) => (
             <div key={w2.id} className="border border-border rounded-lg p-4 bg-surface-alt">
-              {/* Row 1: identity + amounts */}
+              {/* Row 1: identity (employer name + EIN + delete) */}
               <div className="grid grid-cols-12 gap-2 mb-2">
-                <div className="col-span-4">
+                <div className="col-span-5">
                   <label className="text-xs text-tx-secondary block mb-1">Employer name</label>
                   <input
                     key={`name-${w2.id}-${w2.employer_name}`}
@@ -7789,7 +7815,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                     className={inputCls(w2.id, "employer_name")}
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <label className="text-xs text-tx-secondary block mb-1">EIN (Box b)</label>
                   <input
                     key={`ein-${w2.id}-${w2.employer_ein}`}
@@ -7799,24 +7825,76 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                     className={einInputCls(w2.id)}
                   />
                 </div>
-                <div className="col-span-3">
-                  <label className="text-xs text-tx-secondary block mb-1">Wages (Box 1)</label>
+                <div className="col-span-3" />
+                <div className="col-span-1 flex items-end justify-end pb-1">
+                  <button onClick={() => handleDelete(w2.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button>
+                </div>
+              </div>
+              {/* Row 1b: Boxes 1-8 wage amounts */}
+              <div className="grid grid-cols-8 gap-2 mb-2">
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 1 Wages</label>
                   <input
                     defaultValue={w2.wages}
                     onBlur={(e) => handleUpdate(w2.id, "wages", e.target.value)}
-                    className={inputCls(w2.id, "wages") + " text-right"}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
                   />
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-tx-secondary block mb-1">Fed Withheld (Box 2)</label>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 2 Fed W/H</label>
                   <input
                     defaultValue={w2.federal_tax_withheld}
                     onBlur={(e) => handleUpdate(w2.id, "federal_tax_withheld", e.target.value)}
-                    className={inputCls(w2.id, "federal_tax_withheld") + " text-right"}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
                   />
                 </div>
-                <div className="col-span-1 flex items-end justify-end pb-1">
-                  <button onClick={() => handleDelete(w2.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 3 SS Wages</label>
+                  <input
+                    defaultValue={w2.social_security_wages || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "social_security_wages", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 4 SS Tax</label>
+                  <input
+                    defaultValue={w2.social_security_tax || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "social_security_tax", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 5 Medicare Wages</label>
+                  <input
+                    defaultValue={w2.medicare_wages || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "medicare_wages", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 6 Medicare Tax</label>
+                  <input
+                    defaultValue={w2.medicare_tax || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "medicare_tax", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 7 SS Tips</label>
+                  <input
+                    defaultValue={w2.social_security_tips || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "social_security_tips", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 8 Alloc Tips</label>
+                  <input
+                    defaultValue={w2.allocated_tips || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "allocated_tips", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
                 </div>
               </div>
               {/* Row 2: address (Box c) */}
@@ -7859,7 +7937,67 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   />
                 </div>
               </div>
-              {/* Row 3: Box 15 */}
+              {/* Expandable: less-common boxes (Box 10, 11, 13) */}
+              <div className="border-t border-border pt-3 mb-2">
+                <button
+                  onClick={() => toggleExtras(w2.id)}
+                  className="text-xs text-tx-secondary hover:text-tx-primary"
+                >
+                  {expandedExtras.has(w2.id) ? "▾ Hide less-common boxes" : "▸ Show less-common boxes (Box 10, 11, 13, 14)"}
+                </button>
+                {expandedExtras.has(w2.id) && (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-tx-secondary mb-1">Box 10 Dep Care</label>
+                        <input
+                          defaultValue={w2.dependent_care_benefits || ""}
+                          onBlur={(e) => handleUpdate(w2.id, "dependent_care_benefits", e.target.value || null)}
+                          className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-tx-secondary mb-1">Box 11 Nonqual Plans</label>
+                        <input
+                          defaultValue={w2.nonqualified_plans || ""}
+                          onBlur={(e) => handleUpdate(w2.id, "nonqualified_plans", e.target.value || null)}
+                          className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-tx-secondary mb-1">Box 13 Checkboxes</label>
+                        <div className="flex gap-4 pt-1">
+                          <label className="text-xs flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={w2.statutory_employee}
+                              onChange={(e) => handleUpdate(w2.id, "statutory_employee", e.target.checked)}
+                              className="mr-1"
+                            /> Statutory employee
+                          </label>
+                          <label className="text-xs flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={w2.retirement_plan}
+                              onChange={(e) => handleUpdate(w2.id, "retirement_plan", e.target.checked)}
+                              className="mr-1"
+                            /> Retirement plan
+                          </label>
+                          <label className="text-xs flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={w2.third_party_sick_pay}
+                              onChange={(e) => handleUpdate(w2.id, "third_party_sick_pay", e.target.checked)}
+                              className="mr-1"
+                            /> Third-party sick pay
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Row 3: Box 15 + Box 16-17 state wages/withheld + Box 18-20 local */}
               <div className="grid grid-cols-12 gap-2">
                 <div className="col-span-2">
                   <label className="text-xs text-tx-secondary block mb-1">Box 15 State</label>
@@ -7878,6 +8016,33 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                     defaultValue={w2.state_id_number}
                     onBlur={(e) => handleUpdate(w2.id, "state_id_number", e.target.value)}
                     className={inputCls(w2.id, "state_id_number")}
+                  />
+                </div>
+              </div>
+              {/* Box 18-20: local wages, local tax, locality name */}
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 18 Local Wages</label>
+                  <input
+                    defaultValue={w2.local_wages || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "local_wages", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 19 Local Tax</label>
+                  <input
+                    defaultValue={w2.local_income_tax || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "local_income_tax", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-tx-secondary mb-1">Box 20 Locality Name</label>
+                  <input
+                    defaultValue={w2.locality_name || ""}
+                    onBlur={(e) => handleUpdate(w2.id, "locality_name", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
                   />
                 </div>
               </div>
