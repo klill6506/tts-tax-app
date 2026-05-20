@@ -2565,11 +2565,13 @@ class TaxReturnViewSet(
             ser = TaxpayerSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
             ser.save(tax_return=tax_return)
+            self._recompute_1040(tax_return)
             return Response(ser.data, status=status.HTTP_201_CREATED)
 
         ser = TaxpayerSerializer(tp, data=request.data, partial=(request.method == "PATCH"))
         ser.is_valid(raise_exception=True)
         ser.save()
+        self._recompute_1040(tax_return)
         return Response(ser.data)
 
     # ------------------------------------------------------------------

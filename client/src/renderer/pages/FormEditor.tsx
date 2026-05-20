@@ -8267,7 +8267,9 @@ function InterestIncomeSection({
   };
 
   const taxableTotal = interests.reduce(
-    (sum, i) => sum + parseFloat(i.interest_income || "0"), 0,
+    (sum, i) =>
+      sum + parseFloat(i.interest_income || "0") + parseFloat(i.treasury_interest || "0"),
+    0,
   );
   const exemptTotal = interests.reduce(
     (sum, i) => sum + parseFloat(i.tax_exempt_interest || "0"), 0,
