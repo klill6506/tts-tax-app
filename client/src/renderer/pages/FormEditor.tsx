@@ -298,13 +298,33 @@ interface EmployerLookupResult {
   state_accounts: EmployerStateAccountAutofill[];
 }
 
-interface InterestIncomeRow {
+type InterestIncomeRow = {
   id: string;
   payer_name: string;
-  amount: string;
-  is_tax_exempt: boolean;
+  payer_ein: string;
+  payer_street: string;
+  payer_city: string;
+  payer_state: string;
+  payer_zip: string;
+  interest_income: string;
+  early_withdrawal_penalty: string | null;
+  treasury_interest: string | null;
+  federal_tax_withheld: string | null;
+  investment_expenses: string | null;
+  foreign_tax_paid: string | null;
+  foreign_country: string;
+  tax_exempt_interest: string;
+  pab_interest: string | null;
+  market_discount: string | null;
+  bond_premium: string | null;
+  treasury_bond_premium: string | null;
+  tax_exempt_bond_premium: string | null;
+  cusip_number: string;
+  state_code: string;
+  state_id_number: string;
+  state_tax_withheld: string | null;
   order: number;
-}
+};
 
 type DependentRow = {
   id: string;
@@ -7879,12 +7899,24 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
 // Individual (1040) — Interest Income Section
 // ---------------------------------------------------------------------------
 
-function InterestIncomeSection({ taxReturnId, interests, onRefresh }: { taxReturnId: string; interests: InterestIncomeRow[]; onRefresh: () => void }) {
+function InterestIncomeSection({
+  taxReturnId,
+  interests,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  interests: InterestIncomeRow[];
+  onRefresh: () => void;
+}) {
   const handleAdd = async () => {
-    await post(`/tax-returns/${taxReturnId}/interest-incomes/`, { payer_name: "New Payer", amount: "0.00", is_tax_exempt: false });
+    await post(`/tax-returns/${taxReturnId}/interest-incomes/`, {
+      payer_name: "New Payer",
+      interest_income: "0.00",
+      tax_exempt_interest: "0.00",
+    });
     onRefresh();
   };
-  const handleUpdate = async (id: string, field: string, value: string | boolean) => {
+  const handleUpdate = async (id: string, field: string, value: string | null) => {
     await patch(`/tax-returns/${taxReturnId}/interest-incomes/${id}/`, { [field]: value });
     onRefresh();
   };
@@ -7893,40 +7925,141 @@ function InterestIncomeSection({ taxReturnId, interests, onRefresh }: { taxRetur
     onRefresh();
   };
 
-  const taxableTotal = interests.filter((i) => !i.is_tax_exempt).reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0);
-  const exemptTotal = interests.filter((i) => i.is_tax_exempt).reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0);
+  const taxableTotal = interests.reduce(
+    (sum, i) => sum + parseFloat(i.interest_income || "0"), 0,
+  );
+  const exemptTotal = interests.reduce(
+    (sum, i) => sum + parseFloat(i.tax_exempt_interest || "0"), 0,
+  );
+
+  const moneyInput = (
+    ii: InterestIncomeRow,
+    field: keyof InterestIncomeRow,
+    placeholder?: string,
+  ) => (
+    <input
+      defaultValue={(ii[field] as string | null) ?? ""}
+      placeholder={placeholder}
+      onBlur={(e) => handleUpdate(ii.id, field as string, e.target.value || null)}
+      className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+    />
+  );
+
+  const textInput = (
+    ii: InterestIncomeRow,
+    field: keyof InterestIncomeRow,
+    placeholder?: string,
+  ) => (
+    <input
+      defaultValue={(ii[field] as string) || ""}
+      placeholder={placeholder}
+      onBlur={(e) => handleUpdate(ii.id, field as string, e.target.value)}
+      className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+    />
+  );
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-tx-primary">Interest Income (1099-INT)</h3>
-        <button onClick={handleAdd} className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90">+ Add 1099-INT</button>
+        <button onClick={handleAdd} className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90">
+          + Add 1099-INT
+        </button>
       </div>
+
       {interests.length === 0 ? (
         <p className="text-sm text-tx-muted italic">No interest income entered.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs text-tx-secondary">
-              <th className="text-left py-2 font-medium">Payer</th>
-              <th className="text-right py-2 font-medium">Amount</th>
-              <th className="text-center py-2 font-medium">Tax-Exempt?</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {interests.map((ii) => (
-              <tr key={ii.id} className="border-b border-border/50">
-                <td className="py-2"><input defaultValue={ii.payer_name} onBlur={(e) => handleUpdate(ii.id, "payer_name", e.target.value)} className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" /></td>
-                <td className="py-2"><input defaultValue={ii.amount} onBlur={(e) => handleUpdate(ii.id, "amount", e.target.value)} className="w-32 border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600" /></td>
-                <td className="py-2 text-center"><input type="checkbox" checked={ii.is_tax_exempt} onChange={(e) => handleUpdate(ii.id, "is_tax_exempt", e.target.checked)} className="rounded border-border" /></td>
-                <td className="py-2 text-right"><button onClick={() => handleDelete(ii.id)} className="text-danger hover:text-danger/70 text-xs">Delete</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        interests.map((ii) => (
+          <div key={ii.id} className="bg-card rounded-lg border border-border p-4 space-y-3">
+            {/* Header row: payer name + EIN + delete */}
+            <div className="grid grid-cols-6 gap-3 items-end">
+              <div className="col-span-3">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Payer Name</label>
+                {textInput(ii, "payer_name")}
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Payer EIN</label>
+                {textInput(ii, "payer_ein", "XX-XXXXXXX")}
+              </div>
+              <div className="text-right">
+                <button onClick={() => handleDelete(ii.id)} className="text-danger hover:text-danger/70 text-xs">
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {/* Address row */}
+            <div className="grid grid-cols-6 gap-3">
+              <div className="col-span-3">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Street</label>
+                {textInput(ii, "payer_street")}
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">City</label>
+                {textInput(ii, "payer_city")}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">State / ZIP</label>
+                <div className="flex gap-1">
+                  <input
+                    defaultValue={ii.payer_state}
+                    maxLength={2}
+                    onBlur={(e) => handleUpdate(ii.id, "payer_state", e.target.value.toUpperCase())}
+                    className="w-12 border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                  />
+                  <input
+                    defaultValue={ii.payer_zip}
+                    onBlur={(e) => handleUpdate(ii.id, "payer_zip", e.target.value)}
+                    className="flex-1 border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Box row (1–14) */}
+            <div className="grid grid-cols-7 gap-3">
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 1 Interest</label>{moneyInput(ii, "interest_income")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 2 EWP</label>{moneyInput(ii, "early_withdrawal_penalty")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 3 Treasury</label>{moneyInput(ii, "treasury_interest")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 4 Fed W/H</label>{moneyInput(ii, "federal_tax_withheld")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 5 Inv Exp</label>{moneyInput(ii, "investment_expenses")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 6 Foreign Tax</label>{moneyInput(ii, "foreign_tax_paid")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 7 Country</label>{textInput(ii, "foreign_country")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 8 Tax-Exempt</label>{moneyInput(ii, "tax_exempt_interest")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 9 PAB</label>{moneyInput(ii, "pab_interest")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 10 Mkt Disc</label>{moneyInput(ii, "market_discount")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 11 Bond Prem</label>{moneyInput(ii, "bond_premium")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 12 Trsy BP</label>{moneyInput(ii, "treasury_bond_premium")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 13 TE BP</label>{moneyInput(ii, "tax_exempt_bond_premium")}</div>
+              <div><label className="block text-xs font-medium text-tx-secondary mb-1">Box 14 CUSIP</label>{textInput(ii, "cusip_number")}</div>
+            </div>
+
+            {/* State row (15–17) */}
+            <div className="grid grid-cols-6 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Box 15 State</label>
+                <input
+                  defaultValue={ii.state_code}
+                  maxLength={2}
+                  onBlur={(e) => handleUpdate(ii.id, "state_code", e.target.value.toUpperCase())}
+                  className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Box 16 State ID</label>
+                {textInput(ii, "state_id_number")}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-tx-secondary mb-1">Box 17 State W/H</label>
+                {moneyInput(ii, "state_tax_withheld")}
+              </div>
+            </div>
+          </div>
+        ))
       )}
-      <div className="mt-4 flex gap-8 text-sm">
+
+      <div className="mt-2 flex gap-8 text-sm">
         <div><span className="text-tx-secondary">Taxable:</span> <span className="font-semibold text-tx-primary">${taxableTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
         <div><span className="text-tx-secondary">Tax-Exempt:</span> <span className="font-semibold text-tx-primary">${exemptTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
       </div>

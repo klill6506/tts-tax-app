@@ -1534,7 +1534,12 @@ class W2Income(models.Model):
 
 
 class InterestIncome(models.Model):
-    """A single 1099-INT interest income entry on a 1040 return."""
+    """A single 1099-INT interest income entry on a 1040 return.
+
+    Full 17-box surface plus payer EIN + payer address snapshot
+    (snapshot semantics — frozen at entry time, same pattern as
+    W2Income employer address).
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tax_return = models.ForeignKey(
@@ -1543,14 +1548,47 @@ class InterestIncome(models.Model):
         related_name="interest_incomes",
     )
     payer_name = models.CharField(max_length=255)
-    amount = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0,
-        help_text="1099-INT Box 1: Interest income.",
-    )
-    is_tax_exempt = models.BooleanField(
-        default=False,
-        help_text="True if this is tax-exempt interest (Box 8).",
-    )
+    payer_ein = models.CharField(max_length=20, blank=True, default="")
+    payer_street = models.CharField(max_length=255, blank=True, default="")
+    payer_city = models.CharField(max_length=100, blank=True, default="")
+    payer_state = models.CharField(max_length=2, blank=True, default="")
+    payer_zip = models.CharField(max_length=10, blank=True, default="")
+
+    # Box 1: taxable interest (was `amount`)
+    interest_income = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    # Box 2: early withdrawal penalty
+    early_withdrawal_penalty = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 3: interest on US Savings Bonds + Treasury obligations
+    treasury_interest = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 4: federal income tax withheld
+    federal_tax_withheld = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 5: investment expenses
+    investment_expenses = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 6: foreign tax paid
+    foreign_tax_paid = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 7: foreign country / US possession (free text)
+    foreign_country = models.CharField(max_length=100, blank=True, default="")
+    # Box 8: tax-exempt interest (was the is_tax_exempt=True split of `amount`)
+    tax_exempt_interest = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    # Box 9: specified private activity bond interest
+    pab_interest = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 10: market discount
+    market_discount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 11: bond premium
+    bond_premium = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 12: bond premium on Treasury obligations
+    treasury_bond_premium = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 13: bond premium on tax-exempt bond
+    tax_exempt_bond_premium = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # Box 14: tax-exempt and tax credit bond CUSIP (free text)
+    cusip_number = models.CharField(max_length=20, blank=True, default="")
+    # Box 15: state
+    state_code = models.CharField(max_length=2, blank=True, default="")
+    # Box 16: state identification number
+    state_id_number = models.CharField(max_length=30, blank=True, default="")
+    # Box 17: state tax withheld
+    state_tax_withheld = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1559,7 +1597,7 @@ class InterestIncome(models.Model):
         ordering = ["order", "payer_name"]
 
     def __str__(self):
-        return f"1099-INT: {self.payer_name} — ${self.amount}"
+        return f"1099-INT: {self.payer_name} — ${self.interest_income}"
 
 
 class Dependent(models.Model):

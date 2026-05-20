@@ -175,12 +175,12 @@ class TestCompute1040Pipeline:
             federal_tax_withheld=Decimal("1000.00"),
         )
 
-        # Create 1 interest income
+        # Create 1 interest income (taxable Box 1 only)
         InterestIncome.objects.create(
             tax_return=tr,
             payer_name="Big Bank",
-            amount=Decimal("500.00"),
-            is_tax_exempt=False,
+            interest_income=Decimal("500.00"),
+            tax_exempt_interest=Decimal("0.00"),
         )
 
         # Run compute
