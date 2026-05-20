@@ -1605,18 +1605,23 @@ class Dependent(models.Model):
         return f"{self.first_name} {self.last_name}".strip() or "(unnamed dependent)"
 
     def compute_qualifies_ctc(self, tax_year: int) -> bool:
-        """CTC: under 17 at year-end of the return's tax year."""
+        """CTC: under 17 at year-end of the return's tax year.
+
+        A child is "under 17 at year-end" if they have not yet turned 17 by
+        December 31 of the tax year — i.e., their age at year-end is < 17.
+        Computing age purely from birth year works because every birthday has
+        already occurred by Dec 31 of that year.
+        """
         if self.ctc_override is not None:
             return self.ctc_override
         if not self.date_of_birth:
             return False
-        age_at_year_end = tax_year - self.date_of_birth.year
-        if (self.date_of_birth.month, self.date_of_birth.day) > (12, 31):
-            age_at_year_end -= 1
-        return age_at_year_end < 17
+        return tax_year - self.date_of_birth.year < 17
 
     def compute_qualifies_odc(self, tax_year: int) -> bool:
-        """ODC: a dependent who is not CTC-eligible."""
+        """ODC: a dependent who is not CTC-eligible. Requires DOB to classify."""
         if self.odc_override is not None:
             return self.odc_override
+        if not self.date_of_birth:
+            return False
         return not self.compute_qualifies_ctc(tax_year)

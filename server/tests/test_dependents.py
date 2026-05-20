@@ -69,10 +69,11 @@ class TestDependentModel:
         assert dep.compute_qualifies_ctc(2025) is False
         assert dep.compute_qualifies_odc(2025) is True
 
-    def test_compute_no_dob_returns_false(self, tax_return_2025):
+    def test_compute_no_dob_both_return_false(self, tax_return_2025):
+        """Without a DOB, classification is unknown — both flags default to False."""
         dep = Dependent.objects.create(tax_return=tax_return_2025)
         assert dep.compute_qualifies_ctc(2025) is False
-        assert dep.compute_qualifies_odc(2025) is True
+        assert dep.compute_qualifies_odc(2025) is False
 
     def test_ctc_override_true_wins(self, tax_return_2025):
         dep = Dependent.objects.create(
