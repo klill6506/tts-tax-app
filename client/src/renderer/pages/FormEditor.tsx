@@ -7837,7 +7837,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.wages}
                     onBlur={(e) => handleUpdate(w2.id, "wages", e.target.value)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "wages") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7845,7 +7845,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   <input
                     defaultValue={w2.federal_tax_withheld}
                     onBlur={(e) => handleUpdate(w2.id, "federal_tax_withheld", e.target.value)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm text-right bg-card text-green-600"
+                    className={inputCls(w2.id, "federal_tax_withheld") + " text-right"}
                   />
                 </div>
                 <div>
@@ -7943,7 +7943,7 @@ function W2IncomeSection({ taxReturnId, w2s, onRefresh }: { taxReturnId: string;
                   onClick={() => toggleExtras(w2.id)}
                   className="text-xs text-tx-secondary hover:text-tx-primary"
                 >
-                  {expandedExtras.has(w2.id) ? "▾ Hide less-common boxes" : "▸ Show less-common boxes (Box 10, 11, 13, 14)"}
+                  {expandedExtras.has(w2.id) ? "▾ Hide less-common boxes" : "▸ Show less-common boxes (Box 10, 11, 13)"}
                 </button>
                 {expandedExtras.has(w2.id) && (
                   <div className="mt-3 space-y-3">
