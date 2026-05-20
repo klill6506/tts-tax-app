@@ -1,12 +1,54 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-07
+2026-05-20
 
 ## Currently in progress
-- **1040 UI work** — partially started by Session G. The W-2 entry surface is now production-shaped (employer name + EIN + Box b address + Box 15 + autofill). Remaining surface area: taxpayer info tab (real fields), interest income tab (form expanded), W-2 boxes 3–6 / 12 / 13 / 14 / 18–20, dependent UI. Backend models for the missing W-2 boxes already exist (boxes 3–6 nullable on `W2Income`); rest is frontend wiring + new fields.
+- **1040 entry surface complete** as of Session H (2026-05-20). Branch `claude/reverent-wescoff-950afe` is unmerged — ready to merge to main when Ken signs off. Remaining 1040 work for future sessions: itemized deductions, Schedules C / D / E, AMT, credits (CTC/ACTC compute, EITC, etc.). All deferred — not in scope for Session H.
 
-## Last session recap (2026-05-07 Session G) — EIN/Employer database + W-2 autofill
+## Last session recap (2026-05-20 Session H) — 1040 entry surface completion
+
+- **Goal:** Finish the 1040 individual return entry surface — Dependents (net-new), full 1099-INT box surface, full W-2 box surface (Box 3-6 wire-up + 7-11 + 13 + 18-20 flat + Box 12/14 coded sub-models), and surface `standard_deduction_override`.
+- **Branch:** `claude/reverent-wescoff-950afe` — **11 commits**, base `c634c38`, head `5493f7a`. Not yet merged to main.
+- **Spec / plan:** `docs/superpowers/specs/2026-05-19-1040-entry-surface-design.md` + `docs/superpowers/plans/2026-05-19-1040-entry-surface.md`.
+
+| # | SHA | Message |
+|---|-----|---------|
+| 1 | `169f1ae` | feat(1040): Dependent model + CRUD + DependentsSection UI |
+| 2 | `092fe87` | fix(1040): tighten Dependent CTC/ODC compute methods |
+| 3 | `54b3f73` | fix(1040): code review fixes on Dependent model |
+| 4 | `882ba7e` | feat(1040): expand InterestIncome to full 1099-INT box surface |
+| 5 | `873f6fe` | fix(1040): Box 3 treasury interest flows to Line 2b |
+| 6 | `9062b5b` | feat(1040): expand W2Income flat fields (boxes 7-11 + 13 + 18-20) |
+| 7 | `cb8448d` | fix(1040): restore autofill coloring on W-2 Box 1/2 + correct expand label |
+| 8 | `adc1201` | fix(1040): W-2 expansion help_text + inputCls consistency |
+| 9 | `7630146` | feat(1040): W2Box12Entry + W2Box14Entry models + nested endpoints + UI |
+| 10 | `a321320` | fix(1040): prefetch box entries + firm-scoping test + Box 14 blank |
+| 11 | `5493f7a` | feat(1040): surface standard_deduction_override in Taxpayer Info |
+
+### Numbers
+| Metric | Value |
+|---|---|
+| Migrations added | 6 (0035, 0036, 0037, 0038, 0039, 0040) |
+| New backend models | 3 (`Dependent`, `W2Box12Entry`, `W2Box14Entry`) |
+| Tests added | ~30 across 4 new test files (test_dependents, test_interest_income_expansion, test_w2_expansion, test_w2_box_entries) |
+| New TypeScript errors | 0 |
+| Flow-assertion gate | Not triggered (no compute.py aggregates touched that the 1120-S gate checks) |
+
+### Schema highlights
+- `Dependent`: FK to TaxReturn with `related_name="dependents"`. `ctc_override` / `odc_override` are `BooleanField(null=True, default=None)` — None = use computed (under 17 at year-end based on DOB).
+- `InterestIncome` shape changed. `amount`+`is_tax_exempt` boolean was migrated into separate `interest_income` (Box 1) + `tax_exempt_interest` (Box 8) decimal fields by migration 0036. Added payer EIN + payer address snapshot + Boxes 2-17.
+- `W2Income`: 10 new flat fields (Boxes 7/8/10/11, 3 booleans for Box 13, Box 18/19/20). Migration 0037. `help_text` retroactively added in 0038.
+- `W2Box12Entry` / `W2Box14Entry`: nested under W2Income via FK + related_name. Box 12 codes validated against IRS 29-code list at the serializer (codes A-HH minus I/O/U/X/CC).
+
+### Notes
+- **CTC compute deferred.** Dependents persist and surface CTC/ODC flags via serializer, but `compute.py` does not yet calculate the credit. Future session.
+- **`aggregate_1040_income()` updated** to split Lines 2a/2b from the new `tax_exempt_interest` and `interest_income` fields, plus a follow-up fix to include `treasury_interest` (Box 3) in Line 2b.
+- **No flow-assertion impact.** None of this work touches `compute.py` aggregate paths that the 1120-S flow-assertion gate checks.
+- **Per-W-2 expand state for "less-common boxes"** is component-local; resets on page navigation. Acceptable for v1 — future polish could persist to localStorage.
+- **N+1 prefetch** added to `TaxReturnViewSet.get_queryset()` retrieve branch and the `w2_incomes` GET endpoint for `box_12_entries` / `box_14_entries` / `dependents`. Caught during code review.
+
+## Previous session recap (2026-05-07 Session G) — EIN/Employer database + W-2 autofill
 - **Goal:** Build a federal-EIN-keyed Employer database, bulk-import 3,832 employers from a TaxWise CSV export, and wire EIN-based autofill into the W-2 entry UI on the 1040 module. Plus: a learning loop that promotes user-typed W-2 employers into the central database for future autofill.
 - **Range pushed to origin/main:** `911b014..<HEAD>` (5 new commits).
 
@@ -56,6 +98,7 @@
 > Sessions D + E (Lacerte parser dry-run + real import) detail lives in MEMORY.md.
 
 ## Recently completed
+- **2026-05-20 (Session H)** — 1040 entry surface completion. 11 commits on `claude/reverent-wescoff-950afe` (unmerged). 3 new models (Dependent, W2Box12Entry, W2Box14Entry). 6 migrations. ~30 new tests across 4 files. Branch ready for review/merge.
 - **2026-05-07 (Session G)** — EIN/Employer database + W-2 autofill. 5 commits pushed. 3,828 employers in DB; W-2 entry UI now autofills name+address from EIN; learning loop promotes user-typed employers and state-IDs.
 - **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`.
 - **2026-05-05 (Session E)** — Lacerte client-list import (real, `--commit --no-sanitize`). 121 individual TaxReturns now in DB for TY 2025. `created=13, updated=109, errors=0`. No code changes; memory update only.
@@ -68,16 +111,17 @@
 - **2026-04-12** — 1040 rough draft (individual return skeleton) — commit `509f79e`.
 
 ## Suggested next sessions
-1. **1040 UI — finish the entry surface.** Taxpayer info tab (real fields, not placeholders), W-2 boxes 3–6 / 12 / 13 / 14 / 18–20, interest income tab beyond a payer + amount, dependents UI. Most of the backend exists (`W2Income` already has nullable boxes 3–6; `Taxpayer` has a full field surface). Pure frontend wiring with maybe 1–2 small model additions.
-2. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
-3. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
-4. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
+1. **Merge `claude/reverent-wescoff-950afe` to main.** Branch has 11 commits implementing the 1040 entry surface. Run `npm run build` + `pytest tests/test_dependents.py tests/test_interest_income_expansion.py tests/test_w2_expansion.py tests/test_w2_box_entries.py -v` one more time before fast-forward merging.
+2. **1040 — CTC/ACTC compute wiring.** Dependents model + UI persist `qualifies_ctc` / `qualifies_odc` flags via serializer, but `compute.py` does not yet calculate Line 19 (CTC) or Line 28 (ACTC). Add formulas to `FORMULAS_1040` and the bracket-aware reduction at higher AGI.
+3. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
+4. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
+5. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
    - Read `LEFT_COLUMNS["sp_first"]` and `["sp_last"]` as fallback when `_parse_name_lnf` returns empty spouse parts.
    - When right-page state OR zip are empty but street/city are populated, scan one y-bucket below for the missing values.
-5. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
-6. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
-7. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
-8. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
+6. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
+7. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
+8. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
+9. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
 
 ## Known issues / blockers
 - **Lacerte parser — 2 bounded bugs documented** (Anomalies 1 and 2). 7 / 122 records have minor field gaps. Usable as-is for development data; targeted fixes queued as next-session #4.
