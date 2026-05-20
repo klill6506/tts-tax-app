@@ -7519,6 +7519,26 @@ function TaxpayerInfoSection({
           </div>
         </div>
 
+        <h4 className="text-sm font-semibold text-tx-primary mt-6 mb-3">
+          Standard Deduction Override
+        </h4>
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-tx-secondary mb-1">
+              Override amount (blank = use filing-status default)
+            </label>
+            <input
+              type="text"
+              placeholder="leave blank for default"
+              value={form.standard_deduction_override || ""}
+              onChange={(e) => handleChange("standard_deduction_override", e.target.value || null)}
+              className={`w-full border border-border rounded px-2 py-1.5 text-sm bg-card ${
+                form.standard_deduction_override ? "text-green-600" : "text-yellow-600"
+              }`}
+            />
+          </div>
+        </div>
+
         <div className="mt-6">
           <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
             {saving ? "Saving..." : "Save Taxpayer Info"}
