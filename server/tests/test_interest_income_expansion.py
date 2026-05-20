@@ -83,10 +83,10 @@ class TestExpandedInterestIncomeSerializer:
         payload = {
             "payer_name": "Wells Fargo Bank",
             "payer_ein": "94-1234567",
-            "payer_street": "420 Montgomery St",
-            "payer_city": "San Francisco",
+            "payer_street": "123 Test Blvd",
+            "payer_city": "Test City",
             "payer_state": "CA",
-            "payer_zip": "94104",
+            "payer_zip": "00000",
             "interest_income": "1500.00",
             "early_withdrawal_penalty": "25.00",
             "treasury_interest": "300.00",
@@ -286,3 +286,19 @@ class TestAggregateInterestIncomeSplit:
             tax_return=tr, form_line__line_number="2a").value) == Decimal("0.00")
         assert Decimal(FormFieldValue.objects.get(
             tax_return=tr, form_line__line_number="2b").value) == Decimal("0.00")
+
+    def test_box_3_treasury_interest_flows_to_line_2b(self, setup_1040):
+        """Treasury interest (Box 3) is taxable — must flow to Line 2b alongside Box 1."""
+        tr = setup_1040["tax_return"]
+        self._seed_form_lines(tr)
+        InterestIncome.objects.create(
+            tax_return=tr, payer_name="Treasury Direct",
+            interest_income=Decimal("0"),
+            treasury_interest=Decimal("500"),
+            tax_exempt_interest=Decimal("0"),
+        )
+        aggregate_1040_income(tr)
+        line_2b = FormFieldValue.objects.get(
+            tax_return=tr, form_line__line_number="2b",
+        ).value
+        assert Decimal(line_2b) == Decimal("500.00")

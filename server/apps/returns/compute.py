@@ -1195,7 +1195,10 @@ def aggregate_1040_income(tax_return) -> None:
     # Sum interest income → Line 2a (tax-exempt), Line 2b (taxable)
     interests = InterestIncome.objects.filter(tax_return=tax_return)
     exempt_total = sum((i.tax_exempt_interest for i in interests), ZERO)
-    taxable_total = sum((i.interest_income for i in interests), ZERO)
+    taxable_total = sum(
+        (i.interest_income + (i.treasury_interest or ZERO) for i in interests),
+        ZERO,
+    )
     _set_field_value(tax_return, "2a", str(exempt_total.quantize(Decimal("0.01"))))
     _set_field_value(tax_return, "2b", str(taxable_total.quantize(Decimal("0.01"))))
 
