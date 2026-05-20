@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
+    Dependent,
     DepreciationAsset,
     Disposition,
     FormDefinition,
@@ -552,6 +553,40 @@ class InterestIncomeSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class DependentSerializer(serializers.ModelSerializer):
+    qualifies_ctc = serializers.SerializerMethodField()
+    qualifies_odc = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Dependent
+        fields = (
+            "id",
+            "first_name",
+            "middle_initial",
+            "last_name",
+            "ssn",
+            "relationship",
+            "date_of_birth",
+            "ctc_override",
+            "odc_override",
+            "qualifies_ctc",
+            "qualifies_odc",
+            "order",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "qualifies_ctc", "qualifies_odc", "created_at", "updated_at")
+
+    def _tax_year(self, obj) -> int:
+        return obj.tax_return.tax_year.year
+
+    def get_qualifies_ctc(self, obj) -> bool:
+        return obj.compute_qualifies_ctc(self._tax_year(obj))
+
+    def get_qualifies_odc(self, obj) -> bool:
+        return obj.compute_qualifies_odc(self._tax_year(obj))
+
+
 # ---------------------------------------------------------------------------
 # Tax Return
 # ---------------------------------------------------------------------------
@@ -601,6 +636,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
     preparer_info = PreparerInfoSerializer(read_only=True)
     # Individual (1040)
     taxpayer = TaxpayerSerializer(read_only=True)
+    dependents = DependentSerializer(many=True, read_only=True)
     w2_incomes = W2IncomeSerializer(many=True, read_only=True)
     interest_incomes = InterestIncomeSerializer(many=True, read_only=True)
     form_code = serializers.CharField(source="form_definition.code", read_only=True)
@@ -687,6 +723,7 @@ class TaxReturnSerializer(serializers.ModelSerializer):
             "preparer_info",
             # Individual (1040)
             "taxpayer",
+            "dependents",
             "w2_incomes",
             "interest_incomes",
             "created_at",

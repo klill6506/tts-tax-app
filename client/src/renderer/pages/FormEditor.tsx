@@ -306,6 +306,21 @@ interface InterestIncomeRow {
   order: number;
 }
 
+type DependentRow = {
+  id: string;
+  first_name: string;
+  middle_initial: string;
+  last_name: string;
+  ssn: string;
+  relationship: string;
+  date_of_birth: string | null;
+  ctc_override: boolean | null;
+  odc_override: boolean | null;
+  qualifies_ctc: boolean;
+  qualifies_odc: boolean;
+  order: number;
+};
+
 interface EntityInfo {
   id: string;
   name: string;
@@ -405,6 +420,7 @@ interface TaxReturnData {
   preparer_info: PreparerInfoData | null;
   // Individual (1040)
   taxpayer: TaxpayerData | null;
+  dependents: DependentRow[];
   w2_incomes: W2IncomeRow[];
   interest_incomes: InterestIncomeRow[];
   created_at: string;
@@ -684,6 +700,7 @@ const PARTNERSHIP_TABS: { id: string; label: string; sections: string[] }[] = [
 /** Individual (1040) section tabs. */
 const INDIVIDUAL_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: "taxpayer_info", label: "Taxpayer Info", sections: [] },
+  { id: "dependents", label: "Dependents", sections: [] },
   { id: "w2_income", label: "W-2 Income", sections: [] },
   { id: "interest_income", label: "Interest Income", sections: [] },
   { id: "tax_summary", label: "Tax Summary", sections: [] },
@@ -1120,6 +1137,12 @@ export default function FormEditor() {
             <TaxpayerInfoSection
               taxReturnId={taxReturnId!}
               taxpayer={returnData.taxpayer}
+              onRefresh={refreshReturn}
+            />
+          ) : activeTab === "dependents" ? (
+            <DependentsSection
+              taxReturnId={taxReturnId!}
+              dependents={returnData.dependents || []}
               onRefresh={refreshReturn}
             />
           ) : activeTab === "w2_income" ? (
@@ -7428,6 +7451,146 @@ function TaxpayerInfoSection({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Individual (1040) — Dependents Section
+// ---------------------------------------------------------------------------
+
+function DependentsSection({
+  taxReturnId,
+  dependents,
+  onRefresh,
+}: {
+  taxReturnId: string;
+  dependents: DependentRow[];
+  onRefresh: () => void;
+}) {
+  const handleAdd = async () => {
+    await post(`/tax-returns/${taxReturnId}/dependents/`, {
+      first_name: "",
+      relationship: "",
+    });
+    onRefresh();
+  };
+
+  const handleUpdate = async (
+    id: string,
+    field: string,
+    value: string | boolean | null,
+  ) => {
+    await patch(`/tax-returns/${taxReturnId}/dependents/${id}/`, { [field]: value });
+    onRefresh();
+  };
+
+  const handleDelete = async (id: string) => {
+    await del(`/tax-returns/${taxReturnId}/dependents/${id}/`);
+    onRefresh();
+  };
+
+  const ctcColor = (d: DependentRow) =>
+    d.ctc_override === null ? "text-yellow-600" : "text-green-600";
+  const odcColor = (d: DependentRow) =>
+    d.odc_override === null ? "text-yellow-600" : "text-green-600";
+
+  return (
+    <div className="bg-card rounded-lg border border-border p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-tx-primary">Dependents</h3>
+        <button
+          onClick={handleAdd}
+          className="px-3 py-1.5 bg-success text-white rounded text-sm font-medium hover:bg-success/90"
+        >
+          + Add Dependent
+        </button>
+      </div>
+      {dependents.length === 0 ? (
+        <p className="text-sm text-tx-muted italic">No dependents entered.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs text-tx-secondary">
+              <th className="text-left py-2 font-medium">First</th>
+              <th className="text-left py-2 font-medium">MI</th>
+              <th className="text-left py-2 font-medium">Last</th>
+              <th className="text-left py-2 font-medium">SSN</th>
+              <th className="text-left py-2 font-medium">Relationship</th>
+              <th className="text-left py-2 font-medium">DOB</th>
+              <th className="text-center py-2 font-medium">CTC</th>
+              <th className="text-center py-2 font-medium">ODC</th>
+              <th className="py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {dependents.map((d) => (
+              <tr key={d.id} className="border-b border-border/50">
+                <td className="py-2">
+                  <input defaultValue={d.first_name}
+                    onBlur={(e) => handleUpdate(d.id, "first_name", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className="py-2 w-12">
+                  <input defaultValue={d.middle_initial} maxLength={1}
+                    onBlur={(e) => handleUpdate(d.id, "middle_initial", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className="py-2">
+                  <input defaultValue={d.last_name}
+                    onBlur={(e) => handleUpdate(d.id, "last_name", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className="py-2">
+                  <input defaultValue={d.ssn} placeholder="XXX-XX-XXXX"
+                    onBlur={(e) => handleUpdate(d.id, "ssn", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className="py-2">
+                  <input defaultValue={d.relationship}
+                    onBlur={(e) => handleUpdate(d.id, "relationship", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className="py-2">
+                  <input type="date" defaultValue={d.date_of_birth || ""}
+                    onBlur={(e) => handleUpdate(d.id, "date_of_birth", e.target.value || null)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                </td>
+                <td className={`py-2 text-center ${ctcColor(d)}`}>
+                  <input type="checkbox" checked={d.qualifies_ctc}
+                    onChange={(e) => handleUpdate(d.id, "ctc_override", e.target.checked)}
+                    className="rounded border-border" />
+                  {d.ctc_override !== null && (
+                    <button
+                      onClick={() => handleUpdate(d.id, "ctc_override", null)}
+                      className="ml-1 text-xs text-tx-muted hover:text-tx-primary"
+                      title="Reset to computed"
+                    >↺</button>
+                  )}
+                </td>
+                <td className={`py-2 text-center ${odcColor(d)}`}>
+                  <input type="checkbox" checked={d.qualifies_odc}
+                    onChange={(e) => handleUpdate(d.id, "odc_override", e.target.checked)}
+                    className="rounded border-border" />
+                  {d.odc_override !== null && (
+                    <button
+                      onClick={() => handleUpdate(d.id, "odc_override", null)}
+                      className="ml-1 text-xs text-tx-muted hover:text-tx-primary"
+                      title="Reset to computed"
+                    >↺</button>
+                  )}
+                </td>
+                <td className="py-2 text-right">
+                  <button onClick={() => handleDelete(d.id)} className="text-danger hover:text-danger/70 text-xs">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

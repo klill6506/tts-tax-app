@@ -17,6 +17,7 @@ from apps.tts_forms.views import PDFRenderMixin
 
 from .compute import compute_return, resolve_recapture_type
 from .models import (
+    Dependent,
     DepreciationAsset,
     Disposition,
     FormDefinition,
@@ -39,6 +40,7 @@ from .models import (
 )
 from .serializers import (
     CreateReturnSerializer,
+    DependentSerializer,
     DepreciationAssetSerializer,
     DispositionSerializer,
     FormDefinitionListSerializer,
@@ -2666,3 +2668,43 @@ class TaxReturnViewSet(
         from .compute import aggregate_1040_income
         aggregate_1040_income(tax_return)
         compute_return(tax_return)
+
+    # ------------------------------------------------------------------
+    # Individual (1040) — Dependent CRUD
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get", "post"], url_path="dependents")
+    def dependents(self, request, pk=None):
+        """List or create dependents."""
+        tax_return = self.get_object()
+
+        if request.method == "GET":
+            qs = Dependent.objects.filter(tax_return=tax_return)
+            return Response(DependentSerializer(qs, many=True).data)
+
+        ser = DependentSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(tax_return=tax_return)
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="dependents/(?P<dep_id>[^/.]+)",
+    )
+    def dependent_detail(self, request, pk=None, dep_id=None):
+        """Update or delete a single dependent."""
+        tax_return = self.get_object()
+        try:
+            dep = Dependent.objects.get(id=dep_id, tax_return=tax_return)
+        except Dependent.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            dep.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        ser = DependentSerializer(dep, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)

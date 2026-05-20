@@ -1560,3 +1560,63 @@ class InterestIncome(models.Model):
 
     def __str__(self):
         return f"1099-INT: {self.payer_name} — ${self.amount}"
+
+
+class Dependent(models.Model):
+    """A dependent on a 1040 return.
+
+    CTC vs ODC classification is computed from date_of_birth + the parent
+    return's tax_year (CTC = under 17 at year-end). ctc_override and
+    odc_override let the preparer flip the computed default; None means
+    "use computed".
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tax_return = models.ForeignKey(
+        TaxReturn,
+        on_delete=models.CASCADE,
+        related_name="dependents",
+    )
+    first_name = models.CharField(max_length=100, blank=True, default="")
+    middle_initial = models.CharField(max_length=1, blank=True, default="")
+    last_name = models.CharField(max_length=100, blank=True, default="")
+    ssn = models.CharField(
+        max_length=11, blank=True, default="",
+        help_text="SSN in XXX-XX-XXXX format.",
+    )
+    relationship = models.CharField(max_length=50, blank=True, default="")
+    date_of_birth = models.DateField(null=True, blank=True)
+    ctc_override = models.BooleanField(
+        null=True, default=None,
+        help_text="None = use computed (under 17 at year-end). True/False overrides.",
+    )
+    odc_override = models.BooleanField(
+        null=True, default=None,
+        help_text="None = use computed (dependent and not CTC-eligible). True/False overrides.",
+    )
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}".strip() or "(unnamed dependent)"
+
+    def compute_qualifies_ctc(self, tax_year: int) -> bool:
+        """CTC: under 17 at year-end of the return's tax year."""
+        if self.ctc_override is not None:
+            return self.ctc_override
+        if not self.date_of_birth:
+            return False
+        age_at_year_end = tax_year - self.date_of_birth.year
+        if (self.date_of_birth.month, self.date_of_birth.day) > (12, 31):
+            age_at_year_end -= 1
+        return age_at_year_end < 17
+
+    def compute_qualifies_odc(self, tax_year: int) -> bool:
+        """ODC: a dependent who is not CTC-eligible."""
+        if self.odc_override is not None:
+            return self.odc_override
+        return not self.compute_qualifies_ctc(tax_year)
