@@ -1774,7 +1774,7 @@ class W2Box14Entry(models.Model):
         on_delete=models.CASCADE,
         related_name="box_14_entries",
     )
-    description = models.CharField(max_length=100)
+    description = models.CharField(max_length=100, blank=True, default="")
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

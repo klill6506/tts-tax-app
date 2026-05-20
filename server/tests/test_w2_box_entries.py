@@ -140,6 +140,28 @@ class TestBox12Entries:
         assert "box_12_entries" in w2_data
         assert w2_data["box_12_entries"][0]["code"] == "D"
 
+    def test_firm_scoping_blocks_other_firm_box_12_access(self, client_api, db):
+        """A user in Firm A cannot list Box 12 entries on Firm B's return."""
+        other_firm = Firm.objects.create(name="Other Firm Box12")
+        other_client = Client.objects.create(firm=other_firm, name="Other")
+        other_entity = Entity.objects.create(
+            client=other_client, name="Other Entity", entity_type=EntityType.INDIVIDUAL,
+        )
+        other_ty = TaxYear.objects.create(entity=other_entity, year=2025)
+        other_form_def = FormDefinition.objects.create(
+            code="1040_other_firm_scoping", name="Form 1040 Other Scoping", tax_year_applicable=2025,
+        )
+        other_tr = TaxReturn.objects.create(
+            tax_year=other_ty,
+            form_definition=other_form_def,
+        )
+        other_w2 = W2Income.objects.create(tax_return=other_tr, employer_name="Other Co", wages=10000)
+
+        resp = client_api.get(
+            f"/api/v1/tax-returns/{other_tr.id}/w2-incomes/{other_w2.id}/box-12-entries/"
+        )
+        assert resp.status_code in (403, 404)
+
 
 # ---------------------------------------------------------------------------
 # Box 14 tests

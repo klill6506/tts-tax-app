@@ -760,6 +760,8 @@ class TaxReturnViewSet(
                 "dispositions",
                 "preparer_info",
                 "dependents",
+                "w2_incomes__box_12_entries",
+                "w2_incomes__box_14_entries",
             )
         # Exclude state returns from list view
         if self.action == "list":
@@ -2582,7 +2584,9 @@ class TaxReturnViewSet(
         tax_return = self.get_object()
 
         if request.method == "GET":
-            qs = W2Income.objects.filter(tax_return=tax_return)
+            qs = W2Income.objects.filter(tax_return=tax_return).prefetch_related(
+                "box_12_entries", "box_14_entries",
+            )
             return Response(W2IncomeSerializer(qs, many=True).data)
 
         ser = W2IncomeSerializer(data=request.data)
