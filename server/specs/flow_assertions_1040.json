@@ -1,0 +1,8 @@
+{
+  "export_version": "1.0",
+  "exported_at": "2026-05-26T00:00:00.000000+00:00",
+  "entity_type": "1040",
+  "assertion_count": 0,
+  "assertions": [],
+  "_note": "Stub — Ken needs to author 1040 Rule Studio specs before this can be populated. See STATUS.md \"1040 — Ken's TODO (Rule Studio work)\" for the priority list. Export via: curl -s https://sherpa-tax-rule-studio.onrender.com/api/flow-assertions/export/?entity_type=1040 > server/specs/flow_assertions_1040.json"
+}

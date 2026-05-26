@@ -13,10 +13,17 @@ These tests run as part of the standard pytest suite. Any CC session
 that modifies compute.py, renderer.py, k1_allocator.py, aggregate
 functions, depreciation_engine.py, or MACRS tables MUST pass all
 flow assertions before committing.
+
+1040 assertions are TODO. The file `server/specs/flow_assertions_1040.json`
+exists as an empty stub. Once Ken authors 1040 Rule Studio specs (see
+STATUS.md "1040 — Ken's TODO (Rule Studio work)"), the export will fill
+in this file and the parametrized 1040 tests will start exercising the
+1040 compute + render chain.
 """
 import json
 import importlib
 import inspect
+import warnings
 from decimal import Decimal
 from pathlib import Path
 
@@ -226,6 +233,17 @@ RUNNERS = {
 }
 
 _assertions_1120s = load_assertions("1120S")
+_assertions_1040 = load_assertions("1040")
+
+if not _assertions_1040:
+    warnings.warn(
+        "No 1040 flow assertions loaded. "
+        "server/specs/flow_assertions_1040.json is a stub — "
+        "Ken needs to author 1040 Rule Studio specs first. "
+        "See STATUS.md \"1040 — Ken's TODO (Rule Studio work)\".",
+        UserWarning,
+        stacklevel=2,
+    )
 
 
 @pytest.mark.parametrize(
@@ -243,9 +261,41 @@ def test_flow_assertion_1120s(assertion):
     runner(assertion)
 
 
+@pytest.mark.parametrize(
+    "assertion",
+    _assertions_1040,
+    ids=lambda a: a.get("assertion_id", "unknown"),
+)
+def test_flow_assertion_1040(assertion):
+    """Run a single 1040 flow assertion from the Rule Studio export.
+
+    No-op while the 1040 assertion list is empty (the stub state).
+    Becomes a real test grid once Ken populates the JSON.
+    """
+    runner = RUNNERS.get(assertion["assertion_type"])
+    assert runner, (
+        f"No runner for assertion type '{assertion['assertion_type']}'. "
+        f"Available: {list(RUNNERS.keys())}"
+    )
+    runner(assertion)
+
+
 def test_flow_assertions_loaded():
     """Verify that assertions were loaded from the JSON file."""
     assert len(_assertions_1120s) >= 10, (
         f"Expected at least 10 flow assertions, got {len(_assertions_1120s)}. "
         f"Check that server/specs/flow_assertions_1120s.json exists."
     )
+
+
+def test_flow_assertions_1040_file_exists():
+    """1040 stub file must exist even when empty so future exports drop in cleanly."""
+    path = SPECS_DIR / "flow_assertions_1040.json"
+    assert path.exists(), (
+        f"{path} is missing. Recreate with empty assertions array — "
+        f"see server/specs/flow_assertions_1040.json original stub."
+    )
+    with open(path) as f:
+        data = json.load(f)
+    assert data.get("entity_type") == "1040"
+    assert isinstance(data.get("assertions"), list)

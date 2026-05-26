@@ -1,0 +1,72 @@
+{
+  "description": "Single retiree, no W-2, multiple 1099-INT incl. tax-exempt + treasury + Box 4 withholding. Documents 1099-DIV/R intent (no model yet).",
+  "tax_year": 2025,
+  "input": {
+    "taxpayer": {
+      "filing_status": "single",
+      "first_name": "Retired",
+      "last_name": "Sample",
+      "ssn": "999-00-3001",
+      "date_of_birth": "1955-12-01",
+      "address_line1": "300 Retiree Way",
+      "city": "Athens",
+      "state": "GA",
+      "zip_code": "30601",
+      "occupation": "Retired"
+    },
+    "dependents": [],
+    "w2_incomes": [],
+    "interest_incomes": [
+      {
+        "payer_name": "Bank A National",
+        "payer_ein": "11-1111111",
+        "interest_income": "5000.00",
+        "federal_tax_withheld": "500.00"
+      },
+      {
+        "payer_name": "Bank B Savings",
+        "payer_ein": "22-2222222",
+        "interest_income": "3200.00",
+        "treasury_interest": "1800.00",
+        "federal_tax_withheld": "300.00"
+      },
+      {
+        "payer_name": "Muni Bond Fund C",
+        "payer_ein": "33-3333333",
+        "interest_income": "0.00",
+        "tax_exempt_interest": "2500.00"
+      }
+    ],
+    "_not_yet_modeled": {
+      "dividend_incomes_1099div": [
+        {"payer_name": "Index Fund X", "ordinary_dividends": "1200.00", "qualified_dividends": "1100.00"}
+      ],
+      "retirement_incomes_1099r": [
+        {"payer_name": "IRA Trustee", "gross_distribution": "12000.00", "taxable_amount": "12000.00", "federal_tax_withheld": "1200.00"}
+      ]
+    }
+  },
+  "expected": {
+    "1a":  "0.00",
+    "1z":  "0.00",
+    "2a":  "2500.00",
+    "2b":  "10000.00",
+    "9":   "10000.00",
+    "11":  "10000.00",
+    "12":  "15700.00",
+    "14":  "15700.00",
+    "15":  "0.00",
+    "16":  "0.00",
+    "24":  "0.00",
+    "25a": "0.00",
+    "25b": "800.00",
+    "25d": "800.00",
+    "33":  "800.00",
+    "34":  "800.00",
+    "37":  "0.00"
+  },
+  "gaps_today": [
+    "Line 25b is not computed today — 1099-INT Box 4 (federal_tax_withheld) is not aggregated to Line 25b. Today Line 25b=0, Line 25d=0, Line 33=0, Line 34=0.",
+    "1099-DIV and 1099-R have no model. The _not_yet_modeled block documents the intent; expected[] only covers what compute can support today plus the 1099-INT Box 4 target."
+  ]
+}

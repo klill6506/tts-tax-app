@@ -1,0 +1,54 @@
+{
+  "description": "Single filer, one W-2, standard deduction, no dependents, modest underpayment.",
+  "tax_year": 2025,
+  "input": {
+    "taxpayer": {
+      "filing_status": "single",
+      "first_name": "Sample",
+      "last_name": "Filer",
+      "ssn": "999-00-1001",
+      "date_of_birth": "1985-06-15",
+      "address_line1": "100 Test Lane",
+      "city": "Athens",
+      "state": "GA",
+      "zip_code": "30601",
+      "occupation": "Engineer"
+    },
+    "dependents": [],
+    "w2_incomes": [
+      {
+        "employer_name": "Acme Test Corp",
+        "employer_ein": "12-3456789",
+        "wages": "60000.00",
+        "federal_tax_withheld": "5000.00",
+        "social_security_wages": "60000.00",
+        "social_security_tax": "3720.00",
+        "medicare_wages": "60000.00",
+        "medicare_tax": "870.00",
+        "state_wages": "60000.00",
+        "state_tax_withheld": "3000.00"
+      }
+    ],
+    "interest_incomes": []
+  },
+  "expected": {
+    "1a":  "60000.00",
+    "1z":  "60000.00",
+    "2a":  "0.00",
+    "2b":  "0.00",
+    "9":   "60000.00",
+    "11":  "60000.00",
+    "12":  "15700.00",
+    "14":  "15700.00",
+    "15":  "44300.00",
+    "16":  "5077.50",
+    "24":  "5077.50",
+    "25a": "5000.00",
+    "25b": "0.00",
+    "25d": "5000.00",
+    "33":  "5000.00",
+    "34":  "0.00",
+    "37":  "77.50"
+  },
+  "gaps_today": []
+}

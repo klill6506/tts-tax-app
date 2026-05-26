@@ -1,0 +1,79 @@
+{
+  "description": "MFJ, 2 dependents under 17 (CTC), 2 W-2s, itemized via standard_deduction_override.",
+  "tax_year": 2025,
+  "input": {
+    "taxpayer": {
+      "filing_status": "mfj",
+      "first_name": "Primary",
+      "last_name": "Sample",
+      "ssn": "999-00-2001",
+      "date_of_birth": "1980-03-10",
+      "spouse_first_name": "Secondary",
+      "spouse_last_name": "Sample",
+      "spouse_ssn": "999-00-2002",
+      "spouse_date_of_birth": "1982-09-22",
+      "address_line1": "200 Test Lane",
+      "city": "Athens",
+      "state": "GA",
+      "zip_code": "30601",
+      "occupation": "Manager",
+      "spouse_occupation": "Teacher",
+      "standard_deduction_override": "28000.00"
+    },
+    "dependents": [
+      {
+        "first_name": "Child",
+        "last_name": "Sample",
+        "ssn": "999-00-2003",
+        "relationship": "son",
+        "date_of_birth": "2010-05-04"
+      },
+      {
+        "first_name": "Kid",
+        "last_name": "Sample",
+        "ssn": "999-00-2004",
+        "relationship": "daughter",
+        "date_of_birth": "2014-11-12"
+      }
+    ],
+    "w2_incomes": [
+      {
+        "employer_name": "Primary Employer Co",
+        "employer_ein": "98-7654321",
+        "wages": "85000.00",
+        "federal_tax_withheld": "10000.00"
+      },
+      {
+        "employer_name": "Spouse Employer LLC",
+        "employer_ein": "87-6543210",
+        "wages": "65000.00",
+        "federal_tax_withheld": "7500.00"
+      }
+    ],
+    "interest_incomes": []
+  },
+  "expected": {
+    "1a":  "150000.00",
+    "1z":  "150000.00",
+    "2a":  "0.00",
+    "2b":  "0.00",
+    "9":   "150000.00",
+    "11":  "150000.00",
+    "12":  "28000.00",
+    "14":  "28000.00",
+    "15":  "122000.00",
+    "16":  "16668.00",
+    "19":  "4000.00",
+    "22":  "12668.00",
+    "24":  "12668.00",
+    "25a": "17500.00",
+    "25b": "0.00",
+    "25d": "17500.00",
+    "33":  "17500.00",
+    "34":  "4832.00",
+    "37":  "0.00"
+  },
+  "gaps_today": [
+    "Line 19 (CTC) is not computed today — Dependent model persists qualifying flags but compute.py does not reduce tax by $2000 per qualifying child. Without that, Line 24 will be 16668.00 (not 12668.00) and Line 34 will be 832.00 (not 4832.00)."
+  ]
+}
