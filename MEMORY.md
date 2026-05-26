@@ -1,5 +1,55 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-26 — Input/Compute/Render Verification rule + 1040 harness Phase 1 (Session J)
+
+Adopted a stricter verification rule. Built the supporting infrastructure
+for the 1040 module (test fixtures + render verification helper + flow
+assertion stub) and audited Session H's deferred work.
+
+### Standing facts established this session
+
+- **New rule: Input/Compute/Render Verification.** Every input field
+  that affects a tax form's computed values must close the chain in
+  the same session: (1) spec in Rule Studio, (2) compute, (3) render,
+  (4) flow assertion. Deferrals must be flagged in `STATUS.md` under
+  "Known issues / blockers" or the session is not considered complete.
+  Rule documented in `CLAUDE.md` after the "Flow Assertions" section
+  and in `DECISIONS.md` (2026-05-26 entry).
+- **1040 has no Rule Studio spec yet.** That's the load-bearing
+  prerequisite for closing the verification chain on Session H's
+  deferred work. `STATUS.md` "1040 — Ken's TODO (Rule Studio work)"
+  section lists 6 priority specs Ken needs to author. Once they exist,
+  `curl ... /api/flow-assertions/export/?entity_type=1040` populates
+  `server/specs/flow_assertions_1040.json` (empty stub today).
+- **Render verification helper:** `apps.returns.verification.assert_value_at_pdf_location(pdf_bytes, page_number, expected_value, location_hint, *, tolerance=5)`.
+  Uses pymupdf to find a label text span on the given page, then
+  asserts an expected value appears to the right within a 5-px
+  vertical band. 8 unit tests in `tests/test_render_verification.py`
+  cover success + four failure paths using on-the-fly ReportLab PDFs.
+- **Test return fixtures:** `server/tests/fixtures/test_returns/1040/`
+  holds three JSON fixtures — `simple_w2_only`, `family_with_kids`,
+  `retiree_1099s` — each pairing `input` (Taxpayer + Dependents +
+  W-2s + 1099-INTs) with `expected` tax-line values. `gaps_today`
+  field flags what won't pass until deferred work lands. Pattern: use
+  `999-00-XXXX` synthetic SSNs per CLAUDE.md no-PII rule. `README.md`
+  in the dir documents the schema. Loaders aren't built yet — they're
+  inputs to a future verification harness.
+- **`test_flow_assertions.py` now loads 1120-S AND 1040 files.** Empty
+  1040 stub emits a `UserWarning` on import; the parametrized 1040 test
+  is a no-op while the list is empty. New
+  `test_flow_assertions_1040_file_exists` guards the stub's existence.
+- **Plan-text correction documented in the audit.** "W2Income Box 4 →
+  Line 25b" is wrong: W-2 Box 2 (`federal_tax_withheld`) IS wired to
+  Line 25a today. The actual gap is 1099-INT Box 4 (`federal_tax_withheld`
+  on `InterestIncome`) → Line 25b (which is also missing from the
+  seed, `FORMULAS_1040`, and `f1040_2025.py`). See STATUS.md "1040
+  verification gap" for the per-field matrix.
+- **Audit summary: 1040 has compute wired for ~15 lines** (1a, 1z, 2a,
+  2b, 9, 11, 12, 14, 15, 16, 24, 25a, 25d, 33, 34, 37), with gaps on
+  Lines 1e, 1g, 17, 19, 20, 21, 22, 25b, 25c, 28 — plus the entire
+  Dependent → CTC compute path and Schedule 1/2/3 framework. None of
+  the 29 W-2 Box 12 codes are compute-wired today.
+
 ## 2026-05-20 — 1040 entry surface completion (Session H)
 
 11 commits on branch `claude/reverent-wescoff-950afe` (unmerged). Finished the entry surface for individual returns: Dependents (net-new), full 1099-INT box surface, full W-2 surface (including Box 12 coded entries + Box 14 free text), and standard-deduction override polish. See STATUS.md for the commit table.

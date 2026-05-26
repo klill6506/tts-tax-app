@@ -1,10 +1,70 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-20
+2026-05-26
 
 ## Currently in progress
-- Nothing in progress. Session H landed on main 2026-05-20.
+- Nothing in progress. Session J landed on main 2026-05-26.
+
+## Last session recap (2026-05-26 Session J) — Input/Compute/Render Verification rule + 1040 harness Phase 1
+
+- **Goal:** Adopt a stricter "Input/Compute/Render Verification" rule
+  (so Session H–style deferred compute can't slip in silently again),
+  build the 1040 verification harness scaffolding, and audit Session H's
+  deferred work. Light on new code, heavy on guardrails.
+- **Range pushed to `origin/main`:** `7784b13..c1f79c3` (6 commits).
+
+| # | SHA       | Message |
+|---|-----------|---------|
+| 1 | `6bc80fb` | docs: add Input/Compute/Render Verification rule to CLAUDE.md |
+| 2 | `cfd6b6e` | docs: record Input/Compute/Render Verification decision in DECISIONS.md |
+| 3 | `f073a0d` | feat(1040): verification harness infrastructure (test fixtures + render verification helper + flow assertion stubs) |
+| 4 | `a309ee6` | docs(status): audit Session H deferred compute/render work for 1040 |
+| 5 | `c1f79c3` | docs(status): document Ken's Rule Studio TODO for 1040 verification gating |
+| 6 | (this commit) | chore(memory): record verification rule + 1040 audit findings |
+
+### What landed
+- **New verification rule** in `CLAUDE.md` (after "Flow Assertions —
+  MANDATORY GATE"). Every input field that affects computed values must
+  close (spec, compute, render, flow assertion) in one session, or
+  flag the deferral explicitly in this file.
+- **Decision entry** in `DECISIONS.md` (2026-05-26) with the Session H
+  context that motivated the rule.
+- **Harness infrastructure** under `server/`:
+  - `tests/fixtures/test_returns/1040/` — README + 3 JSON fixtures
+    (simple_w2_only, family_with_kids, retiree_1099s), each pairing
+    inputs with expected tax-line outputs, plus a `gaps_today` field
+    flagging what won't pass until deferred work lands.
+  - `apps/returns/verification.py` — `assert_value_at_pdf_location()`
+    pymupdf-based helper, 5-px vertical alignment tolerance.
+  - `specs/flow_assertions_1040.json` — empty stub awaiting Ken's
+    Rule Studio export.
+  - `tests/test_flow_assertions.py` updated to load 1120-S AND 1040
+    files, emits a UserWarning when 1040 is empty.
+  - `tests/test_render_verification.py` — 8 unit tests for the helper.
+- **Per-field audit** in this file's "1040 verification gap" section
+  documenting which Session H additions have compute/render today vs.
+  which don't (every Dependent field, every W-2 Box 12 code, every
+  new InterestIncome box).
+- **Ken's TODO** in this file's "1040 — Ken's TODO (Rule Studio work)"
+  section listing the 6 priority specs Ken needs to author before
+  further 1040 compute/render work can be properly gated.
+
+### Test results
+- `tests/test_render_verification.py`: 8/8 passing.
+- `tests/test_flow_assertions.py`: 22 passed, 1 skipped (pre-existing),
+  1 UserWarning (the expected "1040 stub is empty" notice).
+- No other tests touched in this session.
+
+### Notes
+- **Plan text correction:** The plan said "W2Income Box 4 (`federal_income_tax_withheld`)
+  not wired to Line 25b" — that conflated two boxes. W-2 Box 2
+  (`federal_tax_withheld`) IS wired to Line 25a today; the real gap is
+  1099-INT Box 4 (also called `federal_tax_withheld`, on
+  `InterestIncome`) → Line 25b (which is itself missing from the seed
+  + FORMULAS_1040 + FIELD_MAP). The audit reflects what's actually true.
+- **No compute or render field-map changes this session.** That's
+  explicitly out of scope until Ken authors 1040 Rule Studio specs.
 
 ## Last session recap (2026-05-20 Session H) — 1040 entry surface completion
 
@@ -100,6 +160,7 @@
 > Sessions D + E (Lacerte parser dry-run + real import) detail lives in MEMORY.md.
 
 ## Recently completed
+- **2026-05-26 (Session J)** — Input/Compute/Render Verification rule + 1040 harness Phase 1. 6 commits pushed directly to `main` (`7784b13..<HEAD>`). Documentation + scaffolding only: new rule in CLAUDE.md + DECISIONS.md, test fixtures + render verification helper + empty 1040 flow assertion stub, full audit of Session H's deferred work, Ken's Rule Studio TODO list. 9 new tests (8 helper + 1 stub guard), 30 passing total in this scope, 0 failures.
 - **2026-05-20 (Session H)** — 1040 entry surface completion. 13 commits merged to main fast-forward from `claude/reverent-wescoff-950afe`. 3 new models (Dependent, W2Box12Entry, W2Box14Entry). 6 migrations (0035-0040). ~30 new tests across 4 files. Full backend + UI for Dependents, full 17-box 1099-INT, full W-2 box surface (including Box 12/14 sub-models), and `standard_deduction_override` polish.
 - **2026-05-07 (Session G)** — EIN/Employer database + W-2 autofill. 5 commits pushed. 3,828 employers in DB; W-2 entry UI now autofills name+address from EIN; learning loop promotes user-typed employers and state-IDs.
 - **2026-05-05 (Session F)** — TTS favicon (blue-800 background, white mark). 1 commit pushed: `5d8eb1a`.
@@ -113,17 +174,54 @@
 - **2026-04-12** — 1040 rough draft (individual return skeleton) — commit `509f79e`.
 
 ## Suggested next sessions
-1. **1040 — CTC/ACTC compute wiring.** Dependents model + UI persist `qualifies_ctc` / `qualifies_odc` flags via serializer, but `compute.py` does not yet calculate Line 19 (CTC) or Line 28 (ACTC). Add formulas to `FORMULAS_1040` and the bracket-aware reduction at higher AGI.
-2. **Cut B — preparer-side document viewer.** A read-only pane that lists W-2 PDFs / 1099 PDFs / source documents the client uploaded, indexed by Entity. Pulls from the `documents` app (Session C). The "view" side of the upload flow that's already wired.
-3. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2 entry card on the left, the source W-2 PDF (uploaded via the documents app) on the right. Lets preparers cross-reference while typing without alt-tabbing. Probably embeds via the same `<embed>`-based PDF viewer the Forms tab already uses (per MEMORY.md "Forms tab: Browser native PDF iframe").
-4. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
-   - Read `LEFT_COLUMNS["sp_first"]` and `["sp_last"]` as fallback when `_parse_name_lnf` returns empty spouse parts.
-   - When right-page state OR zip are empty but street/city are populated, scan one y-bucket below for the missing values.
-5. **Documents app — Supabase Storage bucket + S3 keys** — backend ships with conditional STORAGES. To go live, create the `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`. Until those are set, uploads land on the local filesystem (dev only).
-6. **Auto-save rendered returns to client folders** — every PDF render should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook lives in `renderer.render_complete_return()`.
-7. **Partnership importer test coverage** — TODO from Session C. Needs synthetic xlsx fixture + extraction of the row-parser into a function.
-8. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
-9. **N+1 cleanup on retrieve serializer.** Pre-existing — `w2_incomes` and `interest_incomes` are not in the `prefetch_related` list on `TaxReturnViewSet.get_queryset()` retrieve branch. One-line fix; final review flagged it but it pre-dated this branch and wasn't blocking.
+1. **1040 verification gap closing — Line 19 (CTC).** Blocked on Ken
+   authoring the Line 19 spec in Rule Studio (see "1040 — Ken's TODO"
+   above). Once exported, wire the CTC compute (Dependent under-17
+   eligibility from DOB, $2,000/child base, $400K MFJ / $200K else
+   phaseout, refundable portion is ACTC on Line 28), add Line 19 + 22
+   + 28 to `seed_1040` + `FIELD_MAP`, add the flow assertion, and
+   confirm the `family_with_kids.json` fixture passes end-to-end.
+2. **1040 verification gap closing — Line 25b withholding.** Sum
+   1099-INT Box 4 (`federal_tax_withheld`) into Line 25b. Add Line 25b
+   to `seed_1040` + `FORMULAS_1040` + `FIELD_MAP`. Confirm
+   `retiree_1099s.json` passes. Same Rule Studio spec dependency.
+3. **1040 verification gap closing — Lines 2a/2b/12a flow assertions.**
+   These are wired in compute today but not gated. Once Ken authors
+   the specs, exporting them gives us trip-wires for any future
+   regression. No code change needed beyond the flow assertion JSON.
+4. **Cut B — preparer-side document viewer.** A read-only pane that
+   lists W-2 PDFs / 1099 PDFs / source documents the client uploaded,
+   indexed by Entity. Pulls from the `documents` app (Session C).
+5. **Cut B — PDF preview pane on the W-2 form.** Side-by-side: the W-2
+   entry card on the left, the source W-2 PDF (uploaded via the
+   documents app) on the right. Lets preparers cross-reference while
+   typing without alt-tabbing. Probably embeds via the same `<embed>`-based
+   PDF viewer the Forms tab already uses.
+6. **Lacerte parser targeted fixes** (~1–2 hours). Cleanup, not
+   blocking. Two bounded edits to `lacerte_clientlist_parser.py`:
+   - Read `LEFT_COLUMNS["sp_first"]` and `["sp_last"]` as fallback when
+     `_parse_name_lnf` returns empty spouse parts.
+   - When right-page state OR zip are empty but street/city are populated,
+     scan one y-bucket below for the missing values.
+7. **Documents app — Supabase Storage bucket + S3 keys** — backend
+   ships with conditional STORAGES. To go live, create the
+   `tax-documents` bucket in Supabase and add `SUPABASE_S3_ACCESS_KEY` /
+   `SUPABASE_S3_SECRET_KEY` / `SUPABASE_URL` to the Render `.env`.
+   Until those are set, uploads land on the local filesystem (dev only).
+8. **Auto-save rendered returns to client folders** — every PDF render
+   should drop a copy in `tax-documents/<firm>/<entity>/<year>/`. Hook
+   lives in `renderer.render_complete_return()`.
+9. **Partnership importer test coverage** — TODO from Session C. Needs
+   synthetic xlsx fixture + extraction of the row-parser into a function.
+10. **Test-DB strategy decision** — `config.settings.test` currently
+    creates/drops `test_postgres` against the shared prod Supabase
+    project. The harmless teardown warning in every run, plus the
+    pooler-stickiness recent sessions have hit, both point to "fix
+    this soon." Three options documented in `config/settings/test.py`
+    docstring.
+11. **N+1 cleanup on retrieve serializer.** Pre-existing — `w2_incomes`
+    and `interest_incomes` are not in the `prefetch_related` list on
+    `TaxReturnViewSet.get_queryset()` retrieve branch. One-line fix.
 
 ## 1040 — Ken's TODO (Rule Studio work)
 
