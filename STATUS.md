@@ -125,6 +125,33 @@
 8. **Test-DB strategy decision** — `config.settings.test` currently creates/drops `test_postgres` against the shared prod Supabase project. The harmless teardown warning in every run, plus the pooler-stickiness this session hit, both point to "fix this soon." Three options documented in `config/settings/test.py` docstring.
 9. **N+1 cleanup on retrieve serializer.** Pre-existing — `w2_incomes` and `interest_incomes` are not in the `prefetch_related` list on `TaxReturnViewSet.get_queryset()` retrieve branch. One-line fix; final review flagged it but it pre-dated this branch and wasn't blocking.
 
+## 1040 — Ken's TODO (Rule Studio work)
+
+Before any further 1040 compute or render work can be properly gated,
+Ken needs to author Rule Studio specs for the 1040 lines Session H
+touched. Priority order:
+
+1. **Line 19 — CTC (Child Tax Credit)** — most urgent; Dependents UI
+   exists but no compute. Authority: IRC §24, Pub 972, 2025 1040
+   instructions.
+2. **Line 25a/25b — Withholding aggregation** — W-2 Box 2 sums to 25a;
+   W-2 Box 4 sums to 25b; 1099 Box 4 sums to 25b. Currently W-2 Box 4
+   not wired.
+3. **Line 12a — Standard deduction** — surface override flag exists in
+   UI; need the spec for default-from-filing-status logic.
+4. **Lines 2a/2b — Interest aggregation** — already wired in compute
+   per Session H, but no spec/flow assertion to gate it.
+5. **Lines 1a-1z — Wage aggregation** — W-2 Box 1 sums to 1a; allocated
+   tips (Box 8) flow to 1g.
+6. **Line 28 — ACTC (Additional CTC, refundable portion)** — depends on
+   Line 19 CTC compute being done first.
+
+Once specs exist in Rule Studio, run:
+  curl -s https://sherpa-tax-rule-studio.onrender.com/api/flow-assertions/export/?entity_type=1040 > server/specs/flow_assertions_1040.json
+
+Then the next session can wire compute + render with flow-assertion
+gating in place.
+
 ## Known issues / blockers
 
 ### 1040 verification gap (Session H deferred work — audit 2026-05-26)
