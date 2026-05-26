@@ -215,6 +215,40 @@ To update assertions from Rule Studio:
 curl -s https://sherpa-tax-rule-studio.onrender.com/api/flow-assertions/export/?entity_type=1120S > server/specs/flow_assertions_1120s.json
 ```
 
+## Input/Compute/Render Verification — MANDATORY
+
+Every input field that affects a tax form's computed values must be
+verified end-to-end as a single unit of work. The chain is:
+
+1. **Spec.** The field is documented in the Rule Studio spec for its form.
+2. **Compute.** `compute.py` (or sub-module) uses the field to update
+   the affected tax line.
+3. **Render.** The relevant form's field map renders the computed value
+   to the correct PDF location.
+4. **Flow assertion.** A pytest assertion exercises input → compute →
+   render and asserts the value lands correctly.
+
+**A session that adds an input field but defers compute or render MUST:**
+- Explicitly flag the deferred work in STATUS.md under "Known issues /
+  blockers" as "deferred compute" or "deferred render"
+- Not be considered "complete" until the full chain is closed
+
+Fields that don't affect computed values (notes, metadata, internal
+tracking) are exempt from steps 2–4 but should still be specced if the
+form has a Rule Studio spec.
+
+**Why this matters:** 1040 returns with kids will produce wrong Line 19
+(CTC) values without this discipline. The input UI looks fine; the math
+is silently wrong. Tax-law accuracy beats velocity.
+
+**Current state per entity type:**
+- **1120-S, 1065**: Flow assertions exist and gate compute changes. Rule
+  enforced.
+- **1040**: No Rule Studio spec yet. No flow assertions yet. Rule applies
+  going forward; backfill audit tracked in STATUS.md as "1040 verification
+  gap."
+- **1120 C-Corp**: Not yet built. Rule applies when built.
+
 ## Development Rules
 - ✅ Can create and modify files freely
 - ❌ Ask before deleting files, bulk renames, or changes outside this repo
