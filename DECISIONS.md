@@ -16,6 +16,37 @@
 ## Architecture Decisions
 Do not change without discussing with Ken first.
 
+### 2026-05-26 — Input/Compute/Render Verification rule adopted
+
+**Decision:** Every input field added to a tax form must be wired to
+compute and render in the same session, gated by flow assertions. No
+more "deferred compute" debt allowed to accumulate without an explicit
+flag in STATUS.md.
+
+**Context:** Session H (2026-05-20) added a substantial 1040 entry
+surface — Dependents, full 1099-INT box surface, full W-2 box surface
+including Box 12/14 sub-models — but explicitly deferred CTC compute,
+W-2 Box 4 → Line 25b withholding, and any verification that new fields
+render correctly. The 1040 module had no Rule Studio specs and no flow
+assertions, so the deferrals weren't caught by any automated check.
+A return with dependents under 17 would silently produce wrong Line 19
+(CTC) values.
+
+**Trade-off:** Sessions become smaller in scope. One input + its compute
++ its render + its flow assertion is a lot for one session. This is
+acceptable because tax-law accuracy is the #1 priority per CLAUDE.md.
+
+**Infrastructure required for the 1040:**
+- 1040 Rule Studio specs (Ken authors; parallel to existing 1120-S
+  specs)
+- 1040 flow assertions exported from Rule Studio into this repo
+- A 1040 render verification mechanism (programmatic check that values
+  land in correct PDF coordinates)
+- Test return fixtures (defined in `server/tests/fixtures/test_returns/1040/`)
+
+**Backfill required:** Session H's deferred compute + render work
+(see STATUS.md "1040 verification gap" section).
+
 - **Single app all tax years** — one deployment handles all years via tax_year field. Never separate sites per year.
 - **Year-scoped seed data** — all FormFieldDefinition rows must have tax_year. Never year-agnostic seed rows.
 - **Year-scoped PDF paths** — always resolve as resources/irs_forms/{tax_year}/form.pdf. Never hardcode a year in a path.
