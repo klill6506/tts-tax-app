@@ -126,6 +126,139 @@
 9. **N+1 cleanup on retrieve serializer.** Pre-existing — `w2_incomes` and `interest_incomes` are not in the `prefetch_related` list on `TaxReturnViewSet.get_queryset()` retrieve branch. One-line fix; final review flagged it but it pre-dated this branch and wasn't blocking.
 
 ## Known issues / blockers
+
+### 1040 verification gap (Session H deferred work — audit 2026-05-26)
+
+Session H added input UI + models for the 1040 module without closing
+the Input/Compute/Render chain. The new verification rule
+(`CLAUDE.md` "Input/Compute/Render Verification — MANDATORY") makes
+this gap explicit. Below is the per-field inventory.
+
+**Legend:** ✅ wired today / ❌ deferred / N/A no impact on federal compute.
+
+#### `Dependent` model (Session H, migration 0035)
+| Field          | Compute                              | Render                              | Flow assertion |
+|----------------|--------------------------------------|-------------------------------------|----------------|
+| first/middle/last name, ssn | N/A — identity only       | ❌ no Dependents block in `f1040_2025.py` field map (max 4 IRS slots) | N/A |
+| relationship   | N/A                                  | ❌ same                              | N/A |
+| date_of_birth  | ❌ feeds CTC age test (under-17) — Line 19 unimplemented | ❌ no Dependents block | ❌ |
+| ctc_override / odc_override | ❌ should override DOB-based CTC eligibility for Line 19 / Line 28 | ❌ no Dependents block | ❌ |
+| **Line 19 (CTC)** target | ❌ not in `FORMULAS_1040`, not in seed_1040 | ❌ not in `FIELD_MAP` (Line 16 → 24, skips 17-23) | ❌ |
+| **Line 22 subtotal** | ❌ not in `FORMULAS_1040`, not in seed | ❌ not in FIELD_MAP | ❌ |
+| **Line 28 (ACTC, refundable)** | ❌ not in `FORMULAS_1040`, not in seed | ❌ not in FIELD_MAP | ❌ |
+
+#### `W2Income` Session H additions (migrations 0037/0038)
+| Field (Box)                          | Compute                                  | Render                | Flow assertion |
+|--------------------------------------|------------------------------------------|-----------------------|----------------|
+| Box 2 `federal_tax_withheld` (pre-Session H, but worth listing) | ✅ summed to Line 25a in `aggregate_1040_income` | ✅ in FIELD_MAP | ❌ no 1040 assertions |
+| Box 3 `social_security_wages`        | N/A federal — used for SS-tax reconciliation only | N/A | N/A |
+| Box 4 `social_security_tax`          | ❌ Excess-SS credit on Schedule 3 Line 11 — not built; plan text "W2Income Box 4 → Line 25b" was incorrect (that's a 1099-INT Box 4 issue, see below) | N/A on 1040 directly | ❌ |
+| Box 5 `medicare_wages`               | N/A federal flow                          | N/A | N/A |
+| Box 6 `medicare_tax`                 | N/A federal flow (Add'l Medicare on 8959) | N/A on 1040 directly | N/A |
+| Box 7 `social_security_tips`         | N/A federal flow                          | N/A | N/A |
+| Box 8 `allocated_tips`               | ❌ should add to Line 1g (allocated tips); today only Line 1a is summed | ❌ no Line 1g in FIELD_MAP | ❌ |
+| Box 10 `dependent_care_benefits`     | ❌ Form 2441 input; affects Line 1e — not built | ❌ no Line 1e | ❌ |
+| Box 11 `nonqualified_plans`          | N/A — informational on the W-2 only       | N/A | N/A |
+| Box 13 `statutory_employee` (bool)   | ❌ should re-route wages to Schedule C — not built | N/A | ❌ |
+| Box 13 `retirement_plan` (bool)      | N/A — affects IRA deduction calc on Schedule 1 (not built) | N/A | N/A |
+| Box 13 `third_party_sick_pay` (bool) | N/A — informational                       | N/A | N/A |
+| Box 16/17 `state_*`                  | N/A federal                              | N/A on 1040; state form | N/A |
+| Box 18/19/20 `local_*`               | N/A federal                              | N/A | N/A |
+
+#### `W2Box12Entry` codes (Session H, migration 0039)
+All 29 codes persisted; **none are compute-wired today.** Per IRS Pub 15-B / 2025 1040 instructions, code-by-code impact:
+
+| Code  | What it is                                  | Federal 1040 compute impact (target) | Wired? |
+|-------|---------------------------------------------|--------------------------------------|--------|
+| A, B  | Uncollected SS / Medicare on tips           | Adds to Line 16 via Schedule 2 Line 13 | ❌ |
+| C     | GTL > $50K coverage cost                    | Informational (already in Box 1)      | ❌ |
+| D     | 401(k) elective deferral                    | Informational (already excluded from Box 1) — but used for retirement-savings-credit lookback | ❌ |
+| E     | 403(b) elective deferral                    | Same as D                             | ❌ |
+| F     | 408(k)(6) SARSEP                            | Same as D                             | ❌ |
+| G     | 457(b) elective deferral                    | Same as D                             | ❌ |
+| H     | 501(c)(18)(D) tax-exempt org elective       | Adjustment on Schedule 1 Line 24f (not built) | ❌ |
+| J     | Nontaxable sick pay                         | Informational                         | ❌ |
+| K     | 20% golden-parachute excise                 | Adds to Line 17 (additional taxes from Schedule 2) | ❌ |
+| L     | Substantiated employee biz expense reimbursements | Informational                  | ❌ |
+| M, N  | Uncollected SS / Medicare on GTL > $50K (former employee) | Schedule 2 Line 13          | ❌ |
+| P     | Excludable moving exp reimbursements (Armed Forces) | Informational                  | ❌ |
+| Q     | Nontaxable combat pay                       | EIC / additional CTC computation       | ❌ |
+| R     | Archer MSA employer contributions           | Form 8853 input                       | ❌ |
+| S     | 408(p) SIMPLE retirement elective           | Like D                                | ❌ |
+| T     | Adoption benefits                           | Form 8839 input                       | ❌ |
+| V     | NQSO income (incl. in Box 1)                | Informational                         | ❌ |
+| W     | HSA employer + employee contributions       | Form 8889 input → Schedule 1 Line 13 HSA deduction | ❌ |
+| Y     | Section 409A nonqualified deferred comp     | Informational                         | ❌ |
+| Z     | Section 409A income not satisfying 409A     | Schedule 2 Line 8 (20% additional tax) | ❌ |
+| AA    | Roth contribution to 401(k)                 | Saver's-credit lookback               | ❌ |
+| BB    | Roth contribution to 403(b)                 | Saver's-credit lookback               | ❌ |
+| DD    | Employer-sponsored health coverage          | Informational only                    | N/A |
+| EE    | Roth contribution to governmental 457(b)    | Saver's-credit lookback               | ❌ |
+| FF    | QSEHRA permitted benefit                    | Informational                         | ❌ |
+| GG    | Qualified equity grants under §83(i)        | Schedule 1 Line 8u                     | ❌ |
+| HH    | Aggregate deferrals under §83(i)            | Informational                         | ❌ |
+
+**None of the above are compute-wired today.** Highest-value to wire next: W (HSA), D/E/F/G/S (saver's credit lookbacks), AA/BB/EE (saver's credit), Q (combat-pay EIC).
+
+#### `W2Box14Entry` (Session H, migration 0039)
+Free-text description + amount. **No federal 1040 compute impact** in general; some descriptions (e.g., NJ FLI, CA SDI, NY PFL) affect state returns. **N/A** for the 1040 verification gap audit. Render: not currently rendered to Form 1040 — `f1040_2025.py` has no Box-14 block (the IRS form has 4 Box-14 slots per W-2, currently blank).
+
+#### `InterestIncome` Session H expansion (migration 0036)
+| Field (Box)                          | Compute                                       | Render            | Flow assertion |
+|--------------------------------------|------------------------------------------------|-------------------|----------------|
+| Box 1 `interest_income`              | ✅ summed to Line 2b in `aggregate_1040_income` (incl. Box 3) | ✅ in FIELD_MAP | ❌ |
+| Box 2 `early_withdrawal_penalty`     | ❌ should flow to Schedule 1 Line 18 — not built | N/A on 1040 directly | ❌ |
+| Box 3 `treasury_interest`            | ✅ summed into Line 2b alongside Box 1 (fixed in commit `a0baa1f`) | ✅ via Line 2b   | ❌ |
+| Box 4 `federal_tax_withheld`         | ❌ should sum to Line 25b — **the actual Session H deferral** (Line 25b is also missing from seed_1040 + FORMULAS_1040 + FIELD_MAP) | ❌ Line 25b not in FIELD_MAP | ❌ |
+| Box 5 `investment_expenses`          | N/A — Schedule A info only (TCJA suspended)  | N/A | N/A |
+| Box 6 `foreign_tax_paid`             | ❌ Schedule 3 Line 1 / Form 1116 — not built  | N/A on 1040 directly | ❌ |
+| Box 7 `foreign_country`              | N/A — Form 1116 metadata                       | N/A | N/A |
+| Box 8 `tax_exempt_interest`          | ✅ summed to Line 2a in `aggregate_1040_income` | ✅ in FIELD_MAP | ❌ |
+| Box 9 `pab_interest`                 | ❌ AMT preference (Form 6251 Line 2g) — not built | N/A on 1040 directly | ❌ |
+| Box 10 `market_discount`             | ❌ Schedule B input — not built                | N/A | ❌ |
+| Box 11 `bond_premium`                | ❌ reduces taxable interest on Schedule B — not built | N/A | ❌ |
+| Box 12 `treasury_bond_premium`       | ❌ same logic for treasury portion — not built | N/A | ❌ |
+| Box 13 `tax_exempt_bond_premium`     | ❌ reduces Box 8 → Line 2a — not built         | N/A | ❌ |
+| Box 14 `cusip_number`                | N/A — Schedule B metadata                      | N/A | N/A |
+| Box 15-17 (state)                    | N/A federal                                    | N/A on 1040 directly | N/A |
+
+#### `Taxpayer.standard_deduction_override` (Session H, surface)
+- Compute: ✅ honored by `aggregate_1040_income` Line 12 path.
+- Render: ✅ Line 12 in `FIELD_MAP`.
+- Flow assertion: ❌ none.
+
+#### Summary by 1040 line
+| Line | Description                | Compute | Render | Notes |
+|------|----------------------------|---------|--------|-------|
+| 1a   | W-2 wages                  | ✅      | ✅     | covered |
+| 1e   | Dependent care benefits taxable | ❌  | ❌     | W-2 Box 10 |
+| 1g   | Allocated tips             | ❌      | ❌     | W-2 Box 8 |
+| 1z   | Wage subtotal              | ✅ (= 1a today) | ✅ | covered for the simple case |
+| 2a   | Tax-exempt interest        | ✅      | ✅     | covered |
+| 2b   | Taxable interest           | ✅      | ✅     | covered |
+| 8    | Other income (Sched 1)     | N/A (Schedule 1 not built) | ✅ in FIELD_MAP | upstream missing |
+| 11   | AGI                        | ✅      | ✅     | covered |
+| 12   | Standard / itemized deduction | ✅   | ✅     | override honored |
+| 13   | QBI                        | N/A (input only) | ✅ | manual entry |
+| 15   | Taxable income             | ✅      | ✅     | covered |
+| 16   | Tax                        | ✅ (brackets only — no Sch D / 8814 / cap gain worksheet) | ✅ | covered for ordinary income |
+| 17   | Sched 2 Line 3 amount      | ❌      | ❌ not in FIELD_MAP | Sched 2 not built |
+| **19** | **Child tax credit**     | ❌      | ❌ not in FIELD_MAP | **#1 priority** |
+| 20   | Sched 3 Line 8 credits     | ❌      | ❌ | Sched 3 not built |
+| 21   | Add credits                | ❌      | ❌ | depends on 19, 20 |
+| **22** | **Line 16 + 17 − 21**    | ❌      | ❌ not in FIELD_MAP | depends on 19, 20, 21 |
+| 24   | Total tax                  | ✅ (= 16 today) | ✅ | wrong once 17/22/23 are real |
+| 25a  | W-2 withholding            | ✅      | ✅     | covered |
+| **25b** | **1099 withholding**    | ❌      | ❌ not in seed + FIELD_MAP | from 1099-INT Box 4 |
+| 25c  | Other forms withholding    | ❌      | ❌ | not in seed |
+| 25d  | Total withholding          | ✅ (= 25a today) | ✅ | wrong until 25b/25c land |
+| **28** | **Additional CTC (refundable)** | ❌ | ❌ not in seed/FIELD_MAP | depends on Line 19 |
+| 33   | Total payments             | ✅ (= 25d today) | ✅ | wrong without credits/EIC/Sched 3 |
+| 34   | Overpaid                   | ✅      | ✅     | recursively wrong |
+| 37   | Owed                       | ✅      | ✅     | recursively wrong |
+
+**Net: 1040 has compute wired for 9 lines (1a, 1z, 2a, 2b, 9, 11, 12, 14, 15, 16, 24, 25a, 25d, 33, 34, 37), with gaps in 1e, 1g, 17, 19, 20, 21, 22, 25b, 25c, 28 — plus the entire CTC dependent logic + Schedule 1/2/3 framework.** No 1040 flow assertions exist.
+
 - **Lacerte parser — 2 bounded bugs documented** (Anomalies 1 and 2). 7 / 122 records have minor field gaps. Usable as-is for development data; targeted fixes queued as next-session #4.
 - **Documents app — Supabase Storage not yet wired in prod.** Code is conditional on `SUPABASE_S3_ACCESS_KEY`; without it Django falls back to local FS.
 - **Employer database — 4 malformed-EIN rows from the TaxWise CSV silently dropped on import.** Logged as errors in the import summary but not preserved. If those 4 employers ever get a W-2 typed in, the learning loop will create a clean record for them.
