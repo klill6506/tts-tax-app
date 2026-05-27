@@ -1481,6 +1481,94 @@ class Taxpayer(models.Model):
         help_text="Override standard deduction. If blank, filing-status default is used.",
     )
 
+    # ----- Schedule 8812 (CTC/ACTC/ODC) return-level inputs (added 2026-05-27) ----
+    # SSN validity (OBBBA §70104(b) — spec rules R003 + R030 use these)
+    taxpayer_has_valid_ssn = models.BooleanField(
+        default=True,
+        help_text="Spec fact `taxpayer_has_valid_ssn`. CTC/ACTC/ODC zeroed when False.",
+    )
+    spouse_has_valid_ssn = models.BooleanField(
+        default=True,
+        help_text="Spec fact `spouse_has_valid_ssn` (MFJ only). At least one of "
+        "TP/SP must have a valid SSN for any CTC/ACTC/ODC.",
+    )
+    spouse_has_ssn_or_itin_by_due_date = models.BooleanField(
+        default=True,
+        help_text="Spec fact `spouse_has_ssn_or_itin_by_due_date` (MFJ only).",
+    )
+    # Form 2555 / 4563 / Puerto Rico exclusions (MAGI add-back + ACTC zero on 2555)
+    files_form_2555 = models.BooleanField(
+        default=False,
+        help_text="Spec fact `files_form_2555`. ACTC = $0 when True (CTC/ODC still allowed).",
+    )
+    form_2555_excluded_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `form_2555_excluded_amount` (lines 45 + 50 combined).",
+    )
+    form_4563_excluded_income = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `form_4563_excluded_income` (line 15 — American Samoa).",
+    )
+    puerto_rico_excluded_income = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `puerto_rico_excluded_income`.",
+    )
+    # ACTC earned-income simplified path
+    nontaxable_combat_pay = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `nontaxable_combat_pay` (Form 1040 Line 18b).",
+    )
+    # Worksheet B + Part II-B toggles
+    claims_credits_requiring_worksheet_b = models.BooleanField(
+        default=False,
+        help_text="Spec fact `claims_credits_requiring_worksheet_b` "
+        "(Form 8396 / 8839 / 5695 Part I / 8859 present).",
+    )
+    taxpayer_has_rrta_taxes = models.BooleanField(
+        default=False,
+        help_text="Spec fact `taxpayer_has_rrta_taxes` (Tier 1 RRTA via W-2 box 14 or CT-2).",
+    )
+
+    # ----- Placeholder inputs for forms not yet modeled (default 0) -----
+    # These are real numbers the spec needs but the underlying form (Schedule 1/2/3,
+    # Schedule SE, Form 8959, EITC worksheet) is not yet built. Preparer enters
+    # totals manually until the supporting form lands.
+    schedule_3_pre_ctc_credits_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 3 credits applied BEFORE CTC "
+        "(sum of lines 1, 2, 3, 4, 5b, 6d, 6f, 6l, 6m). Spec fact "
+        "`schedule_3_pre_ctc_credits_total`.",
+    )
+    additional_medicare_tax_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Form 8959 line 7. Spec fact `additional_medicare_tax_amount`.",
+    )
+    deductible_se_tax_half = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — ½ SE tax (Schedule 1 line 15). Spec fact `deductible_se_tax_half`.",
+    )
+    se_tax_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — SE tax total (Schedule 2 line 5). Spec fact `se_tax_total`.",
+    )
+    unreported_ss_medicare_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 2 line 6 (Forms 4137 / 8919). "
+        "Spec fact `unreported_ss_medicare_tax`.",
+    )
+    other_employment_taxes = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 2 line 13. Spec fact `other_employment_taxes`.",
+    )
+    eitc_claimed = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Form 1040 Line 27a. Spec fact `eitc_claimed`.",
+    )
+    excess_ss_rrta_withheld = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 3 line 11. Spec fact `excess_ss_rrta_withheld`.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
