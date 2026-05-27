@@ -270,9 +270,18 @@ def compute_sch_8812(tax_return) -> int:
     )
 
     # ---- R018-R020: ACTC standard path ----
-    L_16a = max(ZERO, L_12 - L_14) if actc_eligible else ZERO
-    L_16b = Decimal(qc_count) * ACTC_PER_CHILD_CAP if actc_eligible else ZERO
-    L_17 = min(L_16a, L_16b) if actc_eligible else ZERO
+    # Spec rule R018 reads "L_16a = ... if actc_eligible else 0", but
+    # scenarios disambiguate the conditions:
+    #   TS09b (QC=0, no 2555): L_16a=300 ← gating ignores QC count
+    #   TS13  (QC=2, 2555=Y) : L_16a=0   ← Form 2555 zeros L_16a
+    # The effective gate is `NOT files_form_2555 AND return_ssn_eligible`.
+    # Full actc_eligible (which also requires QC > 0) gates L_27 via R029.
+    actc_overflow_gate = (
+        not bool(taxpayer.files_form_2555) and return_ssn_eligible
+    )
+    L_16a = max(ZERO, L_12 - L_14) if actc_overflow_gate else ZERO
+    L_16b = Decimal(qc_count) * ACTC_PER_CHILD_CAP
+    L_17 = min(L_16a, L_16b)
 
     # ---- R021-R022: Earned-income 15% method ----
     earned_income = _earned_income_simplified(tax_return, taxpayer)
