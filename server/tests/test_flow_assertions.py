@@ -562,11 +562,7 @@ def test_flow_assertion_1120s(assertion):
     ids=lambda a: a.get("assertion_id", "unknown"),
 )
 def test_flow_assertion_1040(assertion):
-    """Run a single 1040 flow assertion from the Rule Studio export.
-
-    No-op while the 1040 assertion list is empty (the stub state).
-    Becomes a real test grid once Ken populates the JSON.
-    """
+    """Run a single 1040 flow assertion from the Rule Studio export."""
     runner = RUNNERS.get(assertion["assertion_type"])
     assert runner, (
         f"No runner for assertion type '{assertion['assertion_type']}'. "

@@ -16,6 +16,84 @@
 ## Architecture Decisions
 Do not change without discussing with Ken first.
 
+### 2026-05-27 — Schedule 8812 (CTC/ACTC/ODC) compute model — Session K (1)
+
+**Decision:** Schedule 8812 (TY 2025) is implemented as its own
+`FormDefinition` (code `SCH_8812`, 32 lines across 3 sections — Part I,
+Part II-A, Part II-B). Its `FormFieldValue` rows are stored on the
+parent 1040 `TaxReturn` (same `tax_return` FK), not on a separate
+sibling return. The `FormLine.section.form` distinction preserves the
+cross-form semantics for flow assertions; avoiding a new `parent_return`
+FK on `TaxReturn` keeps the data model simple.
+
+**Compute lives in `apps.returns.compute_8812`.** All 30 spec rules
+(R001-R030) translated. Entry point `compute_sch_8812(tax_return)` is
+called from `compute_return()` for `form_code=="1040"` between the
+first downstream-formula pass (which sets Line 18 = `tax_before_ctc`)
+and a second downstream pass (which propagates Lines 19 + 28 to 21 /
+22 / 24 / 33 / 34 / 37).
+
+**Spec ground truth wins where rules and scenarios disagree.** Spec
+rule R018 reads `L_16a = … if actc_eligible else 0`, but scenarios TS09b
++ TS13 disambiguate the gate as `NOT files_form_2555 AND
+return_ssn_eligible` (not the full `actc_eligible` which also requires
+`count_qualifying_children > 0`). Implementation follows the scenarios.
+
+**Constants from spec (TY 2025 / OBBBA §70104):**
+- QC credit = $2,200 (per qualifying child with valid SSN)
+- ODC credit = $500 (per other dependent)
+- Phaseout thresholds: $400K MFJ / $200K other
+- ACTC per-child cap: $1,700
+- ACTC earned-income floor: $2,500; 15% method
+
+### Deferrals — Session 2 (still open) and beyond
+
+**Closing in Session 2 of `feat/sch-8812-ctc-actc`:**
+- Schedule 8812 PDF (`f1040s8.pdf` 2025) — download + manifest entry +
+  AcroForm field map.
+- Form 1040 field map additions for Lines 19 and 28.
+- `render_complete_return()` extension to include Schedule 8812 for
+  1040 returns.
+- End-to-end render verification using `assert_value_at_pdf_location`.
+- Session J `family_with_kids.json` expected[19] updated from
+  pre-OBBBA $4,000 to OBBBA $4,400.
+- Memory updates + merge to main.
+
+**Deferred beyond Session 2 (intentional):**
+- **Worksheet B** (other credits competing for the CLW-A cap — Form
+  8396 / 8839 / 5695 Part I / 8859). Today uses standard L_13 formula.
+  Diagnostic D009 fires when `claims_credits_requiring_worksheet_b`
+  is set, but Worksheet B math is not modeled.
+- **Earned Income Worksheet** (full decomposition). Today uses the
+  simplified path: W-2 wages + `(deductible_se_tax_half * 2)` SE proxy
+  + `nontaxable_combat_pay`. The full worksheet adds nontaxable
+  retirement / disability / minister housing / 911 adjustments.
+- **Form 2555 itself** — modeled as a boolean toggle
+  (`Taxpayer.files_form_2555`) + a placeholder excluded amount field.
+  The full Form 2555 (foreign earned income exclusion, housing
+  exclusion / deduction) is its own future spec.
+- **Schedule 1 / Schedule 2 / Schedule 3** — not yet built. Schedule 8812
+  reads the totals it needs as preparer-entered placeholder fields on
+  `Taxpayer`:
+  - `schedule_3_pre_ctc_credits_total` (Sch 3 lines 1-6 sum)
+  - `additional_medicare_tax_amount` (Form 8959 line 7)
+  - `deductible_se_tax_half` (Sch 1 line 15)
+  - `se_tax_total` (Sch 2 line 5)
+  - `unreported_ss_medicare_tax` (Sch 2 line 6)
+  - `other_employment_taxes` (Sch 2 line 13)
+  - `eitc_claimed` (Form 1040 Line 27a)
+  - `excess_ss_rrta_withheld` (Sch 3 line 11)
+  - 1040 Lines 17, 20, 23 (also preparer-entered).
+  All default to 0 — the placeholder values fall away naturally when
+  the underlying forms land.
+- **Diagnostic framework for 1040** — spec defines 12 diagnostics
+  (D001-D012) covering "taxpayer SSN missing", "MAGI near phaseout",
+  "Part II-B verify path", etc. The 1040 module has no
+  `DiagnosticRule` rows seeded yet (1120-S has 40+). Scenarios that
+  expect `D###_fires` are silently un-asserted by the test runner
+  today; the assertions are documented in the spec and tracked as a
+  follow-up.
+
 ### 2026-05-26 — Input/Compute/Render Verification rule adopted
 
 **Decision:** Every input field added to a tax form must be wired to

@@ -1,10 +1,96 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-26
+2026-05-27
 
 ## Currently in progress
-- Nothing in progress. Session J landed on main 2026-05-26.
+- **Session K — Schedule 8812 (CTC/ACTC/ODC)**, on feature branch
+  `feat/sch-8812-ctc-actc`. Part 1 of 2 lands today (input + compute
+  + flow assertions + scenarios — all green). Part 2 lands next
+  session: Schedule 8812 PDF + Form 1040 Lines 19/28 field map +
+  render integration + family_with_kids fixture OBBBA fix + merge to
+  main.
+
+## Last session recap (2026-05-27 Session K, Part 1 of 2) — Schedule 8812 input + compute
+
+- **Goal:** Implement CTC + ACTC + ODC per the SCH_8812_TY2025 Rule
+  Studio spec (Session 14). Per Ken's scope direction, Session K is
+  split across two CC sessions on `feat/sch-8812-ctc-actc`. Part 1 =
+  input + compute + flow assertions + spec scenarios. Part 2 = render
+  + merge to main.
+- **Branch (NOT merged):** `feat/sch-8812-ctc-actc`. 6 commits on top of
+  `ec625ad` (the Session J head).
+
+| # | SHA | Message |
+|---|-----|---------|
+| 1 | `a3ec6ad` | feat(1040): Dependent model 8812 classification expansion (migration 0041) |
+| 2 | `f592eb0` | feat(1040): Taxpayer 8812 inputs + placeholders for Sch 1/2/3/SE/8959/EITC (migration 0042) |
+| 3 | `abb2cae` | feat(1040): seed SCH_8812 + extend seed_1040 for Lines 17-23 + 28 |
+| 4 | `9e26a7b` | feat(1040): compute_8812 — all 30 rules from SCH_8812 Rule Studio spec |
+| 5 | `d9fdf18` | test(1040): wire 13 SCH_8812 flow assertions — all passing |
+| 6 | `3825444` | test(1040): 17 SCH_8812 spec scenarios passing end-to-end + compute_8812 ACTC overflow fix |
+
+### What landed (Session K, Part 1)
+
+- **Migrations 0041 + 0042.** 7 new Dependent fields including
+  strict-choice `relationship` (8 codes from spec). 18 new Taxpayer
+  fields — 10 real return-level facts (SSN validity, Form 2555 inputs,
+  combat pay, etc.) + 8 preparer-entered placeholders for Sch 1/2/3/SE/
+  8959/EITC totals (default 0, all on `Taxpayer` until those forms
+  land).
+- **Seeds.** `seed_1040` extended with Lines 17, 18, 19, 20, 21, 22,
+  23, 28 (now 27 lines total). New `seed_sch_8812` (32 lines across 3
+  sections — Part I + Part II-A + Part II-B).
+- **`apps.returns.compute_8812`** — all 30 spec rules implemented.
+  Hooked into `compute_return()` for `form_code=="1040"` between two
+  downstream-formula passes.
+- **All 13 flow assertions pass** (replaced Session J's empty stub).
+  11 new `kind`-based sub-runners added to `_run_sch_8812_assertion`.
+- **17 of 18 spec scenarios pass end-to-end** in
+  `tests/test_sch_8812_scenarios.py`. TS_WSB_TBD (Worksheet B)
+  deferred per spec note + Ken's direction.
+
+### Tests
+- `test_sch_8812_scenarios.py`: 17 active + 1 sanity = 18 pass.
+- `test_flow_assertions.py`: 20 1120-S + 13 1040 + 2 meta = 35 pass.
+- `test_dependents.py`: 13 pass (10 existing + 3 new for the strict
+  choice + Sch 8812 classification fields).
+- `test_1040.py`: 13/13 pass (no regressions from the L_18/L_22/L_24/L_33
+  formula additions).
+- **Full DB suite at session close: 1166 passed, 15 skipped, 1 failure,
+  15 errors in 5h 5min against shared Supabase.** None of the failures
+  are caused by this session:
+  - 1 pre-existing failure: `test_tts_forms.TestManifest.test_manifest_is_valid_json`
+    asserts `len(data["forms"]) == 22` but the manifest has 23 entries
+    (someone added a form without updating the test). 1-line fix.
+  - 3 pre-existing fixture errors in `test_apr01_fixes.py`
+    (`seeded` / `tax_year` fixtures don't exist anywhere in conftest).
+  - 12 environmental errors in `test_w2_employer_learning.py` — these
+    PASS in isolation; the 5-hour run hit the documented pooler-stickiness
+    issue with `test_postgres`. Not a code defect.
+
+### Deferrals (carried into Session K Part 2 or beyond)
+**Part 2 (next CC session, same branch):**
+- Schedule 8812 PDF — download `f1040s8.pdf` 2025, add to
+  `forms_manifest.json`, dump AcroForm fields, build field map.
+- Form 1040 field map: add Lines 19 + 28 entries to
+  `f1040_2025.py`.
+- `render_complete_return()` extension — include Schedule 8812 for
+  1040 returns.
+- End-to-end render verification using
+  `assert_value_at_pdf_location` from Session J.
+- Session J `family_with_kids.json` fixture: update `expected[19]` from
+  pre-OBBBA $4,000 to OBBBA $4,400 (2 × $2,200).
+- Final memory updates + merge `feat/sch-8812-ctc-actc` to main.
+
+**Beyond this branch (see DECISIONS.md 2026-05-27):**
+- Worksheet B (other-credits competition).
+- Full Earned Income Worksheet decomposition.
+- Form 2555 (full form vs. boolean toggle).
+- Schedule 1 / 2 / 3 / SE / 8959 / EITC — the placeholder fields on
+  Taxpayer naturally fall away once those forms land.
+- 1040 diagnostics framework — 12 diagnostics defined in the spec
+  (D001-D012), none seeded yet.
 
 ## Last session recap (2026-05-26 Session J) — Input/Compute/Render Verification rule + 1040 harness Phase 1
 
@@ -251,6 +337,18 @@ Then the next session can wire compute + render with flow-assertion
 gating in place.
 
 ## Known issues / blockers
+
+### Pre-existing test failures surfaced by Session K full-suite run
+- **`test_tts_forms.TestManifest.test_manifest_is_valid_json`** — asserts
+  `len(data["forms"]) == 22` but the manifest has 23 entries. 1-line
+  fix; not done this session per scope. Pre-dates Session K.
+- **`test_apr01_fixes.py`** — 3 ERROR collections: `seeded` and
+  `tax_year` fixtures referenced but not defined anywhere in conftest.
+  Pre-dates Session K.
+- **`test_w2_employer_learning.py`** — 12 ERROR collections under long
+  suite runs. PASSES in isolation. Pooler-stickiness on shared
+  Supabase `test_postgres` during 5h+ runs. Documented intermittent
+  issue.
 
 ### 1040 verification gap (Session H deferred work — audit 2026-05-26)
 
