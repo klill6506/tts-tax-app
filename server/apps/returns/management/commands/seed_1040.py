@@ -64,7 +64,14 @@ SECTIONS = [
         30,
         [
             ("16", "Tax (from Tax Table or Tax Computation Worksheet)", C, "", True, 10, DR),
-            ("24", "Total tax", C, "", True, 20, DR),
+            ("17", "Amount from Schedule 2, line 3", C, "1040_L17", False, 20, DR),
+            ("18", "Add lines 16 and 17 (tax before credits)", C, "", True, 30, DR),
+            ("19", "Child tax credit and credit for other dependents (Sch 8812)", C, "", True, 40, CR),
+            ("20", "Amount from Schedule 3, line 8", C, "1040_L20", False, 50, CR),
+            ("21", "Add lines 19 and 20", C, "", True, 60, CR),
+            ("22", "Subtract line 21 from line 18 (if 21 > 18, enter 0)", C, "", True, 70, DR),
+            ("23", "Other taxes from Schedule 2, line 21", C, "1040_L23", False, 80, DR),
+            ("24", "Total tax (line 22 + line 23)", C, "", True, 90, DR),
         ],
     ),
     # ------ PAGE 2: PAYMENTS ------
@@ -75,7 +82,8 @@ SECTIONS = [
         [
             ("25a", "Federal income tax withheld from W-2s", C, "1040_L25a", True, 10, CR),
             ("25d", "Total federal tax withheld", C, "", True, 20, CR),
-            ("33", "Total payments", C, "", True, 30, CR),
+            ("28", "Additional child tax credit (Sch 8812, line 27)", C, "", True, 30, CR),
+            ("33", "Total payments", C, "", True, 40, CR),
         ],
     ),
     # ------ PAGE 2: REFUND / AMOUNT OWED ------
