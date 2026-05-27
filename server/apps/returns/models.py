@@ -1678,13 +1678,44 @@ class InterestIncome(models.Model):
         return f"1099-INT: {self.payer_name} — ${self.interest_income}"
 
 
+# Dependent classification choices — verbatim from Schedule 8812 (TY 2025) spec.
+# fact keys: dep_relationship_code / dep_citizenship_status / dep_tin_type.
+RELATIONSHIP_CHOICES = [
+    ("child", "Son / daughter"),
+    ("descendant_of_child", "Grandchild / descendant of child"),
+    ("sibling", "Brother / sister"),
+    ("step_sibling", "Stepbrother / stepsister"),
+    ("descendant_of_sibling", "Niece / nephew"),
+    ("foster_child", "Eligible foster child"),
+    ("adopted_child", "Adopted child"),
+    ("other", "Other (does NOT qualify as CTC qualifying child)"),
+]
+
+CITIZENSHIP_CHOICES = [
+    ("us_citizen", "U.S. citizen"),
+    ("us_national", "U.S. national"),
+    ("us_resident_alien", "U.S. resident alien"),
+    ("nonresident_alien", "Nonresident alien"),
+    ("mexico_canada_resident", "Resident of Mexico or Canada"),
+]
+
+TIN_TYPE_CHOICES = [
+    ("valid_ssn", "Valid SSN (work-authorized, issued before due date)"),
+    ("itin", "ITIN"),
+    ("atin", "ATIN (adoption taxpayer ID)"),
+    ("none", "No TIN"),
+]
+
+
 class Dependent(models.Model):
     """A dependent on a 1040 return.
 
-    CTC vs ODC classification is computed from date_of_birth + the parent
-    return's tax_year (CTC = under 17 at year-end). ctc_override and
-    odc_override let the preparer flip the computed default; None means
-    "use computed".
+    Every row here represents a CLAIMED dependent — that's why
+    `dep_is_claimed_as_dependent` from the Schedule 8812 spec is not a
+    field. CTC vs ODC classification is computed by the 8812 compute
+    module from the classification inputs below + `date_of_birth` +
+    the parent return's `tax_year`. `ctc_override` / `odc_override`
+    let the preparer flip the computed default (None = use computed).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -1698,10 +1729,46 @@ class Dependent(models.Model):
     last_name = models.CharField(max_length=100, blank=True, default="")
     ssn = models.CharField(
         max_length=11, blank=True, default="",
-        help_text="SSN in XXX-XX-XXXX format.",
+        help_text="SSN in XXX-XX-XXXX format. Display only — TIN type for "
+        "CTC/ODC eligibility lives on `tin_type`.",
     )
-    relationship = models.CharField(max_length=50, blank=True, default="")
+    relationship = models.CharField(
+        max_length=24, blank=True, default="",
+        choices=RELATIONSHIP_CHOICES,
+        help_text="Dependent's relationship to the taxpayer. Spec fact key "
+        "`dep_relationship_code`. CTC qualifying-child test fails when 'other'.",
+    )
     date_of_birth = models.DateField(null=True, blank=True)
+    # Schedule 8812 classification inputs (added 2026-05-27)
+    months_resided_with_taxpayer = models.IntegerField(
+        null=True, blank=True,
+        help_text="Spec fact `dep_months_resided_with_taxpayer`. CTC requires > 6.",
+    )
+    provided_over_half_own_support = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_provided_over_half_own_support`. CTC fails if True.",
+    )
+    filed_joint_return = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_filed_joint_return`. CTC fails if True "
+        "(joint-return-only-for-refund exception assumed resolved upstream).",
+    )
+    citizenship_status = models.CharField(
+        max_length=24, blank=True, default="",
+        choices=CITIZENSHIP_CHOICES,
+        help_text="Spec fact `dep_citizenship_status`. CTC/ODC require US "
+        "citizen / national / resident alien per §152(b)(3).",
+    )
+    tin_type = models.CharField(
+        max_length=16, blank=True, default="",
+        choices=TIN_TYPE_CHOICES,
+        help_text="Spec fact `dep_tin_type`. CTC requires `valid_ssn`; "
+        "ODC accepts `valid_ssn` / `itin` / `atin`.",
+    )
+    is_permanently_disabled = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_is_permanently_disabled`.",
+    )
     ctc_override = models.BooleanField(
         null=True, default=None,
         help_text="None = use computed (under 17 at year-end). True/False overrides.",

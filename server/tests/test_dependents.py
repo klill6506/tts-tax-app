@@ -111,7 +111,7 @@ class TestDependentCRUD:
                 "first_name": "Alex",
                 "last_name": "Doe",
                 "ssn": "999-99-9999",
-                "relationship": "Son",
+                "relationship": "child",
                 "date_of_birth": "2015-06-01",
             },
             format="json",
@@ -121,6 +121,46 @@ class TestDependentCRUD:
         assert body["first_name"] == "Alex"
         assert body["qualifies_ctc"] is True
         assert body["qualifies_odc"] is False
+
+    def test_create_dependent_rejects_free_text_relationship(
+        self, client_api, tax_return_2025,
+    ):
+        resp = client_api.post(
+            f"/api/v1/tax-returns/{tax_return_2025.id}/dependents/",
+            {
+                "first_name": "Alex",
+                "last_name": "Doe",
+                "relationship": "Son",  # not a choice code
+            },
+            format="json",
+        )
+        assert resp.status_code == 400
+        assert "relationship" in resp.json()
+
+    def test_create_dependent_persists_8812_classification_inputs(
+        self, client_api, tax_return_2025,
+    ):
+        resp = client_api.post(
+            f"/api/v1/tax-returns/{tax_return_2025.id}/dependents/",
+            {
+                "first_name": "Sam",
+                "relationship": "adopted_child",
+                "citizenship_status": "us_citizen",
+                "tin_type": "valid_ssn",
+                "months_resided_with_taxpayer": 12,
+                "provided_over_half_own_support": False,
+                "filed_joint_return": False,
+                "is_permanently_disabled": False,
+                "date_of_birth": "2020-01-01",
+            },
+            format="json",
+        )
+        assert resp.status_code == 201, resp.json()
+        body = resp.json()
+        assert body["relationship"] == "adopted_child"
+        assert body["citizenship_status"] == "us_citizen"
+        assert body["tin_type"] == "valid_ssn"
+        assert body["months_resided_with_taxpayer"] == 12
 
     def test_list_dependents_orders_by_order_then_created(
         self, client_api, tax_return_2025

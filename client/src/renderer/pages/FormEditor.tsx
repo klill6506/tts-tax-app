@@ -7642,9 +7642,19 @@ function DependentsSection({
                     className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
                 </td>
                 <td className="py-2">
-                  <input defaultValue={d.relationship}
-                    onBlur={(e) => handleUpdate(d.id, "relationship", e.target.value)}
-                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600" />
+                  <select value={d.relationship || ""}
+                    onChange={(e) => handleUpdate(d.id, "relationship", e.target.value)}
+                    className="w-full border border-border rounded px-2 py-1 text-sm bg-card text-green-600">
+                    <option value="">— Select —</option>
+                    <option value="child">Son / daughter</option>
+                    <option value="descendant_of_child">Grandchild / descendant of child</option>
+                    <option value="sibling">Brother / sister</option>
+                    <option value="step_sibling">Stepbrother / stepsister</option>
+                    <option value="descendant_of_sibling">Niece / nephew</option>
+                    <option value="foster_child">Eligible foster child</option>
+                    <option value="adopted_child">Adopted child</option>
+                    <option value="other">Other (not CTC-qualifying)</option>
+                  </select>
                 </td>
                 <td className="py-2">
                   <input type="date" defaultValue={d.date_of_birth || ""}
