@@ -1,12 +1,61 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-28
+2026-05-29
 
 ## Currently in progress
-- (none — Session K Part 2 merged `feat/sch-8812-ctc-actc` to main.)
+- (none — Form 1040 (2025) field-map audit merged to main 2026-05-29.)
 
-## Last session recap (2026-05-28 Session K, Part 2 of 2) — Schedule 8812 render + merge
+## Last session recap (2026-05-29) — Form 1040 (2025) field-map audit
+
+- **Goal:** Audit every entry in `f1040_2025.py` FIELD_MAP against the
+  actual 2025 IRS PDF, fix the wrong widget mappings, lock corrections
+  in with render assertions. Pure render-correctness work — no compute
+  or Rule Studio changes.
+- **Branch:** `fix/f1040-2025-fieldmap-audit`, merged to main 2026-05-29.
+- **Finding worth flagging:** The 2025 IRS Form 1040 was substantially
+  redesigned for OBBBA — most page-1 income lines moved positions, the
+  deductions section was restructured (11→11a/11b, 12→12a-12e, 13→13a+13b),
+  and Lines 14-16 moved from page 1 to page 2. So 17 of 19 existing
+  mappings were wrong, not just the 7 known-bad ones.
+
+### What landed
+- **`f1040_2025.py` FIELD_MAP: 17 entries fixed.** Lines 1z, 2a, 2b, 8,
+  9, 10, 11, 12, 13, 14, 15, 16, 24, 25a, 25d, 33, 34, 37 all pointed
+  at wrong widgets; corrected by position. 1a + 19 + 28 were already
+  correct.
+- **Semantic key convention preserved.** Keys "11", "12", "13" still
+  used; they now point at the 2025 widgets that hold the same
+  semantic value (AGI, std deduction, QBI). No compute or seed changes.
+- **`tests/test_f1040_2025_field_map_audit.py`** — 21 parametrized render
+  assertions (one per FIELD_MAP key) lock the mapping. Distinct values
+  per line guarantee mis-routing surfaces as a wrong-value-at-wrong-position
+  failure rather than silent pass.
+- **Audit docstring + provenance** added to `f1040_2025.py` documenting
+  the OBBBA redesign, the key convention, and pointers to the audit
+  scripts + test.
+
+### Test results
+- `test_f1040_2025_field_map_audit.py`: 21/21 pass.
+- Schedule 8812 regression (Session K Part 2): 61/61 still pass (3 render
+  + 18 scenarios + 35 flow assertions + 5 year constants).
+- Broader 1040 + render verification suite: see "Known issues / blockers"
+  below — pre-existing pooler-stickiness errors persist; not caused by
+  this session.
+
+### Notes
+- **Out of scope but worth a follow-up session each:**
+  - Lines 25b + 25c (1099 withholding, other-form withholding) missing
+    from FIELD_MAP entirely. PDF has widgets f2_18 and f2_19 for them;
+    seed + compute would need to land first.
+  - Line 13b — OBBBA Senior Bonus Deduction ($4K for 65+ from
+    Schedule 1-A line 38) is not wired anywhere. Needs Rule Studio spec.
+- **HEADER_MAP** was explicitly out of audit scope per Ken's direction
+  ("audit EVERY line currently in FIELD_MAP" = FIELD_MAP only). HEADER_MAP
+  entries for filing-status checkboxes / name / SSN / address remain
+  unverified against the 2025 PDF.
+
+## Previous session recap (2026-05-28 Session K, Part 2 of 2) — Schedule 8812 render + merge
 
 - **Goal:** Close the render half of the Schedule 8812 verification
   chain: download the IRS PDF, build the f1040s8 field map, wire Lines

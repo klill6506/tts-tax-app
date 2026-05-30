@@ -16,6 +16,56 @@
 ## Architecture Decisions
 Do not change without discussing with Ken first.
 
+### 2026-05-29 — Form 1040 (2025) field map keys: semantic, not syntactic
+
+**Decision:** When the IRS form renumbers or sub-letters a line, we keep
+the existing internal key (used by `seed_1040` + `compute.py`) and
+point it at the 2025 widget that holds the same semantic value. We do
+NOT refactor seed + compute to track IRS sub-letters.
+
+**Context:** The 2025 IRS Form 1040 was substantially redesigned for
+OBBBA. AGI is labeled "11a" (not "11"); standard deduction is "12e"
+(not "12"); QBI is "13a" (not "13"); Lines 14-15 moved from page 1 to
+page 2; and "13b" (Senior Bonus Deduction) is new. The 2026-05-29
+field-map audit found 17 of 19 FIELD_MAP entries pointed at wrong
+widgets — partly because of these renumbers + reorderings.
+
+**Trade-off:** This preserves the seed → compute → render contract
+exactly as it was. Renderer reads `FormFieldValue.value` keyed by
+the legacy line_number and places it at whatever widget the 2025 PDF
+expects. Compute code remains unaware of the IRS sub-lettering. The
+cost is a small comment burden in `f1040_2025.py` documenting which
+internal key → which 2025 IRS label.
+
+**When to revisit:** If/when a future year's form materially changes
+the semantic flow (not just the label) — e.g., AGI gets split into two
+separate inputs, or QBI moves out of the deductions section — we'd
+need to refactor compute. Until then, semantic keys are stable across
+IRS form revisions and the seed → compute pipeline stays untouched.
+
+### Render assertion gate for AcroForm field maps
+
+**Decision:** Any new or revised AcroForm `FIELD_MAP` (or `HEADER_MAP`)
+must be locked in with a parametrized render assertion test using
+`assert_value_at_widget_position`. Each FIELD_MAP key gets one test
+case that writes a distinct, identifiable value to a FormFieldValue
+row and asserts it lands at the declared widget rect on the rendered
+PDF.
+
+**Context:** Distinct values per line (e.g., 1a=100001, 1z=100002,
+2a=203) are not just defensive — they're load-bearing. A mis-routed
+mapping that puts Line 1z's value at Line 1a's widget would
+silently pass a single shared value, but with distinct values per
+key it fails because the wrong value lands at the wrong position.
+
+**Trade-off:** The test adds one render per N lines (parametrized
+sweep), which is a few seconds. Worth it — Form 1040's pre-audit
+mappings were 89% wrong (17 of 19), and the rendered PDFs would have
+shipped misaligned without a position-based gate. The same gate
+should apply prospectively to every other AcroForm field map (1120S,
+1065, 1120, etc.) — not retroactively required, but new edits to
+those files trigger the rule.
+
 ### 2026-05-27 — Schedule 8812 (CTC/ACTC/ODC) compute model — Session K (1)
 
 **Decision:** Schedule 8812 (TY 2025) is implemented as its own
