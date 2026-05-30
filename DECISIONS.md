@@ -46,20 +46,33 @@ return_ssn_eligible` (not the full `actc_eligible` which also requires
 - ACTC per-child cap: $1,700
 - ACTC earned-income floor: $2,500; 15% method
 
-### Deferrals — Session 2 (still open) and beyond
+### Session 2 (2026-05-28) — Closed (merged to main)
 
-**Closing in Session 2 of `feat/sch-8812-ctc-actc`:**
-- Schedule 8812 PDF (`f1040s8.pdf` 2025) — download + manifest entry +
-  AcroForm field map.
-- Form 1040 field map additions for Lines 19 and 28.
-- `render_complete_return()` extension to include Schedule 8812 for
-  1040 returns.
-- End-to-end render verification using `assert_value_at_pdf_location`.
-- Session J `family_with_kids.json` expected[19] updated from
-  pre-OBBBA $4,000 to OBBBA $4,400.
-- Memory updates + merge to main.
+**All items from the Session 2 list landed:**
+- Schedule 8812 PDF `f1040s8.pdf` (2025) — in manifest + at
+  `resources/irs_forms/2025/f1040s8.pdf` (SHA recorded).
+- `field_maps/f1040s8_2025.py` — 32-line AcroForm field map.
+- Form 1040 field map (`f1040_2025.py`) — Lines 19 (CTC) + 28 (ACTC)
+  added. (Note: the other 1040 line mappings are wrong for the 2025
+  PDF — that's a pre-existing audit item, separate from this session.)
+- `render_sch_8812(tax_return)` + integration into `render_complete_return`
+  as step 1a (after main 1040, before Form 8879-S).
+- `assert_value_at_widget_position` helper added in
+  `apps/returns/verification.py` (AcroForm widgets are flattened to
+  text spans during rendering — position-based lookup is what works
+  post-render).
+- Three end-to-end render assertions in `tests/test_sch_8812_render.py`
+  (CTC-only, ACTC-eligible, Form 2555 zero-out).
+- `family_with_kids.json` updated for OBBBA $4,400 + the strict-choice
+  `"child"` relationship code.
+- OBBBA $2,200 cap is now tax-year-parameterized via
+  `apps.returns.compute_8812._constants_for_year(tax_year)`. TY 2024
+  returns produce the pre-OBBBA $2,000 cap; TY 2025+ produce the
+  OBBBA $2,200 cap.
 
-**Deferred beyond Session 2 (intentional):**
+### Deferrals — still open (beyond Session 2)
+
+**Deferred beyond this branch (intentional):**
 - **Worksheet B** (other credits competing for the CLW-A cap — Form
   8396 / 8839 / 5695 Part I / 8859). Today uses standard L_13 formula.
   Diagnostic D009 fires when `claims_credits_requiring_worksheet_b`

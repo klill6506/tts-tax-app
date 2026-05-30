@@ -1,15 +1,37 @@
 # TTS Tax App — Status
 
 ## Last updated
-2026-05-27
+2026-05-28
 
 ## Currently in progress
-- **Session K — Schedule 8812 (CTC/ACTC/ODC)**, on feature branch
-  `feat/sch-8812-ctc-actc`. Part 1 of 2 lands today (input + compute
-  + flow assertions + scenarios — all green). Part 2 lands next
-  session: Schedule 8812 PDF + Form 1040 Lines 19/28 field map +
-  render integration + family_with_kids fixture OBBBA fix + merge to
-  main.
+- (none — Session K Part 2 merged `feat/sch-8812-ctc-actc` to main.)
+
+## Last session recap (2026-05-28 Session K, Part 2 of 2) — Schedule 8812 render + merge
+
+- **Goal:** Close the render half of the Schedule 8812 verification
+  chain: download the IRS PDF, build the f1040s8 field map, wire Lines
+  19 + 28 on Form 1040, integrate Sch 8812 into `render_complete_return`,
+  build end-to-end render assertions, parameterize the OBBBA cap by
+  tax year, and merge the branch.
+- **Branch:** `feat/sch-8812-ctc-actc`, merged to main 2026-05-28.
+
+### What landed
+- **OBBBA cap is now tax-year-parameterized.** `_constants_for_year(tax_year)` in `apps/returns/compute_8812.py`. TY 2025+ → $2,200 / $1,700; TY 2024 → $2,000 / $1,700. Module-level constants still defined as TY 2025+ aliases for any external imports. 5 regression tests in `test_compute_8812_year_constants.py`.
+- **`resources/irs_forms/2025/f1040s8.pdf`** downloaded + recorded in `forms_manifest.json` (24 entries total — was 22 with a pre-existing test failure). SHA256 verified.
+- **`apps/tts_forms/field_maps/f1040s8_2025.py`** — 32 line entries + header. Keys match `seed_sch_8812`'s `line_number` format (`L_1`, `L_2a`, `L_16a`, `L_16b_qc_count`, …).
+- **`f1040_2025.py` FIELD_MAP gained Lines 19 + 28.** Line 19 → `f2_11`, Line 28 → `f2_24`. (Other lines in that field map are wrong for the 2025 PDF — audit queued separately.)
+- **`render_sch_8812(tax_return)`** in `renderer.py` reads SCH_8812 FormFieldValues (which live on the parent 1040 TaxReturn), builds header from Taxpayer, mirrors Line 4 → Line 16b count, returns None when no data exists. Wired into `render_complete_return` step 1a (between main 1040 and Form 8879-S).
+- **3 end-to-end PDF render assertions** in `tests/test_sch_8812_render.py`:
+  - CTC-only (MFJ + 2 QC + ample tax) — Line 14 = $4,400 lands on Sch 8812 page 1; Form 1040 Line 19 = $4,400 on page 2.
+  - ACTC-eligible (MFJ + 3 QC + AGI $30K + tax $1K) — Line 14 = $1,000, Line 27 = $4,125 on Sch 8812; matching $1K / $4,125 on Form 1040 Lines 19 + 28.
+  - Form 2555 zero-out (TS13) — Line 14 = $4,400 still renders (CTC unaffected), L_16a + L_27 + Form 1040 Line 28 are blank (per IRS convention — `format_currency("0") == ""`).
+- **New helper `assert_value_at_widget_position`** in `apps/returns/verification.py`. AcroForm widgets are flattened to text spans during rendering — looking up by `widget.field_name` post-render fails. Position-based search (x, y with tolerances) works.
+- **`family_with_kids.json` fixture updated.** `expected[19]` = $4,400 (OBBBA), Line 22 = $12,268, Line 34 = $5,232. `relationship` values switched from `"son"`/`"daughter"` to the strict-choice `"child"` (Session K Part 1 migration 0041 made the field a choice).
+- **`test_manifest_is_valid_json`** updated to `len(forms) == 24` — pre-existing fail (was 22 expected vs 23 actual) plus the f1040s8 add.
+
+### Test results
+- Targeted (`test_sch_8812_scenarios + test_flow_assertions + test_compute_8812_year_constants + test_sch_8812_render + test_tts_forms.TestManifest + test_1040 + test_dependents + test_render_verification`): all green.
+- Full DB suite: see "Known issues / blockers" below — the pre-existing failures (`test_apr01_fixes` fixtures, `test_w2_employer_learning` pooler stickiness) are documented carry-overs from Part 1, not new.
 
 ## Last session recap (2026-05-27 Session K, Part 1 of 2) — Schedule 8812 input + compute
 

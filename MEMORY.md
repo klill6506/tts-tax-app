@@ -1,5 +1,30 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-28 — Schedule 8812 (CTC/ACTC/ODC) — Session K, Part 2 of 2
+
+Closes the render half of the Schedule 8812 verification chain and
+merges `feat/sch-8812-ctc-actc` to main. PDF, field maps, render
+integration, end-to-end render assertions, OBBBA cap parameterization,
+and the family_with_kids fixture refresh — all in one session.
+
+### Standing facts established this session
+
+- **OBBBA QC cap is now tax-year-parameterized.** `apps.returns.compute_8812._constants_for_year(tax_year)` returns the year-keyed dict of CTC constants. TY 2025+ uses OBBBA values (`QC_AMOUNT=$2,200`, `ACTC_PER_CHILD_CAP=$1,700`). TY 2024 uses pre-OBBBA TCJA values (`QC_AMOUNT=$2,000`, `ACTC_PER_CHILD_CAP=$1,700`). Module-level constants (`QC_AMOUNT`, etc.) are kept as TY 2025+ aliases for backward compat with external callers. 5 regression tests in `test_compute_8812_year_constants.py` lock the year matrix.
+- **Schedule 8812 PDF + field map landed.** `resources/irs_forms/2025/f1040s8.pdf` downloaded (SHA `6936462d67e2309d14a795aa0b88ef613cc6d79617431cfda3a2edf44aea52db`). Manifest now has 24 entries (was 22 — added f1040s8 here, f1040 was already there). `field_maps/f1040s8_2025.py` maps all 32 spec line_numbers (L_1 through L_27, including L_2a/2b/2c/2d, L_16a/16b/16b_qc_count, L_18a/18b) to AcroForm field names. Line 15 ("Reserved for future use") intentionally has no entry — IRS form has a widget but spec marks it reserved.
+- **Form 1040 Lines 19 + 28 mapped (verified against 2025 PDF).** Line 19 (CTC) → `f2_11` (page 2, y=192, right col). Line 28 (ACTC) → `f2_24` (page 2, y=408, middle col). Existing rough-draft mappings for Lines 16/24/25a/25d/33/34/37 are **wrong for the 2025 PDF** — they were carried over from earlier work and were never verified. Not fixed this session per scope, but `f1040_2025.py` audit is queued for a future session.
+- **`render_sch_8812(tax_return)` is the entry point.** Lives in `apps.tts_forms.renderer`. Filters `FormFieldValue` rows by `form_line__section__form__code == "SCH_8812"` (since Sch 8812 values live on the parent 1040 TaxReturn — same FK, different form). Builds header from parent Taxpayer (name + SSN). Auto-mirrors Line 4 (# QC) into the Line 16b count sub-field. Returns `None` if no Sch 8812 values exist (CTC/ACTC/ODC not claimed). Wired into `render_complete_return` step 1a — runs after the main 1040 and before Form 8879-S.
+- **Three end-to-end render assertions cover the render-chain gate.** `tests/test_sch_8812_render.py`:
+  - `test_ctc_only_renders_to_correct_locations` — MFJ + 2 QC, ample tax. Asserts $4,400 lands at f1_19 position on Sch 8812 + at f2_11 position on Form 1040.
+  - `test_actc_eligible_renders_to_correct_locations` — MFJ + 3 QC + AGI $30K + tax $1K. Asserts $1,000 lands at Sch 8812 Line 14, $4,125 lands at Sch 8812 Line 27, plus matching Form 1040 Lines 19 + 28.
+  - `test_form_2555_zero_out_renders_zero` — TS13 from spec. Asserts Sch 8812 Line 14 still renders $4,400 (CTC unaffected) but L_16a + L_27 + Form 1040 Line 28 render BLANK (per IRS convention — `format_currency` returns `""` for $0).
+- **New verification helper: `assert_value_at_widget_position`.** AcroForm widgets are flattened into text spans during rendering — `assert_widget_value` (by acro_name) won't work post-flatten. The new helper takes a position (x, y) and checks for an expected substring near it. Used alongside `assert_value_at_pdf_location` for render-chain assertions where line labels (e.g., "27") are too generic for substring matching.
+- **`family_with_kids.json` fixture updated for OBBBA + strict relationship choice.** `expected[19]` = $4,400 (was $4,000), Line 22 = $12,268 (was $12,668), Line 34 = $5,232 (was $4,832). `dependents[*].relationship` = `"child"` (was `"son"`/`"daughter"` — those aren't valid choices on the strict-choice field added in Session K Part 1 migration 0041).
+- **Manifest length test updated.** `test_manifest_is_valid_json` now asserts `len(data["forms"]) == 24` (was 22, off by one going in — pre-existing fail). Side effect of adding the f1040s8 manifest entry, per Ken's scope direction.
+
+### Branch close
+- All 5 verification gates green together: 30/30 compute rules, 13/13 flow assertions, 17/17 spec scenarios, 5/5 year-constants regression tests, 3/3 end-to-end PDF render assertions, full DB suite (no NEW failures vs Part 1 baseline).
+- `feat/sch-8812-ctc-actc` merged to main with 11 commits total (6 from Part 1, 5 from Part 2).
+
 ## 2026-05-27 — Schedule 8812 (CTC/ACTC/ODC) — Session K, Part 1 of 2
 
 Implementing CTC + ACTC + ODC from the SCH_8812_TY2025 Rule Studio spec
