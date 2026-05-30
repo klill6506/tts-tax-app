@@ -25,14 +25,14 @@
         "first_name": "Child",
         "last_name": "Sample",
         "ssn": "999-00-2003",
-        "relationship": "son",
+        "relationship": "child",
         "date_of_birth": "2010-05-04"
       },
       {
         "first_name": "Kid",
         "last_name": "Sample",
         "ssn": "999-00-2004",
-        "relationship": "daughter",
+        "relationship": "child",
         "date_of_birth": "2014-11-12"
       }
     ],
@@ -63,17 +63,17 @@
     "14":  "28000.00",
     "15":  "122000.00",
     "16":  "16668.00",
-    "19":  "4000.00",
-    "22":  "12668.00",
-    "24":  "12668.00",
+    "19":  "4400.00",
+    "22":  "12268.00",
+    "24":  "12268.00",
     "25a": "17500.00",
     "25b": "0.00",
     "25d": "17500.00",
     "33":  "17500.00",
-    "34":  "4832.00",
+    "34":  "5232.00",
     "37":  "0.00"
   },
   "gaps_today": [
-    "Line 19 (CTC) is not computed today — Dependent model persists qualifying flags but compute.py does not reduce tax by $2000 per qualifying child. Without that, Line 24 will be 16668.00 (not 12668.00) and Line 34 will be 832.00 (not 4832.00)."
+    "Line 19 (CTC) is now wired via Schedule 8812 + compute_8812 (Session K Part 2). OBBBA §70104 — $2,200 per qualifying child × 2 QC = $4,400 (TY 2025+). Pre-OBBBA $2,000/QC would give $4,000 on a TY 2024 return; the OBBBA vs pre-OBBBA cap is now parameterized by tax year in apps.returns.compute_8812._constants_for_year()."
   ]
 }
