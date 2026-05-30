@@ -35,14 +35,61 @@ from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
 ZERO = Decimal("0")
-QC_AMOUNT = Decimal("2200")      # OBBBA §70104 — TY 2025+
-ODC_AMOUNT = Decimal("500")      # IRC §24(h)(4)
-PHASEOUT_RATE = Decimal("0.05")  # IRC §24(b)(2)
-PHASEOUT_THRESHOLD_MFJ = Decimal("400000")
-PHASEOUT_THRESHOLD_OTHER = Decimal("200000")
-ACTC_PER_CHILD_CAP = Decimal("1700")  # IRS 2025 Sch 8812 Instructions
-ACTC_EARNED_INCOME_FLOOR = Decimal("2500")
-ACTC_PERCENT = Decimal("0.15")
+
+# Year-keyed credit constants. OBBBA §70104(a)(2) raised the per-QC CTC to
+# $2,200 (permanent) and the per-child refundable ACTC cap to $1,700 for
+# TY 2025+. TY 2024 used the pre-OBBBA TCJA values ($2,000 / $1,700 per
+# the 2024 Sch 8812 instructions). Phaseout thresholds + rate + earned-
+# income floor + 15% method are stable across these years.
+_CONSTANTS_BY_YEAR: dict[int, dict[str, Decimal]] = {
+    2025: {
+        "QC_AMOUNT": Decimal("2200"),          # OBBBA §70104(a)(2)
+        "ODC_AMOUNT": Decimal("500"),          # IRC §24(h)(4)
+        "PHASEOUT_RATE": Decimal("0.05"),      # IRC §24(b)(2)
+        "PHASEOUT_THRESHOLD_MFJ": Decimal("400000"),
+        "PHASEOUT_THRESHOLD_OTHER": Decimal("200000"),
+        "ACTC_PER_CHILD_CAP": Decimal("1700"), # 2025 Sch 8812 instructions
+        "ACTC_EARNED_INCOME_FLOOR": Decimal("2500"),
+        "ACTC_PERCENT": Decimal("0.15"),
+    },
+    2024: {
+        "QC_AMOUNT": Decimal("2000"),          # pre-OBBBA TCJA
+        "ODC_AMOUNT": Decimal("500"),
+        "PHASEOUT_RATE": Decimal("0.05"),
+        "PHASEOUT_THRESHOLD_MFJ": Decimal("400000"),
+        "PHASEOUT_THRESHOLD_OTHER": Decimal("200000"),
+        "ACTC_PER_CHILD_CAP": Decimal("1700"), # 2024 Sch 8812 instructions
+        "ACTC_EARNED_INCOME_FLOOR": Decimal("2500"),
+        "ACTC_PERCENT": Decimal("0.15"),
+    },
+}
+
+
+def _constants_for_year(tax_year: int) -> dict[str, Decimal]:
+    """Return Schedule 8812 constants for the given tax year.
+
+    TY 2025+ uses OBBBA values. TY 2024 uses pre-OBBBA values. Any other
+    year falls back to the closest supported year (2025 for >2025, 2024
+    for <2024). Years outside the 2024-2025 range are not authoritative
+    here — escalate to Ken before computing them.
+    """
+    if tax_year >= 2025:
+        return _CONSTANTS_BY_YEAR[2025]
+    return _CONSTANTS_BY_YEAR[2024]
+
+
+# Backward-compat module-level constants — default to TY 2025+ (OBBBA). Any
+# external caller importing these directly gets the current-year values.
+# Internal callers in compute_sch_8812() use the year-keyed dict instead.
+_DEFAULT = _CONSTANTS_BY_YEAR[2025]
+QC_AMOUNT = _DEFAULT["QC_AMOUNT"]
+ODC_AMOUNT = _DEFAULT["ODC_AMOUNT"]
+PHASEOUT_RATE = _DEFAULT["PHASEOUT_RATE"]
+PHASEOUT_THRESHOLD_MFJ = _DEFAULT["PHASEOUT_THRESHOLD_MFJ"]
+PHASEOUT_THRESHOLD_OTHER = _DEFAULT["PHASEOUT_THRESHOLD_OTHER"]
+ACTC_PER_CHILD_CAP = _DEFAULT["ACTC_PER_CHILD_CAP"]
+ACTC_EARNED_INCOME_FLOOR = _DEFAULT["ACTC_EARNED_INCOME_FLOOR"]
+ACTC_PERCENT = _DEFAULT["ACTC_PERCENT"]
 
 
 # ---------------------------------------------------------------------------
@@ -236,17 +283,19 @@ def compute_sch_8812(tax_return) -> int:
     L_2c = taxpayer.form_4563_excluded_income or ZERO
     L_2d = L_2a + L_2b + L_2c
     L_1 = agi_line_11
+    c = _constants_for_year(tax_year)
+
     L_3 = L_1 + L_2d              # R007 (MAGI)
     L_4 = Decimal(qc_count)        # R004
-    L_5 = L_4 * QC_AMOUNT          # R008
+    L_5 = L_4 * c["QC_AMOUNT"]     # R008
     L_6 = Decimal(odc_count)       # R005
-    L_7 = L_6 * ODC_AMOUNT         # R009
+    L_7 = L_6 * c["ODC_AMOUNT"]    # R009
     L_8 = L_5 + L_7                # R010
 
     if filing_status == "mfj":
-        L_9 = PHASEOUT_THRESHOLD_MFJ
+        L_9 = c["PHASEOUT_THRESHOLD_MFJ"]
     else:
-        L_9 = PHASEOUT_THRESHOLD_OTHER  # R011
+        L_9 = c["PHASEOUT_THRESHOLD_OTHER"]  # R011
 
     raw_excess = L_3 - L_9
     if raw_excess <= 0:
@@ -255,7 +304,7 @@ def compute_sch_8812(tax_return) -> int:
         # Round UP to next $1,000 — R012 ("any non-zero excess rounds UP").
         L_10 = Decimal(math.ceil(raw_excess / Decimal("1000"))) * Decimal("1000")
 
-    L_11 = (L_10 * PHASEOUT_RATE).quantize(Decimal("0.01"))    # R013
+    L_11 = (L_10 * c["PHASEOUT_RATE"]).quantize(Decimal("0.01"))    # R013
     L_12 = max(ZERO, L_8 - L_11)                                # R014
     L_13 = max(ZERO, tax_before_ctc - sch_3_pre_ctc)            # R015
     L_14 = min(L_12, L_13)                                      # R016
@@ -280,15 +329,15 @@ def compute_sch_8812(tax_return) -> int:
         not bool(taxpayer.files_form_2555) and return_ssn_eligible
     )
     L_16a = max(ZERO, L_12 - L_14) if actc_overflow_gate else ZERO
-    L_16b = Decimal(qc_count) * ACTC_PER_CHILD_CAP
+    L_16b = Decimal(qc_count) * c["ACTC_PER_CHILD_CAP"]
     L_17 = min(L_16a, L_16b)
 
     # ---- R021-R022: Earned-income 15% method ----
     earned_income = _earned_income_simplified(tax_return, taxpayer)
     L_18a = earned_income
     L_18b = taxpayer.nontaxable_combat_pay or ZERO
-    L_19 = max(ZERO, earned_income - ACTC_EARNED_INCOME_FLOOR) if actc_eligible else ZERO
-    L_20 = (L_19 * ACTC_PERCENT).quantize(Decimal("0.01")) if actc_eligible else ZERO
+    L_19 = max(ZERO, earned_income - c["ACTC_EARNED_INCOME_FLOOR"]) if actc_eligible else ZERO
+    L_20 = (L_19 * c["ACTC_PERCENT"]).quantize(Decimal("0.01")) if actc_eligible else ZERO
 
     # ---- R023: Part II-B trigger ----
     actc_part_iib_triggered = (qc_count >= 3 and L_20 < L_17)
