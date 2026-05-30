@@ -1,5 +1,65 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-29 — Form 1040 (2025) field-map audit + OBBBA redesign findings
+
+Closed the field-map-audit-queued note from Session K Part 2. The
+2025 IRS Form 1040 turned out to be substantially redesigned for OBBBA
+(not just rough-draft mappings) — most of the page-1 income lines moved
+positions, the deductions section was restructured, and the page-2
+widget IDs we thought held Lines 16/24/25a/25d/33/34/37 actually hold
+different lines entirely. Branch `fix/f1040-2025-fieldmap-audit` → main
+2026-05-29.
+
+### Standing facts established this session
+
+- **2025 IRS Form 1040 was substantially redesigned for OBBBA.** Several
+  line numbers in earlier drafts of `f1040_2025.py` simply don't exist
+  on the 2025 form. Verified line-by-line by reading the PDF directly:
+  - **Line 11 is now "11a"** ("Subtract line 10 from line 9. This is
+    your adjusted gross income"). A new "11b" on page 2 carries 11a
+    forward.
+  - **Line 12 is now "12e"** — the standard or itemized deduction
+    amount. 12a-12d are checkboxes (dependent on another return, blind,
+    born before, spouse blind).
+  - **Line 13 split into 13a + 13b.** 13a = QBI from Form 8995. 13b is
+    NEW: "Additional deductions from Schedule 1-A, line 38" (OBBBA
+    Senior Bonus Deduction, $4,000 for 65+).
+  - **Lines 14, 15, 16 moved from page 1 to page 2.**
+- **Semantic key convention preserved.** Our `seed_1040` + compute
+  pipeline use simple integer-style keys ("11", "12", "13"). The audit
+  kept those keys and pointed them at the 2025 widgets that hold the
+  same semantic value — "11" → 11a widget (AGI), "12" → 12e widget
+  (deduction), "13" → 13a widget (QBI). No compute changes; pure render
+  fix. Documented in `field_maps/f1040_2025.py` docstring.
+- **17 of 19 FIELD_MAP entries were wrong; 17 corrected.** Lines 1z,
+  2a, 2b, 8, 9, 10, 11, 12, 13, 14, 15, 16, 24, 25a, 25d, 33, 34, 37
+  all pointed at wrong widgets. Lines 1a + 19 + 28 were already correct
+  (1a verified by audit; 19 + 28 verified in Session K Part 2).
+- **Render assertion gate locked in.** New `tests/test_f1040_2025_field_map_audit.py`
+  parametrizes 21 assertions (one per FIELD_MAP key) — each writes a
+  distinct non-zero value to a FormFieldValue row, renders the 1040
+  PDF, and asserts the value lands at the declared widget rect via
+  `assert_value_at_widget_position`. Distinct values (1a=100001,
+  1z=100002, 2a=203, ...) guarantee a mis-routed mapping fails (lands
+  at someone else's position) rather than silently passing.
+- **Audit methodology.** Ground truth came from pymupdf — for every
+  page extract every text span (the IRS prints line-number labels like
+  "16" at x≈92 left margin and x≈488 inner column) and every widget
+  rect. Match each line label to the widget whose y_center is within
+  ±6px and lies to the right. Disambiguate right-column (x≈540) from
+  middle-column (x≈446) widgets when sub-letter lines (25a in middle,
+  25d in right) share a Y band. Explicitly NOT used: matching f1_NN
+  sequential order to line number order — that ordering assumption is
+  what created the original wrong mappings.
+- **Out-of-scope future work flagged.** Two real gaps surfaced but
+  intentionally not fixed this session:
+  - Lines 25b + 25c (1099 withholding, other-form withholding) are
+    absent from FIELD_MAP. The 2025 PDF has widgets f2_18 and f2_19
+    for them; seeding + compute would need to land first.
+  - Line 13b — OBBBA Senior Bonus Deduction ($4K for 65+, Schedule 1-A
+    line 38) is not wired into seed/compute/FIELD_MAP. Needs a Rule
+    Studio spec.
+
 ## 2026-05-28 — Schedule 8812 (CTC/ACTC/ODC) — Session K, Part 2 of 2
 
 Closes the render half of the Schedule 8812 verification chain and
