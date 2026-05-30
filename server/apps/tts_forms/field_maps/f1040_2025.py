@@ -170,9 +170,19 @@ FIELD_MAP: FieldMap = {
         acro_name="topmostSubform[0].Page2[0].f2_02[0]",
         format="currency",
     ),
+    # Line 19 — Child tax credit + Credit for other dependents (from Schedule 8812 Line 14)
+    "19": AcroField(
+        acro_name="topmostSubform[0].Page2[0].f2_11[0]",
+        format="currency",
+    ),
     # Line 24 — Total tax
     "24": AcroField(
         acro_name="topmostSubform[0].Page2[0].f2_10[0]",
+        format="currency",
+    ),
+    # Line 28 — Additional Child Tax Credit, refundable (from Schedule 8812 Line 27)
+    "28": AcroField(
+        acro_name="topmostSubform[0].Page2[0].f2_24[0]",
         format="currency",
     ),
     # Line 25a — W-2 withholding

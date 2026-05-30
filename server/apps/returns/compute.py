@@ -594,12 +594,20 @@ FORMULAS_1040: list[tuple[str, callable]] = [
     # Line 15 = Taxable income = max(0, 11 - 14)
     ("15", lambda v: max(ZERO, _d(v, "11") - _d(v, "14"))),
     # Line 16 = Tax — computed by _compute_1040_tax() after formulas run
-    # Line 24 = Total tax = Line 16 (no credits for now)
-    ("24", lambda v: _d(v, "16")),
+    # Line 18 = 16 + 17 (tax before credits; spec fact `tax_before_ctc`)
+    ("18", lambda v: _sum(v, "16", "17")),
+    # Line 19 = nonrefundable CTC + ODC — written by compute_sch_8812 from SCH_8812 L_14
+    # Line 21 = 19 + 20
+    ("21", lambda v: _sum(v, "19", "20")),
+    # Line 22 = max(0, 18 - 21)
+    ("22", lambda v: max(ZERO, _d(v, "18") - _d(v, "21"))),
+    # Line 24 = 22 + 23 (Total tax)
+    ("24", lambda v: _sum(v, "22", "23")),
     # Line 25d = Total withholding = 25a (no 1099 withholding)
     ("25d", lambda v: _d(v, "25a")),
-    # Line 33 = Total payments = 25d
-    ("33", lambda v: _d(v, "25d")),
+    # Line 28 = refundable ACTC — written by compute_sch_8812 from SCH_8812 L_27
+    # Line 33 = Total payments = 25d + 28
+    ("33", lambda v: _sum(v, "25d", "28")),
     # Line 34 = Overpayment = max(0, 33 - 24)
     ("34", lambda v: max(ZERO, _d(v, "33") - _d(v, "24"))),
     # Line 37 = Amount owed = max(0, 24 - 33)
@@ -1346,12 +1354,50 @@ def compute_return(tax_return) -> int:
                 updated += 1
 
     # 1040: compute tax from brackets (Line 16) after Line 15 is set,
-    # then re-run the downstream formulas (24, 34, 37) that depend on it.
+    # run Schedule 8812 (CTC/ACTC/ODC), then re-run the downstream
+    # formulas (18, 21, 22, 24, 33, 34, 37) that depend on Lines 16/19/28.
     if form_code == "1040":
+        from .compute_8812 import compute_sch_8812
+
         updated += _compute_1040_tax(tax_return, values, fv_by_line)
-        # Re-evaluate downstream formulas that depend on Line 16
+
+        # First downstream pass — propagate Line 16 through 18/22/24 so
+        # that compute_sch_8812 reads a correct Line 18 (tax_before_ctc).
         for line_number, formula_fn in formulas:
-            if line_number not in ("24", "33", "34", "37"):
+            if line_number not in ("18", "22", "24", "33", "34", "37"):
+                continue
+            fv = fv_by_line.get(line_number)
+            if fv and fv.is_overridden:
+                continue
+            result = formula_fn(values).quantize(Decimal("0.01"))
+            values[line_number] = result
+            if fv:
+                new_val = str(result)
+                if fv.value != new_val:
+                    fv.value = new_val
+                    fv.save(update_fields=["value", "updated_at"])
+                    updated += 1
+
+        # Schedule 8812 — writes SCH_8812 lines + 1040 L_19 + L_28.
+        updated += compute_sch_8812(tax_return)
+
+        # Refresh values from DB for L_19 / L_28 (compute_sch_8812 wrote
+        # to FormFieldValue rows, not the local `values` dict).
+        for ln in ("19", "28"):
+            fv = fv_by_line.get(ln)
+            if fv:
+                try:
+                    fv.refresh_from_db(fields=["value"])
+                except Exception:
+                    pass
+                try:
+                    values[ln] = Decimal(fv.value) if fv and fv.value else ZERO
+                except InvalidOperation:
+                    values[ln] = ZERO
+
+        # Second downstream pass — propagate Lines 19/28 through 21/22/24/33/34/37.
+        for line_number, formula_fn in formulas:
+            if line_number not in ("21", "22", "24", "33", "34", "37"):
                 continue
             fv = fv_by_line.get(line_number)
             if fv and fv.is_overridden:

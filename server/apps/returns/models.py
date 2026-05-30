@@ -1481,6 +1481,94 @@ class Taxpayer(models.Model):
         help_text="Override standard deduction. If blank, filing-status default is used.",
     )
 
+    # ----- Schedule 8812 (CTC/ACTC/ODC) return-level inputs (added 2026-05-27) ----
+    # SSN validity (OBBBA §70104(b) — spec rules R003 + R030 use these)
+    taxpayer_has_valid_ssn = models.BooleanField(
+        default=True,
+        help_text="Spec fact `taxpayer_has_valid_ssn`. CTC/ACTC/ODC zeroed when False.",
+    )
+    spouse_has_valid_ssn = models.BooleanField(
+        default=True,
+        help_text="Spec fact `spouse_has_valid_ssn` (MFJ only). At least one of "
+        "TP/SP must have a valid SSN for any CTC/ACTC/ODC.",
+    )
+    spouse_has_ssn_or_itin_by_due_date = models.BooleanField(
+        default=True,
+        help_text="Spec fact `spouse_has_ssn_or_itin_by_due_date` (MFJ only).",
+    )
+    # Form 2555 / 4563 / Puerto Rico exclusions (MAGI add-back + ACTC zero on 2555)
+    files_form_2555 = models.BooleanField(
+        default=False,
+        help_text="Spec fact `files_form_2555`. ACTC = $0 when True (CTC/ODC still allowed).",
+    )
+    form_2555_excluded_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `form_2555_excluded_amount` (lines 45 + 50 combined).",
+    )
+    form_4563_excluded_income = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `form_4563_excluded_income` (line 15 — American Samoa).",
+    )
+    puerto_rico_excluded_income = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `puerto_rico_excluded_income`.",
+    )
+    # ACTC earned-income simplified path
+    nontaxable_combat_pay = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Spec fact `nontaxable_combat_pay` (Form 1040 Line 18b).",
+    )
+    # Worksheet B + Part II-B toggles
+    claims_credits_requiring_worksheet_b = models.BooleanField(
+        default=False,
+        help_text="Spec fact `claims_credits_requiring_worksheet_b` "
+        "(Form 8396 / 8839 / 5695 Part I / 8859 present).",
+    )
+    taxpayer_has_rrta_taxes = models.BooleanField(
+        default=False,
+        help_text="Spec fact `taxpayer_has_rrta_taxes` (Tier 1 RRTA via W-2 box 14 or CT-2).",
+    )
+
+    # ----- Placeholder inputs for forms not yet modeled (default 0) -----
+    # These are real numbers the spec needs but the underlying form (Schedule 1/2/3,
+    # Schedule SE, Form 8959, EITC worksheet) is not yet built. Preparer enters
+    # totals manually until the supporting form lands.
+    schedule_3_pre_ctc_credits_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 3 credits applied BEFORE CTC "
+        "(sum of lines 1, 2, 3, 4, 5b, 6d, 6f, 6l, 6m). Spec fact "
+        "`schedule_3_pre_ctc_credits_total`.",
+    )
+    additional_medicare_tax_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Form 8959 line 7. Spec fact `additional_medicare_tax_amount`.",
+    )
+    deductible_se_tax_half = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — ½ SE tax (Schedule 1 line 15). Spec fact `deductible_se_tax_half`.",
+    )
+    se_tax_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — SE tax total (Schedule 2 line 5). Spec fact `se_tax_total`.",
+    )
+    unreported_ss_medicare_tax = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 2 line 6 (Forms 4137 / 8919). "
+        "Spec fact `unreported_ss_medicare_tax`.",
+    )
+    other_employment_taxes = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 2 line 13. Spec fact `other_employment_taxes`.",
+    )
+    eitc_claimed = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Form 1040 Line 27a. Spec fact `eitc_claimed`.",
+    )
+    excess_ss_rrta_withheld = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text="Placeholder — Schedule 3 line 11. Spec fact `excess_ss_rrta_withheld`.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1678,13 +1766,44 @@ class InterestIncome(models.Model):
         return f"1099-INT: {self.payer_name} — ${self.interest_income}"
 
 
+# Dependent classification choices — verbatim from Schedule 8812 (TY 2025) spec.
+# fact keys: dep_relationship_code / dep_citizenship_status / dep_tin_type.
+RELATIONSHIP_CHOICES = [
+    ("child", "Son / daughter"),
+    ("descendant_of_child", "Grandchild / descendant of child"),
+    ("sibling", "Brother / sister"),
+    ("step_sibling", "Stepbrother / stepsister"),
+    ("descendant_of_sibling", "Niece / nephew"),
+    ("foster_child", "Eligible foster child"),
+    ("adopted_child", "Adopted child"),
+    ("other", "Other (does NOT qualify as CTC qualifying child)"),
+]
+
+CITIZENSHIP_CHOICES = [
+    ("us_citizen", "U.S. citizen"),
+    ("us_national", "U.S. national"),
+    ("us_resident_alien", "U.S. resident alien"),
+    ("nonresident_alien", "Nonresident alien"),
+    ("mexico_canada_resident", "Resident of Mexico or Canada"),
+]
+
+TIN_TYPE_CHOICES = [
+    ("valid_ssn", "Valid SSN (work-authorized, issued before due date)"),
+    ("itin", "ITIN"),
+    ("atin", "ATIN (adoption taxpayer ID)"),
+    ("none", "No TIN"),
+]
+
+
 class Dependent(models.Model):
     """A dependent on a 1040 return.
 
-    CTC vs ODC classification is computed from date_of_birth + the parent
-    return's tax_year (CTC = under 17 at year-end). ctc_override and
-    odc_override let the preparer flip the computed default; None means
-    "use computed".
+    Every row here represents a CLAIMED dependent — that's why
+    `dep_is_claimed_as_dependent` from the Schedule 8812 spec is not a
+    field. CTC vs ODC classification is computed by the 8812 compute
+    module from the classification inputs below + `date_of_birth` +
+    the parent return's `tax_year`. `ctc_override` / `odc_override`
+    let the preparer flip the computed default (None = use computed).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -1698,10 +1817,46 @@ class Dependent(models.Model):
     last_name = models.CharField(max_length=100, blank=True, default="")
     ssn = models.CharField(
         max_length=11, blank=True, default="",
-        help_text="SSN in XXX-XX-XXXX format.",
+        help_text="SSN in XXX-XX-XXXX format. Display only — TIN type for "
+        "CTC/ODC eligibility lives on `tin_type`.",
     )
-    relationship = models.CharField(max_length=50, blank=True, default="")
+    relationship = models.CharField(
+        max_length=24, blank=True, default="",
+        choices=RELATIONSHIP_CHOICES,
+        help_text="Dependent's relationship to the taxpayer. Spec fact key "
+        "`dep_relationship_code`. CTC qualifying-child test fails when 'other'.",
+    )
     date_of_birth = models.DateField(null=True, blank=True)
+    # Schedule 8812 classification inputs (added 2026-05-27)
+    months_resided_with_taxpayer = models.IntegerField(
+        null=True, blank=True,
+        help_text="Spec fact `dep_months_resided_with_taxpayer`. CTC requires > 6.",
+    )
+    provided_over_half_own_support = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_provided_over_half_own_support`. CTC fails if True.",
+    )
+    filed_joint_return = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_filed_joint_return`. CTC fails if True "
+        "(joint-return-only-for-refund exception assumed resolved upstream).",
+    )
+    citizenship_status = models.CharField(
+        max_length=24, blank=True, default="",
+        choices=CITIZENSHIP_CHOICES,
+        help_text="Spec fact `dep_citizenship_status`. CTC/ODC require US "
+        "citizen / national / resident alien per §152(b)(3).",
+    )
+    tin_type = models.CharField(
+        max_length=16, blank=True, default="",
+        choices=TIN_TYPE_CHOICES,
+        help_text="Spec fact `dep_tin_type`. CTC requires `valid_ssn`; "
+        "ODC accepts `valid_ssn` / `itin` / `atin`.",
+    )
+    is_permanently_disabled = models.BooleanField(
+        default=False,
+        help_text="Spec fact `dep_is_permanently_disabled`.",
+    )
     ctc_override = models.BooleanField(
         null=True, default=None,
         help_text="None = use computed (under 17 at year-end). True/False overrides.",

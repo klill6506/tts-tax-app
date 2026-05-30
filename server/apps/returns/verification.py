@@ -126,3 +126,81 @@ def assert_value_at_pdf_location(
         f"right) on page {page_number}. Closest spans by y-distance: "
         f"{[t for _, t in near_hint_texts]}"
     )
+
+
+def assert_value_at_widget_position(
+    pdf_bytes: bytes,
+    page_number: int,
+    expected_value: str,
+    expected_x: float,
+    expected_y: float,
+    *,
+    x_tolerance: float = 80.0,
+    y_tolerance: float = 8.0,
+) -> None:
+    """Assert ``expected_value`` appears at the given PDF position.
+
+    Sibling to ``assert_value_at_pdf_location``. The renderer flattens
+    AcroForm widgets into text spans, so post-render PDFs don't have
+    widgets to look up — they have positioned text. This helper checks
+    that an expected value (substring match) lands inside the rectangle
+    centered on ``(expected_x, expected_y)`` with the given tolerances.
+
+    The expected position comes from the field map's AcroForm rect. The
+    typical IRS form line widget is ~72px wide and 12px tall, so the
+    default tolerances (80px / 8px) cover normal field width plus the
+    small rendering offset (~1-2px).
+
+    Args:
+        pdf_bytes: Rendered PDF bytes.
+        page_number: 0-indexed page number.
+        expected_value: Substring expected to appear (e.g., ``"4,400"``).
+        expected_x: X-coordinate near where the value should land
+            (typically the widget's rect.x0 or x_center).
+        expected_y: Y-coordinate near where the value should land
+            (typically the widget's rect.y_center).
+        x_tolerance: Horizontal box half-width in PDF user-space pixels.
+        y_tolerance: Vertical box half-height in PDF user-space pixels.
+
+    Raises:
+        AssertionError: if no text span containing ``expected_value`` is
+            found inside the tolerance box.
+    """
+    if not pdf_bytes:
+        raise AssertionError("pdf_bytes is empty")
+
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        if page_number < 0 or page_number >= doc.page_count:
+            page_count = doc.page_count
+            raise AssertionError(
+                f"page_number={page_number} out of range (doc has "
+                f"{page_count} pages)"
+            )
+        page = doc[page_number]
+        spans = _iter_spans(page)
+
+    for s in spans:
+        if expected_value not in s.text:
+            continue
+        if abs(s.y_center - expected_y) > y_tolerance:
+            continue
+        if abs(s.x_center - expected_x) > x_tolerance:
+            continue
+        return
+
+    near_spans = sorted(
+        (
+            (
+                (s.x_center - expected_x) ** 2 + (s.y_center - expected_y) ** 2,
+                s.text,
+                s.x_center,
+                s.y_center,
+            )
+            for s in spans
+        ),
+    )[:8]
+    raise AssertionError(
+        f"Expected '{expected_value}' near ({expected_x:.0f}, "
+        f"{expected_y:.0f}) on page {page_number}. Closest spans: "
+        f"{[(t, f'({x:.0f}, {y:.0f})') for _, t, x, y in near_spans]}"
+    )

@@ -104,7 +104,7 @@ HEADER_REGISTRY: dict[str, dict[str, FieldCoord]] = {
 # AcroForm-capable form IDs — field maps resolved dynamically via get_field_maps()
 ACROFORM_FORM_IDS: set[str] = {
     "f1120s", "f1120sk1", "f7004", "f8879s", "f8453s", "f1125a", "f8825", "f7203",
-    "f4797", "f1120ssd", "f8949", "f1125e", "f4562", "fschedf", "f1040",
+    "f4797", "f1120ssd", "f8949", "f1125e", "f4562", "fschedf", "f1040", "f1040s8",
 }
 
 # Form code → 2-digit IRS extension code for Form 7004 Line 1
@@ -2987,6 +2987,73 @@ def render_schedule_f(tax_return) -> bytes | None:
     )
 
 
+def render_sch_8812(tax_return) -> bytes | None:
+    """Render Schedule 8812 (CTC + ACTC + ODC) for a 1040 return.
+
+    Schedule 8812 values live on the parent 1040 TaxReturn (same
+    `FormFieldValue.tax_return` FK), but with `form_line.section.form.code
+    == "SCH_8812"`. We filter to those rows and call render() with the
+    f1040s8 field map.
+
+    Returns:
+        PDF bytes if any non-zero Schedule 8812 values exist (CTC, ACTC
+        or ODC was claimed); None otherwise.
+    """
+    from apps.returns.models import FormFieldValue
+
+    if tax_return.form_definition.code != "1040":
+        return None
+
+    fvs = (
+        FormFieldValue.objects.filter(
+            tax_return=tax_return,
+            form_line__section__form__code="SCH_8812",
+        )
+        .select_related("form_line__section__form")
+    )
+
+    field_values: dict[str, tuple[str, str]] = {}
+    has_data = False
+    for fv in fvs:
+        if fv.value and fv.value not in ("", "0", "0.00"):
+            has_data = True
+        if fv.value:
+            field_values[fv.form_line.line_number] = (
+                fv.value,
+                fv.form_line.field_type,
+            )
+
+    if not has_data:
+        return None
+
+    # Mirror Line 4 into the Line 16b QC-count sub-field — the IRS form has
+    # a separate widget for the count multiplier.
+    l4 = field_values.get("L_4")
+    if l4 and "L_16b_qc_count" not in field_values:
+        field_values["L_16b_qc_count"] = l4
+
+    # Header carries from parent 1040 Taxpayer.
+    header_data: dict[str, str] = {}
+    try:
+        tp = tax_return.taxpayer
+        name_parts = [tp.first_name or "", tp.last_name or ""]
+        if tp.filing_status == "mfj" and tp.spouse_first_name:
+            name_parts.append(f"& {tp.spouse_first_name} {tp.spouse_last_name or ''}".strip())
+        header_data["name_on_return"] = " ".join(p for p in name_parts if p).strip()
+        if tp.ssn:
+            header_data["ssn"] = tp.ssn
+    except Exception:
+        pass
+
+    tax_year = tax_return.form_definition.tax_year_applicable
+    return render(
+        form_id="f1040s8",
+        tax_year=tax_year,
+        field_values=field_values,
+        header_data=header_data,
+    )
+
+
 def render_complete_return(
     tax_return,
     package: str | None = None,
@@ -3106,6 +3173,15 @@ def render_complete_return(
         _append(render_tax_return(tax_return), main_form_name)
     except Exception as e:
         logger.warning("render_complete: main form failed: %s", e)
+
+    # 1a. Schedule 8812 (CTC + ACTC + ODC) — 1040 returns with computed values only.
+    if form_code == "1040":
+        try:
+            sch_8812_bytes = render_sch_8812(tax_return)
+            if sch_8812_bytes:
+                _append(sch_8812_bytes, "Schedule 8812")
+        except Exception as e:
+            logger.warning("render_complete: Schedule 8812 failed: %s", e)
 
     # 1b. Form 8879-S (e-file signature auth — Client Copy and Filing Copy)
     if package in ("client", "filing", None):

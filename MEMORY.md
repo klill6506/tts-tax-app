@@ -1,5 +1,117 @@
 # TTS Tax App - Project Memory
 
+## 2026-05-28 — Schedule 8812 (CTC/ACTC/ODC) — Session K, Part 2 of 2
+
+Closes the render half of the Schedule 8812 verification chain and
+merges `feat/sch-8812-ctc-actc` to main. PDF, field maps, render
+integration, end-to-end render assertions, OBBBA cap parameterization,
+and the family_with_kids fixture refresh — all in one session.
+
+### Standing facts established this session
+
+- **OBBBA QC cap is now tax-year-parameterized.** `apps.returns.compute_8812._constants_for_year(tax_year)` returns the year-keyed dict of CTC constants. TY 2025+ uses OBBBA values (`QC_AMOUNT=$2,200`, `ACTC_PER_CHILD_CAP=$1,700`). TY 2024 uses pre-OBBBA TCJA values (`QC_AMOUNT=$2,000`, `ACTC_PER_CHILD_CAP=$1,700`). Module-level constants (`QC_AMOUNT`, etc.) are kept as TY 2025+ aliases for backward compat with external callers. 5 regression tests in `test_compute_8812_year_constants.py` lock the year matrix.
+- **Schedule 8812 PDF + field map landed.** `resources/irs_forms/2025/f1040s8.pdf` downloaded (SHA `6936462d67e2309d14a795aa0b88ef613cc6d79617431cfda3a2edf44aea52db`). Manifest now has 24 entries (was 22 — added f1040s8 here, f1040 was already there). `field_maps/f1040s8_2025.py` maps all 32 spec line_numbers (L_1 through L_27, including L_2a/2b/2c/2d, L_16a/16b/16b_qc_count, L_18a/18b) to AcroForm field names. Line 15 ("Reserved for future use") intentionally has no entry — IRS form has a widget but spec marks it reserved.
+- **Form 1040 Lines 19 + 28 mapped (verified against 2025 PDF).** Line 19 (CTC) → `f2_11` (page 2, y=192, right col). Line 28 (ACTC) → `f2_24` (page 2, y=408, middle col). Existing rough-draft mappings for Lines 16/24/25a/25d/33/34/37 are **wrong for the 2025 PDF** — they were carried over from earlier work and were never verified. Not fixed this session per scope, but `f1040_2025.py` audit is queued for a future session.
+- **`render_sch_8812(tax_return)` is the entry point.** Lives in `apps.tts_forms.renderer`. Filters `FormFieldValue` rows by `form_line__section__form__code == "SCH_8812"` (since Sch 8812 values live on the parent 1040 TaxReturn — same FK, different form). Builds header from parent Taxpayer (name + SSN). Auto-mirrors Line 4 (# QC) into the Line 16b count sub-field. Returns `None` if no Sch 8812 values exist (CTC/ACTC/ODC not claimed). Wired into `render_complete_return` step 1a — runs after the main 1040 and before Form 8879-S.
+- **Three end-to-end render assertions cover the render-chain gate.** `tests/test_sch_8812_render.py`:
+  - `test_ctc_only_renders_to_correct_locations` — MFJ + 2 QC, ample tax. Asserts $4,400 lands at f1_19 position on Sch 8812 + at f2_11 position on Form 1040.
+  - `test_actc_eligible_renders_to_correct_locations` — MFJ + 3 QC + AGI $30K + tax $1K. Asserts $1,000 lands at Sch 8812 Line 14, $4,125 lands at Sch 8812 Line 27, plus matching Form 1040 Lines 19 + 28.
+  - `test_form_2555_zero_out_renders_zero` — TS13 from spec. Asserts Sch 8812 Line 14 still renders $4,400 (CTC unaffected) but L_16a + L_27 + Form 1040 Line 28 render BLANK (per IRS convention — `format_currency` returns `""` for $0).
+- **New verification helper: `assert_value_at_widget_position`.** AcroForm widgets are flattened into text spans during rendering — `assert_widget_value` (by acro_name) won't work post-flatten. The new helper takes a position (x, y) and checks for an expected substring near it. Used alongside `assert_value_at_pdf_location` for render-chain assertions where line labels (e.g., "27") are too generic for substring matching.
+- **`family_with_kids.json` fixture updated for OBBBA + strict relationship choice.** `expected[19]` = $4,400 (was $4,000), Line 22 = $12,268 (was $12,668), Line 34 = $5,232 (was $4,832). `dependents[*].relationship` = `"child"` (was `"son"`/`"daughter"` — those aren't valid choices on the strict-choice field added in Session K Part 1 migration 0041).
+- **Manifest length test updated.** `test_manifest_is_valid_json` now asserts `len(data["forms"]) == 24` (was 22, off by one going in — pre-existing fail). Side effect of adding the f1040s8 manifest entry, per Ken's scope direction.
+
+### Branch close
+- All 5 verification gates green together: 30/30 compute rules, 13/13 flow assertions, 17/17 spec scenarios, 5/5 year-constants regression tests, 3/3 end-to-end PDF render assertions, full DB suite (no NEW failures vs Part 1 baseline).
+- `feat/sch-8812-ctc-actc` merged to main with 11 commits total (6 from Part 1, 5 from Part 2).
+
+## 2026-05-27 — Schedule 8812 (CTC/ACTC/ODC) — Session K, Part 1 of 2
+
+Implementing CTC + ACTC + ODC from the SCH_8812_TY2025 Rule Studio spec
+(Session 14). Session K is split into two CC sessions on feature branch
+`feat/sch-8812-ctc-actc` per Ken's direction. Part 1 (this session)
+closes Input + Compute + Flow assertions + Scenarios. Part 2 closes
+Render + final merge to main.
+
+### Standing facts established this session
+
+- **Schedule 8812 is a sibling `FormDefinition` (`code="SCH_8812"`),
+  values stored on the parent 1040 `TaxReturn`.** Same
+  `FormFieldValue.tax_return` FK; different `FormFieldValue.form_line`
+  FK (pointing at SCH_8812 lines). Avoids a `parent_return` migration
+  on `TaxReturn`. Cross-form semantics preserved via
+  `FormLine.section.form`. See DECISIONS.md 2026-05-27 entry.
+- **`Dependent.relationship` is now a strict choice (not free text).**
+  8 codes verbatim from spec: `child`, `descendant_of_child`,
+  `sibling`, `step_sibling`, `descendant_of_sibling`, `foster_child`,
+  `adopted_child`, `other`. Dev DB had 0 dependent rows so the
+  AlterField in migration 0041 didn't need a data migration. UI
+  swapped `<input>` for `<select>` at the same time (FormEditor.tsx).
+- **6 new Dependent fields** in migration 0041 (per Schedule 8812
+  spec): `months_resided_with_taxpayer`, `provided_over_half_own_support`,
+  `filed_joint_return`, `citizenship_status` (5-value choice),
+  `tin_type` (4-value choice — `valid_ssn`/`itin`/`atin`/`none`),
+  `is_permanently_disabled`. `dep_is_claimed_as_dependent` (spec fact
+  #8) is implicit — every Dependent row is by definition a claimed
+  dependent.
+- **18 new Taxpayer fields** in migration 0042 — 10 real return-level
+  facts + 8 preparer-entered placeholders for forms not yet built:
+  - Real: `taxpayer_has_valid_ssn`, `spouse_has_valid_ssn`,
+    `spouse_has_ssn_or_itin_by_due_date`, `files_form_2555`,
+    `form_2555_excluded_amount`, `form_4563_excluded_income`,
+    `puerto_rico_excluded_income`, `nontaxable_combat_pay`,
+    `claims_credits_requiring_worksheet_b`, `taxpayer_has_rrta_taxes`.
+  - Placeholders (default 0, all on Taxpayer until Sch 1/2/3/SE/8959/EITC
+    are built): `schedule_3_pre_ctc_credits_total`,
+    `additional_medicare_tax_amount`, `deductible_se_tax_half`,
+    `se_tax_total`, `unreported_ss_medicare_tax`,
+    `other_employment_taxes`, `eitc_claimed`,
+    `excess_ss_rrta_withheld`.
+- **`seed_1040` extended with Lines 17, 18, 19, 20, 21, 22, 23, 28**
+  (27 lines total). `seed_sch_8812` new — 32 lines across 3 sections
+  (Part I / Part II-A / Part II-B). Both run idempotently via
+  `update_or_create`.
+- **`apps.returns.compute_8812` implements all 30 spec rules
+  (R001-R030).** Entry point `compute_sch_8812(tax_return)` is called
+  from `compute_return()` for `form_code=="1040"` between two
+  downstream-formula passes — the first gives the 8812 a correct
+  Line 18 (`tax_before_ctc`), the second propagates Lines 19/28 to
+  21/22/24/33/34/37.
+- **One spec-rule vs spec-scenario disagreement, resolved in favor of
+  scenarios.** Spec R018 says "L_16a = … if actc_eligible else 0", but
+  TS09b (no QC, ODC only) wants `L_16a=300` and TS13 (QC=2 +
+  Form 2555) wants `L_16a=0`. Effective gate: `NOT files_form_2555
+  AND return_ssn_eligible`. The full actc_eligible (which also
+  requires `count_qualifying_children > 0`) gates `L_27` via R029 but
+  NOT `L_16a` directly. See DECISIONS.md 2026-05-27 entry.
+- **Earned income for ACTC uses the simplified path.** Definition in
+  `apps.returns.compute_8812._earned_income_simplified()`:
+  `wages + (deductible_se_tax_half * 2) + nontaxable_combat_pay`.
+  Real Schedule SE not yet built; `deductible_se_tax_half` is a
+  preparer-entered placeholder. Full Earned Income Worksheet decomp
+  + Worksheet B deferred per spec note + Ken's scope direction.
+- **All 13 flow assertions from session14/flow_assertions_1040.json
+  pass.** Replaced the empty Session J stub with the export. Added 11
+  new `kind`-based sub-runners in `_run_sch_8812_assertion` covering
+  `per_record_contribution`, `per_record_gating`,
+  `return_level_gating`, `formula_check`, `conditional_flow`,
+  `invariant`, `sum_check`, `conditional_zero`,
+  `conditional_path_selection`, `cross_form_flow`, `rounding_check`,
+  and `mutual_exclusion`. The 11 dispatch via the existing
+  `run_flow_assertion` / `run_reconciliation` / `run_table_invariant`
+  entry points by detecting a `kind` key in the definition.
+- **17 of 18 spec scenarios pass end-to-end (1 deferred).**
+  `tests/test_sch_8812_scenarios.py` builds the full DB graph per
+  scenario, calls `compute_sch_8812`, and asserts every `expected_outputs`
+  value against the resulting `FormFieldValue` rows. `TS_WSB_TBD`
+  (Worksheet B) is the 1 deferral per spec. Diagnostic-firing
+  assertions (`D###_fires`) are silently skipped — 1040 diagnostics
+  framework not built yet.
+- **Branch state at session 1 close**: `feat/sch-8812-ctc-actc`,
+  6 commits ahead of main. NOT merged. Session 2 closes Render
+  (Schedule 8812 PDF + Form 1040 Line 19/28 field map + render
+  integration + family_with_kids fixture update) before the merge.
+
 ## 2026-05-26 — Input/Compute/Render Verification rule + 1040 harness Phase 1 (Session J)
 
 Adopted a stricter verification rule. Built the supporting infrastructure
