@@ -199,7 +199,7 @@
       "title": "Georgia S Corporation Tax Return",
       "tax_year": 2024,
       "irs_url": "https://dor.georgia.gov/document/form/2024-form-600s-2024-s-corporation-tax-return/download",
-      "sha256": "",
+      "sha256": "5a11cefcc89732a32bd9cfa31cdaa4cc77ef35af76a77bf567dc709976b7ba98",
       "local_path": "../state_forms/GA/2024/ga600s.pdf",
       "pages": 7,
       "notes": "Georgia Form 600S - S Corporation Tax Return. State form, not IRS."
@@ -276,11 +276,11 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1040sf.pdf",
       "revision_date": "2025-05",
-      "sha256": "",
+      "sha256": "c6f7f19e1a4f5729515b2ac4604a06e0c2215043fdf94ad0f914f76396d7ec09",
       "local_path": "2025/f1040sf.pdf",
       "pages": 2,
       "has_acroform": true,
-      "notes": "Schedule F (Form 1040) — farm income and expenses. 100 AcroForm fields. Page 2 is Part III accrual method + activity codes (skip for S-Corp cash method)."
+      "notes": "Schedule F (Form 1040) \u00e2\u20ac\u201d farm income and expenses. 100 AcroForm fields. Page 2 is Part III accrual method + activity codes (skip for S-Corp cash method)."
     },
     {
       "form_id": "f1040",
@@ -289,11 +289,24 @@
       "tax_year": 2025,
       "irs_url": "https://www.irs.gov/pub/irs-pdf/f1040.pdf",
       "revision_date": "2025",
-      "sha256": "",
+      "sha256": "3d31c226df0d189ced80e039d01cf0f8820c1019681a0f0ca6264de277b7e982",
       "local_path": "2025/f1040.pdf",
       "pages": 2,
       "has_acroform": true,
-      "notes": "Form 1040 — Individual Income Tax Return. Rough draft skeleton. ~200 AcroForm fields."
+      "notes": "Form 1040 \u00e2\u20ac\u201d Individual Income Tax Return. Rough draft skeleton. ~200 AcroForm fields."
+    },
+    {
+      "form_id": "f1040s8",
+      "form_code": "1040-SCH-8812",
+      "title": "Schedule 8812 (Form 1040) \u00e2\u20ac\u201d Credits for Qualifying Children and Other Dependents",
+      "tax_year": 2025,
+      "irs_url": "https://www.irs.gov/pub/irs-pdf/f1040s8.pdf",
+      "revision_date": "2025",
+      "sha256": "6936462d67e2309d14a795aa0b88ef613cc6d79617431cfda3a2edf44aea52db",
+      "local_path": "2025/f1040s8.pdf",
+      "pages": 2,
+      "has_acroform": true,
+      "notes": "Schedule 8812 \u00e2\u20ac\u201d CTC + ACTC + ODC. Attached to Form 1040 when dependents claimed. Session K Part 2 (2026-05-28)."
     }
   ]
 }
